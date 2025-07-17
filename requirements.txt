@@ -1,3 +1,5 @@
 nicegui
 nicegui[highcharts]
 pandas
+oligoMass
+matplotlib
