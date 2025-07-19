@@ -283,7 +283,7 @@ class invoce_table(api_db_interface):
             limit = oserch.get_low_amount_limit(d['Amount, oe'])
             d['sufficiency'] = d['Exist, oe'] - limit
             d['Purif type'] = maps['Purif type'].max()
-            d['Position'] = maps['Position'].max()
+            d['Position'] = maps['Position'].min()
             maps['Synt number'] = pd.to_numeric(maps['Synt number'], errors='coerce')
             d['Synt number'] = maps['Synt number'].max()
             d['Status'] = maps['Status'].max()

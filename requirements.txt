@@ -3,3 +3,4 @@ nicegui[highcharts]
 pandas
 oligoMass
 matplotlib
+nicegui-tabulator

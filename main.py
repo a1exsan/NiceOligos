@@ -33,4 +33,12 @@ async def invoce_panel_page(client):
     invoce_front['on_pincode_change'].on_value_change(invoce_tab['on_pincode_change'])
     invoce_front['on_show_by_status'].on_value_change(invoce_tab['on_show_by_status'])
 
+@ui.page('/oligosynth_panel')
+async def oligosynth_panel_page(client):
+    await client.connected()
+    ip = client.environ['asgi.scope']['client']
+    app.storage.user['client_ip'] = ip[0]
+    navi_front = frontend.navigation_menu(ui)
+
+
 ui.run(storage_secret='NiceGUI_oligo_app_1')

@@ -24,6 +24,7 @@ class navigation_menu():
         with navigation:
             ui.link('Home', '/').style('font-size: 24px;')
             ui.link('Invoces', '/invoce_panel').style('font-size: 24px;')
+            ui.link('Oligo synthesis', '/oligosynth_panel').style('font-size: 24px;')
 
 
 class invoice_frontend():
@@ -127,6 +128,7 @@ class invoice_frontend():
                 'rowData': rowData.to_dict('records'),
                 'rowSelection': 'multiple',
                 "pagination": True,
+                #"enableRangeSelection": True,
             }
         ,
         theme='alpine-dark').classes('h-[800px]') # alpine  material  quartz  balham
@@ -272,3 +274,4 @@ class invoice_frontend():
         self.ag_grid.update()
         self.invoce_content_tab.options['rowData'] = model['invoce_content_tab'].options['rowData']
         self.invoce_content_tab.update()
+
