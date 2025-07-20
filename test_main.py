@@ -72,5 +72,5 @@ for y, num in zip(range(145, 900, 100), 'A B C D E F G H'.split(' ')):
     highlight.content += f'<text x="{1300}" y="{y}" fill="lightblue" font-size="48">{num}</text>'
 
 
-ui.run()
+#ui.run()
 
