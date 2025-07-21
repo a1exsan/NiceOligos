@@ -13,9 +13,10 @@ import matplotlib.pyplot as plt
 
 class invoce_table(api_db_interface):
 
-    def __init__(self, api_IP, db_port):
+    def __init__(self, api_IP, db_port, stack):
         super().__init__(api_IP, db_port)
 
+        self.oligomap_stack = stack
         self.pincode = ''
         self.db_name = 'scheduler_oligolab_2.db'
         self.client = {}
@@ -160,6 +161,13 @@ class invoce_table(api_db_interface):
         return out
 
 
+    def get_pincode(self, ip):
+        if ip in list(self.client.keys()):
+            return self.client[ip]
+        else:
+            return ''
+
+
     def on_load_button(self):
         ip = self.app.storage.user.get('client_ip')
         self.pincode = self.client[ip]
@@ -302,6 +310,19 @@ class invoce_table(api_db_interface):
 
         self.frontend.progressbar.visible = False
 
+    async def on_send_oligos_button(self):
+        ip = self.app.storage.user.get('client_ip')
+        self.pincode = self.client[ip]
+        selrows = await self.frontend.invoce_content_tab.get_selected_rows()
+
+        if ip in list(self.oligomap_stack.input_selected_rows.keys()):
+            self.oligomap_stack.input_selected_rows[ip].extend(selrows)
+        else:
+            self.oligomap_stack.input_selected_rows[ip] = []
+            self.oligomap_stack.input_selected_rows[ip].extend(selrows)
+
+        #print(len(self.oligomap_stack.input_selected_rows[ip]))
+
 
     def  print_pass(self, rowData):
         out_tab = []
@@ -354,3 +375,5 @@ class invoce_table(api_db_interface):
             return self.on_show_by_status
         elif item == 'on_print_invoce_passport':
             return self.on_print_invoce_passport
+        elif item == 'on_send_oligos_button':
+            return self.on_send_oligos_button

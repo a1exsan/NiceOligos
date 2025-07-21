@@ -1,16 +1,18 @@
 from nicegui import ui, app
-import pandas as pd
+from OligoMap_utils import oligos_data_stack
 
 import frontend
 import invoce_backend
 import frontend_oligosynth_panel
 import Synthesis_builder_backend
 
-invoce_tab = invoce_backend.invoce_table('127.0.0.1', '8012')
-#invoce_tab = invoce_backend.invoce_table('192.168.16.145', '8012')
+oligo_map_stack = oligos_data_stack()
 
-oligomap_tab = Synthesis_builder_backend.Oligomap_backend('127.0.0.1', '8012')
-#oligomap_tab = Synthesis_builder_backend.Oligomap_backend('192.168.16.145', '8012')
+#invoce_tab = invoce_backend.invoce_table('127.0.0.1', '8012', oligo_map_stack)
+invoce_tab = invoce_backend.invoce_table('192.168.16.145', '8012', oligo_map_stack)
+
+#oligomap_tab = Synthesis_builder_backend.Oligomap_backend('127.0.0.1', '8012', oligo_map_stack)
+oligomap_tab = Synthesis_builder_backend.Oligomap_backend('192.168.16.145', '8012', oligo_map_stack)
 
 app.add_static_files('/img', 'static_images')
 
@@ -49,7 +51,10 @@ async def oligosynth_panel_page(client):
     navi_front = frontend.navigation_menu(ui)
 
     oligosynt_front = frontend_oligosynth_panel.oligosynth_panel(oligomap_tab)
-    oligomap_tab.init_frontend(oligosynt_front, ip[0])
+    oligomap_tab.init_frontend(oligosynt_front, ip[0], invoce_tab.get_pincode(ip[0]))
+
+    for btn, func in oligosynt_front.get_element_list('button'):
+        oligosynt_front[btn].on(func, oligomap_tab[btn])
 
     #print('INIT', oligomap_tab.client_frontend[ip[0]])
 

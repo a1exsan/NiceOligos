@@ -134,12 +134,14 @@ class invoice_frontend():
         theme='alpine-dark').classes('h-[800px]') # alpine  material  quartz  balham
         self.ag_grid.auto_size_columns = True
 
-        with ui.row():
+        with ui.grid(columns=7).classes("w-full").style("grid-template-columns: 200px 200px 200px 200px 200px 200px 200px"):
             self.on_load_button = ui.button('load invoces')
             self.on_show_actual_invoces_button = ui.button('Show actual')
             self.on_show_invoces_content = ui.button('invoce content')
             self.on_print_invoce_passport = ui.button('print passport', color='#FFA000')
             self.progressbar = ui.spinner(size='md', color='#FFA000')
+            self.on_send_oligos_button = ui.button('Send selection to map')
+
         self.progressbar.visible = False
         self.on_load_button.props('id="on_load_button"')
 
@@ -229,6 +231,8 @@ class invoice_frontend():
             return self.on_show_by_status
         elif item == 'on_print_invoce_passport':
             return self.on_print_invoce_passport
+        elif item == 'on_send_oligos_button':
+            return self.on_send_oligos_button
 
     def get_element_list(self, key):
         if key == 'button':
@@ -237,6 +241,7 @@ class invoice_frontend():
                 ('on_show_actual_invoces_button', 'click'),
                 ('on_show_invoces_content', 'click'),
                 ('on_print_invoce_passport', 'click'),
+                ('on_send_oligos_button', 'click'),
             ]
         else:
             return []
