@@ -55,6 +55,7 @@ async def oligosynth_panel_page(client):
 
     for btn, func in oligosynt_front.get_element_list('button'):
         oligosynt_front[btn].on(func, oligomap_tab[btn])
+    oligosynt_front['synth_scale_selector'].on_value_change(oligomap_tab['synth_scale_selector'])
 
     #print('INIT', oligomap_tab.client_frontend[ip[0]])
 

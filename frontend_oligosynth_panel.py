@@ -14,15 +14,25 @@ class oligosynth_panel():
 
         with ui.grid(columns=3).classes("w-full").style("grid-template-columns: 1200px 200px 1300px"):
             with ui.grid(columns=3).classes("w-full").style("grid-template-columns: 200px 200px 200px"):
-                self.on_new_oligomap_button = ui.button("New Map", color="#E1A100")
-                self.on_clear_plate_button = ui.button("Clear plate", color="#FF1000")
+                self.on_clear_plate_button = ui.button("Clear plate", color="#FF1000").classes('w-[200px]')
             ui.label('Cell12')
-            ui.label('Cell13')
+            with ui.row():
+                self.on_new_oligomap_button = ui.button("New Map", color="#E1A100").classes('w-[200px]')
+                #options = ['AutoComplete', 'NiceGUI', 'Awesome']
+                self.oligomap_name_input = ui.input(label='', placeholder='Map name')
+                self.oligomap_syn_number_input = ui.input(label='', placeholder='Synth number')
+                self.on_save_oligomap = ui.button('Save synth map', color="#00a100").classes('w-[200px]')
+                self.on_update_oligomap = ui.button('Update map', color="#00a100").classes('w-[200px]')
 
             self.xwells_obj = XWells.XWell_plate(self, self.backend_model)
+
             with ui.column().classes("w-full"):
                 self.number_of_copies_oligo = ui.input('', value=1)
                 self.on_add_sel_oligo_to_plate = ui.button('Add selected', color="#e1a000").classes('w-[200px]')
+                self.on_del_sel_oligo_to_plate = ui.button('Del selected', color="#f11000").classes('w-[200px]')
+                ui.label('Select synthesis scale:')
+                self.synth_scale_selector = ui.radio(['1 mg', '3 mg', '5 mg'], value='3 mg').props('inline')
+                self.on_generate_oligomap_button = ui.button("Generate map", color="#00a100").classes('w-[200px]')
 
             self.get_oligos_stack_grid()
 
@@ -34,22 +44,9 @@ class oligosynth_panel():
                 self.on_load_oligomap = ui.button('Load map', color="#00a100").classes('w-[200px]')
             self.get_accord_tab()
 
-        with ui.grid(columns=3).classes("w-full").style("grid-template-columns: 200px 200px 200px"):
-            self.on_generate_oligomap_button = ui.button("Generate map", color="#00a100")
+        self.get_oligomap_grid()
 
-        rowData, colDefs = self.get_oligomap_grid()
-        #with ui.column():
-        self.oligomap_ag_grid = ui.aggrid(
-                {
-                    'columnDefs': colDefs,
-                    'rowData': rowData.to_dict('records'),
-                    'rowSelection': 'multiple',
-                    "pagination": True,
-                    # "enableRangeSelection": True,
-                }
-                ,
-                theme='alpine-dark').classes('h-[800px]')  # alpine  material  quartz  balham
-        self.oligomap_ag_grid.auto_size_columns = True
+
 
 
     def get_model(self):
@@ -66,6 +63,7 @@ class oligosynth_panel():
         self.oligomap_ag_grid.update()
         self.oligomap_db_tab.options['rowData'] = model['oligomap_db_tab'].options['rowData']
         self.oligomap_db_tab.update()
+        self.oligomap_rowdata = model['oligomap_db_tab'].options['rowData']
         self.accord_tab.options['rowData'] = model['accord_tab'].options['rowData']
         self.accord_tab.update()
 
@@ -80,6 +78,9 @@ class oligosynth_panel():
                 ('on_show_oligomaps', 'click'),
                 ('on_show_actual_oligomaps', 'click'),
                 ('on_load_oligomap', 'click'),
+                ('on_del_sel_oligo_to_plate', 'click'),
+                ('on_save_oligomap', 'click'),
+                ('on_update_oligomap', 'click'),
             ]
         else:
             return []
@@ -100,6 +101,14 @@ class oligosynth_panel():
             return self.on_show_actual_oligomaps
         if item == 'on_load_oligomap':
             return self.on_load_oligomap
+        if item == 'on_del_sel_oligo_to_plate':
+            return self.on_del_sel_oligo_to_plate
+        if item == 'synth_scale_selector':
+            return self.synth_scale_selector
+        if item == 'on_save_oligomap':
+            return self.on_save_oligomap
+        if item == 'on_update_oligomap':
+            return self.on_update_oligomap
 
 
     def get_oligomap_grid(self):
@@ -144,6 +153,8 @@ class oligosynth_panel():
                 'Send': [False],
             }
         )
+
+        self.oligomap_rowdata = map_tab.to_dict('records')
 
         columnDefs = [
             {
@@ -190,7 +201,24 @@ class oligosynth_panel():
             {"field": "Send", 'editable': True, 'filter': 'agTextColumnFilter', 'floatingFilter': True},
         ]
 
-        return map_tab, columnDefs
+        # with ui.column():
+        self.oligomap_ag_grid = ui.aggrid(
+            {
+                'columnDefs': columnDefs,
+                'rowData': self.oligomap_rowdata,
+                'rowSelection': 'multiple',
+                "pagination": True,
+                # "enableRangeSelection": True,
+            }
+            ,
+            theme='alpine-dark').classes('h-[800px]')  # alpine  material  quartz  balham
+        self.oligomap_ag_grid.auto_size_columns = True
+        self.oligomap_ag_grid.on("cellValueChanged", self.update_oligomap_cell_data)
+
+    def update_oligomap_cell_data(self, e):
+        self.oligomap_rowdata[e.args["rowIndex"]] = e.args["data"]
+        self.oligomap_ag_grid.options['rowData'] = self.oligomap_rowdata
+        self.oligomap_ag_grid.update()
 
     def get_oligos_stack_grid(self):
         invoce_content_df = pd.DataFrame(
@@ -306,7 +334,7 @@ class oligosynth_panel():
                                      'DEBL', 'ACTIV', 'CAPA', 'CAPB', 'OXID', 'R2', 'W1', 'W2'],
                 'Conc, g/ml': [0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1,
                                1, 1, 1, 1, 1, 1, 1, 1],
-                'ul on step': [54., 54., 54., 54., 75., 75., 75., 75., 75., 75., 75., 75.,
+                'ul on step': [40., 40., 40., 40., 75., 75., 75., 75., 75., 75., 75., 75.,
                                240., 54., 45., 45., 110., 91., 110., 650.],
                 'Amount 5mg, g': [0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
                                   0., 0., 0., 0., 0., 0., 0., 0.],

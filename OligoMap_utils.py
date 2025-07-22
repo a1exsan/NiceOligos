@@ -1,6 +1,7 @@
 import pandas as pd
 import requests
 import json
+from datetime import datetime
 
 class api_db_interface():
 
@@ -26,6 +27,7 @@ class oligomaps_search(api_db_interface):
 
         self.pincode = ''
         self.maps_db_name = 'asm2000_map_1.db'
+        self.strftime_format = "%Y-%m-%d"
 
     def map_in_progress(self, mapdata):
         map = json.loads(mapdata)
@@ -179,6 +181,101 @@ class oligomaps_search(api_db_interface):
             return float(amount[:amount.find('-')])
         else:
             return float(amount)
+
+    def insert_map_to_base(self, name, synth_number, rowData, accordData):
+        if len(rowData) > 0:
+
+            synth_date = datetime.now().date().strftime(self.strftime_format)
+
+            url = f"{self.api_db_url}/insert_data/{self.maps_db_name}/main_map"
+            r = requests.post(url,
+                              json=json.dumps([synth_date, name, synth_number,
+                                               json.dumps(rowData),
+                                               json.dumps(accordData)]), headers=self.headers())
+
+            url = f'{self.api_db_url}/get_all_tab_data/{self.maps_db_name}/main_map'
+            ret = requests.get(url, headers=self.headers())
+            indexs = [r[0] for r in ret.json()]
+
+            self.oligo_map_id = max(indexs)
+
+            data = []
+            for row in rowData:
+                d = row.copy()
+                d['map #'] = self.oligo_map_id
+                data.append(d)
+
+            url = f"{self.api_db_url}/update_data/{self.maps_db_name}/main_map/{self.oligo_map_id}"
+            r = requests.put(url,
+                             json=json.dumps({
+                                 'name_list': ['map_tab'],
+                                 'value_list': [
+                                     json.dumps(data)
+                                 ]
+                             })
+                             , headers=self.headers())
+
+            return r.status_code
+        else:
+            return 404
+
+
+    def get_order_status(self, row):
+        state_list = ['synth', 'sed', 'click', 'cart', 'hplc', 'paag', 'LCMS', 'subl']
+        flag_list = []
+        for state in state_list:
+            flag_list.append(row[f'Do {state}'] == row[f'Done {state}'])
+        status = 'synthesis'
+        for i in range(8):
+            if not flag_list[i]:
+                if i < 3:
+                    status = 'synthesis'
+                elif i > 2 and i < 6:
+                    status = 'purification'
+                elif i == 7:
+                    status = 'formulation'
+                return status
+            else:
+                if i == 7:
+                    status = 'finished'
+                    return status
+        return status
+
+
+    def update_oligomap_status(self, rowData, accordrowdata):
+        if len(rowData) > 0:
+            print(rowData[0])
+            if 'map #' in list(rowData[0].keys()):
+                for row in rowData:
+                    if row['map #'] != '':
+                        self.oligo_map_id = int(row['map #'])
+                        print(f'MAP ID: {self.oligo_map_id}')
+                        break
+        if self.oligo_map_id > -1:
+            out = []
+            for row in rowData:
+                out.append(row)
+                out[-1]['Date'] = datetime.now().date().strftime('%d.%m.%Y')
+                out[-1]['Status'] = self.get_order_status(row)
+                if out[-1]['Status'] == 'finished':
+                    out[-1]['DONE'] = True
+                else:
+                    out[-1]['DONE'] = False
+
+            url = f"{self.api_db_url}/update_data/{self.maps_db_name}/main_map/{self.oligo_map_id}"
+            r = requests.put(url,
+                              json=json.dumps({
+                                  'name_list': ['map_tab', 'accord_tab'],
+                                  'value_list': [
+                                      json.dumps(out),
+                                      json.dumps(accordrowdata)
+                                  ]
+                              })
+                             , headers=self.headers())
+            print(f'update status {self.oligo_map_id}: {r.status_code}')
+            return out
+        else:
+            return rowData
 
 
 

@@ -1,9 +1,10 @@
 from oligoMass import molmassOligo as mmo
 from OligoMap_utils import api_db_interface
 import pandas as pd
-from datetime import datetime
 from nicegui import app
 from OligoMap_utils import oligomaps_search
+import requests
+from collections import Counter
 
 class Oligomap_backend(api_db_interface):
     def __init__(self, api_IP, db_port, stack):
@@ -11,6 +12,7 @@ class Oligomap_backend(api_db_interface):
 
         self.oligomap_stack = stack
         self.strftime_format = "%Y-%m-%d"
+        self.db_name = 'scheduler_oligolab_2.db'
 
 
     def init_frontend(self, front, ip, pincode):
@@ -58,6 +60,15 @@ class Oligomap_backend(api_db_interface):
         ip = app.storage.user.get('client_ip')
         self.pincode = self.client[ip]
         rowData = self.frontend.xwells_obj.get_rowData()
+        rowData = self.change_alk(rowData)
+
+        accord_rowdata = self.frontend.accord_tab.options['rowData']
+        rowData = self.seq_to_asm_seq(accord_rowdata, rowData)
+        accord_rowdata = self.update_accord_tab(accord_rowdata, rowData)
+
+        self.frontend.accord_tab.options['rowData'] = accord_rowdata
+        self.frontend.accord_tab.update()
+
         self.frontend.oligomap_ag_grid.options['rowData'] = rowData
         self.frontend.oligomap_ag_grid.update()
 
@@ -101,6 +112,7 @@ class Oligomap_backend(api_db_interface):
 
         self.frontend.oligomap_ag_grid.options['rowData'] = rowData
         self.frontend.oligomap_ag_grid.update()
+        self.frontend.oligomap_rowdata = rowData
 
         self.frontend.accord_tab.options['rowData'] = accordData
         self.frontend.accord_tab.update()
@@ -111,6 +123,225 @@ class Oligomap_backend(api_db_interface):
         self.frontend.xwells_obj.load_selrows(rowData)
 
         self.client_frontend[ip] = self.frontend.get_model()
+
+
+    def on_del_sel_oligo_to_plate(self):
+        ip = app.storage.user.get('client_ip')
+        self.pincode = self.client[ip]
+
+        self.frontend.xwells_obj.clear_selected_wells()
+
+        self.client_frontend[ip] = self.frontend.get_model()
+
+
+    def synth_scale_selector(self, e):
+        ip = app.storage.user.get('client_ip')
+        self.pincode = self.client[ip]
+
+        self.frontend.accord_tab.options['rowData'] = self.return_scale_accord_tab(
+            self.frontend.accord_tab.options['rowData'], e.value)
+        self.frontend.accord_tab.update()
+
+        self.client_frontend[ip] = self.frontend.get_model()
+
+
+    def on_save_oligomap(self):
+        ip = app.storage.user.get('client_ip')
+        self.pincode = self.client[ip]
+
+        omap = oligomaps_search(self.db_IP, self.db_port)
+        omap.pincode = self.pincode
+
+        map_name = self.frontend.oligomap_name_input.value
+        map_synt_num = self.frontend.oligomap_syn_number_input.value
+
+        rowData = self.frontend.oligomap_ag_grid.options['rowData']
+        accord_rowData = self.frontend.accord_tab.options['rowData']
+
+        omap.insert_map_to_base(map_name, map_synt_num, rowData, accord_rowData)
+
+        self.client_frontend[ip] = self.frontend.get_model()
+
+
+    def on_update_oligomap(self):
+        ip = app.storage.user.get('client_ip')
+        self.pincode = self.client[ip]
+
+        omap = oligomaps_search(self.db_IP, self.db_port)
+        omap.pincode = self.pincode
+
+        rowData = self.frontend.oligomap_ag_grid.options['rowData']
+        accord_rowData = self.frontend.accord_tab.options['rowData']
+        rowData = omap.update_oligomap_status(rowData, accord_rowData)
+        self.frontend.oligomap_ag_grid.options['rowData'] = rowData
+        self.frontend.oligomap_ag_grid.update()
+
+        self.client_frontend[ip] = self.frontend.get_model()
+
+
+    def check_pincode(self):
+        url = f'{self.api_db_url}/get_all_invoces/{self.db_name}'
+        ret = requests.get(url, headers=self.headers())
+        return ret.status_code == 200
+
+
+    def return_scale_accord_tab(self, rowdata, scale):
+        self.scale_dict = {'1 mg': 34., '3 mg': 40., '5 mg': 54.}
+        out = []
+        if self.check_pincode():
+            for row in rowdata:
+                d = row.copy()
+                if row['Modification'] in 'A C G T'.split(' '):
+                    #d['ul on step, 5mg'] = self.scale_dict[scale]
+                    d['ul on step'] = self.scale_dict[scale]
+                out.append(d)
+            return out
+        return rowdata
+
+
+    def change_alk(self, rowData):
+        out = []
+        for row in rowData:
+            oligo = mmo.oligoNASequence(row['Sequence'])
+            tab = oligo.getSeqTabDF()
+            #print(oligo.sequence)
+            r = row.copy()
+            if ((str(tab['prefix'].loc[1]).find('FAM') == -1) and (str(tab['prefix'].loc[1]) != '') and
+                    (str(tab['prefix'].loc[1]).find('Alk') == -1)):
+                #sseq = [f'{i}{j}']
+                #seq = f"[Alk]{''.join(list(tab['nt']))}{str(tab['suffix'].loc[tab.shape[0]])}"
+                sseq = row['Sequence']
+                seq = sseq.replace(sseq[sseq.find('[') + 1: sseq.find(']')], 'Alk')
+                pref = str(tab['prefix'].loc[1])
+                pref = pref.replace('[', '')
+                pref = pref.replace(']', '')
+                purif_type = row['Purif type'] + f"_{pref}"
+                r['Sequence'] = seq
+                r['Purif type'] = purif_type
+            out.append(r)
+
+        return out
+
+
+    def seq_to_asm_seq(self, accordRowData, tabRowData):
+        tab = pd.DataFrame(tabRowData)
+        accord = pd.DataFrame(accordRowData)
+
+        seq_list = []
+        for seq in tab['Sequence']:
+            oligo = mmo.oligoNASequence(seq)
+            df = oligo.getSeqTabDF()
+            out_seq = ''
+            for mod, nt in zip(df['prefix'], df['nt']):
+                if '[' in mod and ']' in mod:
+                    m = mod.replace('[', '')
+                    m = m.replace(']', '')
+                    out_seq += accord[accord['Modification'] == m]['asm2000 position'].max()
+                    out_seq += accord[accord['Modification'] == nt]['asm2000 position'].max()
+                elif mod == '+' or mod == '*' or mod == 'r' or mod == '':
+                    m = f'{mod}{nt}'
+                    if nt in 'R M S H V N Y K W B D N'.split(' '):
+                        out_seq += nt
+                    else:
+                        out_seq += accord[accord['Modification'] == m]['asm2000 position'].max()
+                else:
+                    out_seq += nt
+
+            seq_list.append(out_seq)
+        tab['asm Sequence'] = seq_list
+        tab['#'] = [i for i in range(1, len(seq_list) + 1)]
+        return tab.to_dict('records')
+
+
+    def get_all_amidites_types(self, seq_list):
+        self.amidites_count = Counter()
+        for seq in seq_list:
+            #print(seq)
+            o = mmo.oligoNASequence(seq)
+            tab = o.getSeqTabDF()
+            for mod, nt in zip(tab['prefix'], tab['nt']):
+                if '[' in mod and ']' in mod and mod not in list(self.amidites_count.keys()):
+                    self.amidites_count[mod] = 1
+                    if nt not in list(self.amidites_count.keys()):
+                        self.amidites_count[nt] = 1
+                    else:
+                        self.amidites_count[nt] += 1
+                elif '[' in mod and ']' in mod and mod in list(self.amidites_count.keys()):
+                    self.amidites_count[mod] += 1
+                    if nt not in list(self.amidites_count.keys()):
+                        self.amidites_count[nt] = 1
+                    else:
+                        self.amidites_count[nt] += 1
+                elif mod == '+' or mod == '*' or mod == 'r' or mod == '':
+                    a = f'{mod}{nt}'
+                    if a not in list(self.amidites_count.keys()):
+                        self.amidites_count[a] = 1
+                    else:
+                        self.amidites_count[a] += 1
+
+
+    def update_accord_tab(self, accordRowData, tabRowData):
+        tab = pd.DataFrame(tabRowData)
+        accord = pd.DataFrame(accordRowData)
+
+        round_n = 3
+        constant_vol = 0.10
+
+        self.get_all_amidites_types(list(tab['Sequence']))
+
+        for mod, count in zip(self.amidites_count.keys(), self.amidites_count.values()):
+            #print(mod, count)
+            if '[' in mod and ']' in mod:
+                m = mod.replace('[', '')
+                m = m.replace(']', '')
+                r5 = accord[accord['Modification'] == m]['ul on step'].max()
+                r10 = 1#accord[accord['Modification'] == m]['ul on step, 10mg'].max()
+                conc = accord[accord['Modification'] == m]['Conc, g/ml'].max()
+
+                vol5 = r5 * count / 1000
+                vol10 = r10 * count / 1000
+
+                vol5 += vol5 * constant_vol
+                vol10 += vol10 * constant_vol
+
+                if vol5 <= 1.5:
+                    vol5 = 1.5
+                if vol10 <= 1.5:
+                    vol10 = 1.5
+
+                accord.loc[accord['Modification'] == m, 'Amount 5mg, ml'] = round(vol5, round_n)
+                #accord.loc[accord['Modification'] == m, 'Amount 10mg, ml'] = round(vol10, round_n)
+                accord.loc[accord['Modification'] == m, 'Amount 5mg, g'] = round(conc * vol5, round_n)
+                #accord.loc[accord['Modification'] == m, 'Amount 10mg, g'] = round(conc * vol10, round_n)
+            else:
+
+                r5 = accord[accord['Modification'] == mod]['ul on step'].max()
+                r10 = 1#accord[accord['Modification'] == mod]['ul on step, 10mg'].max()
+                conc = accord[accord['Modification'] == mod]['Conc, g/ml'].max()
+
+                vol5 = r5 * count / 1000
+                vol10 = r10 * count / 1000
+
+                vol5 += vol5 * constant_vol
+                vol10 += vol10 * constant_vol
+
+                if vol5 <= 1.5:
+                    vol5 = 1.5
+                if vol10 <= 1.5:
+                    vol10 = 1.5
+
+                accord.loc[accord['Modification'] == mod, 'Amount 5mg, ml'] = round(vol5, round_n)
+                #accord.loc[accord['Modification'] == mod, 'Amount 10mg, ml'] = round(vol10, round_n)
+                accord.loc[accord['Modification'] == mod, 'Amount 5mg, g'] = round(conc * vol5, round_n)
+                #accord.loc[accord['Modification'] == mod, 'Amount 10mg, g'] = round(conc * vol10, round_n)
+
+        total_count = sum(self.amidites_count.values())
+        for mod, data in zip(accord['Modification'], accord['ul on step']):
+            if mod in ['DEBL', 'ACTIV', 'CAPA', 'CAPB', 'OXID', 'R2', 'W1', 'W2']:
+                accord.loc[accord['Modification'] == mod, 'Amount 5mg, ml'] = total_count * data / 1000
+
+        return accord.to_dict('records')
+
 
 
     def __getitem__(self, item):
@@ -128,3 +359,11 @@ class Oligomap_backend(api_db_interface):
             return self.on_show_actual_oligomaps
         if item == 'on_load_oligomap':
             return self.on_load_oligomap
+        if item == 'on_del_sel_oligo_to_plate':
+            return self.on_del_sel_oligo_to_plate
+        if item == 'synth_scale_selector':
+            return self.synth_scale_selector
+        if item == 'on_save_oligomap':
+            return self.on_save_oligomap
+        if item == 'on_update_oligomap':
+            return self.on_update_oligomap

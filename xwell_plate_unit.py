@@ -9,6 +9,7 @@ class Well:
         self.symb = symb
         self.num = num
         self.color = '#f0f0f0'
+        self.dye_color = '#f1a110'
         self.strftime_format = "%Y-%m-%d"
         self.oligo_data = {}
 
@@ -16,6 +17,8 @@ class Well:
     def load_init_row(self, row):
         self.oligo_data['init_row'] = row.copy()
         self.color = self.get_support_color(self.oligo_data['init_row']['Sequence'])
+        self.dye_color = self.get_dye_color(self.oligo_data['init_row']['Sequence'] +
+                                            self.oligo_data['init_row']['Purif type'])
 
 
     def set_init_row(self, row):
@@ -32,6 +35,8 @@ class Well:
         self.oligo_data['init_row']['CPG, mg'] = self.get_suport_amount(self.oligo_data['init_row']['Amount, oe'])
         self.oligo_data['init_row']['Support type'] = self.get_support_type(self.oligo_data['init_row']['f_sequence'])
         self.color = self.get_support_color(self.oligo_data['init_row']['f_sequence'])
+        self.dye_color = self.get_dye_color(self.oligo_data['init_row']['f_sequence'] +
+                                            self.oligo_data['init_row']['Purification'])
 
         purif = self.get_purif_click_type(self.oligo_data['init_row']['f_sequence'])
         self.oligo_data['init_row']['Do LCMS'] = purif['lcms']
@@ -56,6 +61,9 @@ class Well:
         self.oligo_data['init_row']['Date'] = datetime.now().date().strftime(self.strftime_format)
         self.oligo_data['init_row']['Scale, OE'] = self.oligo_data['init_row']['Amount, oe']
         self.oligo_data['init_row']['Status'] = 'in queue'
+        self.oligo_data['init_row']['DONE'] = False
+        self.oligo_data['init_row']['Wasted'] = False
+        self.oligo_data['init_row']['Send'] = False
 
 
     def __str__(self):
@@ -101,7 +109,33 @@ class Well:
         elif sequence.find('BHQ3') > -1:
             return '#0000f1'
         else:
-            return '#f1f1f1'
+        #    return '#f1f1f1'
+            stype = self.get_support_type(sequence)
+            if stype.find('_500') > -1:
+                return '#313131'
+            if stype.find('_1000') > -1:
+                return '#717171'
+            if stype.find('_2000') > -1:
+                return '#919191'
+            if stype.find('_3000') > -1:
+                return '#a1a1a1'
+            else:
+                return '#ffffff'
+
+
+    def get_dye_color(self, sequence):
+        if (sequence.find('FAM') > -1) or (sequence.find('6FAM') > -1):
+            return '#10fa10'
+        elif (sequence.find('HEX') > -1) or (sequence.find('R6G') > -1) or (sequence.find('SIMA') > -1):
+            return '#f1f101'
+        elif (sequence.find('VIC') > -1) or (sequence.find('JOE') > -1) or (sequence.find('Cy3') > -1):
+            return '#f1f101'
+        elif (sequence.find('ROX') > -1) or (sequence.find('TAMRA') > -1):
+            return '#f100f1'
+        elif (sequence.find('Cy5') > -1) or (sequence.find('Cy5.5') > -1):
+            return '#1a00f1'
+        else:
+            return '#f0f0f0'
 
 
     def get_purif_click_type(self, sequence):
@@ -151,6 +185,16 @@ class XWell_plate:
         for key, well in zip(self.wells.keys(), self.wells.values()):
             if 'init_row' in list(self.wells[key].oligo_data.keys()):
                 self.wells[key].oligo_data = {}
+        self.selected_wells = {}
+        self.draw_selected_wells()
+        self.draw_oligo_data_layer()
+
+
+    def clear_selected_wells(self):
+        for key, well in zip(self.wells.keys(), self.wells.values()):
+            if 'init_row' in list(self.wells[key].oligo_data.keys()):
+                if key in list(self.selected_wells.keys()):
+                    self.wells[key].oligo_data = {}
         self.selected_wells = {}
         self.draw_selected_wells()
         self.draw_oligo_data_layer()
@@ -262,8 +306,13 @@ class XWell_plate:
         self.oligo_data_layer.content = ""
         for key, well in zip(self.wells.keys(), self.wells.values()):
             if 'init_row' in list(well.oligo_data.keys()):
-                self.oligo_data_layer.content += (f'<circle cx="{well.x}" cy="{well.y}" r="35" fill="{well.color}" '
+                self.oligo_data_layer.content += (f'<circle cx="{well.x}" cy="{well.y}" r="32" fill="{well.color}" '
                                                   f'stroke="{well.color}" stroke-width="6" />')
+                self.oligo_data_layer.content += (f'<circle cx="{well.x}" cy="{well.y}" r="20" fill="{well.dye_color}" '
+                                                  f'stroke="{well.dye_color}" stroke-width="6" />')
+
+                #self.oligo_data_layer.content += f'<path d = "M {well.x},{well.y} a 80,80 0 0,1 160,0" fill = "{well.dye_color}" / >'
+
                 if 'Order id' in list(well.oligo_data['init_row'].keys()):
                     show_data = f"{well.oligo_data['init_row']['Order id']} ({well.symb}{well.num})"
                 else:
@@ -280,6 +329,7 @@ class XWell_plate:
 
 
     def draw_selected_wells(self):
+        self.highlight_well_select.content = ""
         for key in self.selected_wells.keys():
             if self.selected_wells[key] != ('', ''):
                 x = self.selected_wells[key].x
