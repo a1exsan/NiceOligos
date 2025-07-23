@@ -8,11 +8,12 @@ import Synthesis_builder_backend
 
 oligo_map_stack = oligos_data_stack()
 
-#invoce_tab = invoce_backend.invoce_table('127.0.0.1', '8012', oligo_map_stack)
-invoce_tab = invoce_backend.invoce_table('192.168.16.145', '8012', oligo_map_stack)
+#IP_addr = '127.0.0.1'
+IP_addr = '192.168.16.145'
 
-#oligomap_tab = Synthesis_builder_backend.Oligomap_backend('127.0.0.1', '8012', oligo_map_stack)
-oligomap_tab = Synthesis_builder_backend.Oligomap_backend('192.168.16.145', '8012', oligo_map_stack)
+invoce_tab = invoce_backend.invoce_table(IP_addr, '8012', oligo_map_stack)
+oligomap_tab = Synthesis_builder_backend.Oligomap_backend(IP_addr, '8012', oligo_map_stack)
+
 
 app.add_static_files('/img', 'static_images')
 
@@ -56,6 +57,9 @@ async def oligosynth_panel_page(client):
     for btn, func in oligosynt_front.get_element_list('button'):
         oligosynt_front[btn].on(func, oligomap_tab[btn])
     oligosynt_front['synth_scale_selector'].on_value_change(oligomap_tab['synth_scale_selector'])
+    oligosynt_front['wells_layer_selector'].on_value_change(oligomap_tab['wells_layer_selector'])
+    oligosynt_front.done_event = oligomap_tab.on_sel_done_btn
+    oligosynt_front.do_event = oligomap_tab.on_sel_do_btn
 
     #print('INIT', oligomap_tab.client_frontend[ip[0]])
 

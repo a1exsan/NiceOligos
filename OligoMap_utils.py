@@ -20,6 +20,7 @@ class oligos_data_stack():
     def __init__(self):
         self.input_selected_rows = {}
 
+
 class oligomaps_search(api_db_interface):
 
     def __init__(self, api_IP, db_port):
@@ -28,6 +29,7 @@ class oligomaps_search(api_db_interface):
         self.pincode = ''
         self.maps_db_name = 'asm2000_map_1.db'
         self.strftime_format = "%Y-%m-%d"
+        self.db_name = 'scheduler_oligolab_2.db'
 
     def map_in_progress(self, mapdata):
         map = json.loads(mapdata)
@@ -242,6 +244,14 @@ class oligomaps_search(api_db_interface):
         return status
 
 
+    def set_omap_status(self, rowdata):
+        out = []
+        for row in rowdata:
+            d = row.copy()
+            d['Status'] = self.get_order_status(row)
+            out.append(d)
+        return out
+
     def update_oligomap_status(self, rowData, accordrowdata):
         if len(rowData) > 0:
             print(rowData[0])
@@ -276,6 +286,32 @@ class oligomaps_search(api_db_interface):
             return out
         else:
             return rowData
+
+
+    def update_order_status(self, rowData, selRowdata):
+        df = pd.DataFrame(selRowdata)
+        if len(rowData) > 0:
+            for row in rowData:
+                if df.shape[0] > 0:
+                    if row['#'] in list(df['#']):
+                        order_id = row['Order id']
+                        order_date = row['Date']
+                        order_status = row['Status']
+                    else:
+                        order_id = '###'
+                else:
+                    order_id = row['Order id']
+                    order_date = row['Date']
+                    order_status = row['Status']
+
+                if order_id != '###':
+                    url = f"{self.api_db_url}/update_data/{self.db_name}/orders_tab/{order_id}"
+                    r = requests.put(url,
+                    json=json.dumps({
+                        'name_list': ['output_date', 'status'],
+                        'value_list': [order_date, order_status]
+                    })
+                , headers=self.headers())
 
 
 

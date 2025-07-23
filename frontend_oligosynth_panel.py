@@ -12,7 +12,7 @@ class oligosynth_panel():
             self.synth_name_label = ui.label('Synthesis name')
             self.synth_number_label = ui.label('Synthesis number')
 
-        with ui.grid(columns=3).classes("w-full").style("grid-template-columns: 1200px 200px 1300px"):
+        with (ui.grid(columns=3).classes("w-full").style("grid-template-columns: 1200px 200px 1300px")):
             with ui.grid(columns=3).classes("w-full").style("grid-template-columns: 200px 200px 200px"):
                 self.on_clear_plate_button = ui.button("Clear plate", color="#FF1000").classes('w-[200px]')
             ui.label('Cell12')
@@ -22,7 +22,10 @@ class oligosynth_panel():
                 self.oligomap_name_input = ui.input(label='', placeholder='Map name')
                 self.oligomap_syn_number_input = ui.input(label='', placeholder='Synth number')
                 self.on_save_oligomap = ui.button('Save synth map', color="#00a100").classes('w-[200px]')
-                self.on_update_oligomap = ui.button('Update map', color="#00a100").classes('w-[200px]')
+                self.on_update_oligomap = ui.button('Update map', color="orange").classes('w-[200px]')
+                self.on_update_oligo_orders = ui.button('Update order', color="red").classes('w-[200px]')
+                self.progressbar_1 = ui.spinner(size='md', color='#FFA000')
+                self.progressbar_1.visible = False
 
             self.xwells_obj = XWells.XWell_plate(self, self.backend_model)
 
@@ -33,20 +36,36 @@ class oligosynth_panel():
                 ui.label('Select synthesis scale:')
                 self.synth_scale_selector = ui.radio(['1 mg', '3 mg', '5 mg'], value='3 mg').props('inline')
                 self.on_generate_oligomap_button = ui.button("Generate map", color="#00a100").classes('w-[200px]')
+                with ui.dropdown_button('Set done operation', auto_close=True).classes('w-[200px]') as self.on_sel_done_btn:
+                    for key in ['synth', 'cart', 'hplc', 'sed', 'paag', 'click', 'subl', 'Wasted', 'LCMS']:
+                        ui.item(key, on_click=lambda n=key: self.done_event(n))
+                self.on_sel_done_btn.props['color'] = 'red'
+                with ui.dropdown_button('Set do operation', auto_close=True).classes('w-[200px]') as self.on_sel_do_btn:
+                    for key in ['synth', 'cart', 'hplc', 'sed', 'paag', 'click', 'subl', 'Wasted', 'LCMS']:
+                        ui.item(key, on_click=lambda n=key: self.do_event(n))
+                self.on_sel_do_btn.props['color'] = 'orange'
+                self.wells_layer_selector = ui.radio(
+                    ['Base layer', 'Status layer', 'Purification layer', 'Support layer', 'Click layer'],
+                    value='Base layer').props('inline')
 
             self.get_oligos_stack_grid()
 
         with ui.grid(columns=3).classes("w-full").style("grid-template-columns: 1200px 200px 1300px"):
             self.get_oligomaps_list_grid()
             with ui.column().classes("w-full"):
-                self.on_show_oligomaps = ui.button('Show all maps', color="#E1A100").classes('w-[200px]')
                 self.on_show_actual_oligomaps = ui.button('Show actual maps', color="#E1A100").classes('w-[200px]')
+                self.on_show_oligomaps = ui.button('Show all maps').classes('w-[200px]')
                 self.on_load_oligomap = ui.button('Load map', color="#00a100").classes('w-[200px]')
             self.get_accord_tab()
 
         self.get_oligomap_grid()
 
 
+    def done_event(self, e):
+        print(e)
+
+    def do_event(self, e):
+        print(e)
 
 
     def get_model(self):
@@ -81,6 +100,7 @@ class oligosynth_panel():
                 ('on_del_sel_oligo_to_plate', 'click'),
                 ('on_save_oligomap', 'click'),
                 ('on_update_oligomap', 'click'),
+                ('on_update_oligo_orders', 'click'),
             ]
         else:
             return []
@@ -109,6 +129,14 @@ class oligosynth_panel():
             return self.on_save_oligomap
         if item == 'on_update_oligomap':
             return self.on_update_oligomap
+        if item == 'on_sel_done_btn':
+            return self.on_sel_done_btn
+        if item == 'on_sel_do_btn':
+            return self.on_sel_do_btn
+        if item == 'on_update_oligo_orders':
+            return self.on_update_oligo_orders
+        if item == 'wells_layer_selector':
+            return self.wells_layer_selector
 
 
     def get_oligomap_grid(self):
@@ -217,8 +245,6 @@ class oligosynth_panel():
 
     def update_oligomap_cell_data(self, e):
         self.oligomap_rowdata[e.args["rowIndex"]] = e.args["data"]
-        self.oligomap_ag_grid.options['rowData'] = self.oligomap_rowdata
-        self.oligomap_ag_grid.update()
 
     def get_oligos_stack_grid(self):
         invoce_content_df = pd.DataFrame(

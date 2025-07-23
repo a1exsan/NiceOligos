@@ -145,6 +145,17 @@ class Oligomap_backend(api_db_interface):
         self.client_frontend[ip] = self.frontend.get_model()
 
 
+    def wells_layer_selector(self, e):
+        ip = app.storage.user.get('client_ip')
+        self.pincode = self.client[ip]
+
+        #print(e.value)
+        self.frontend.xwells_obj.layer_selector = e.value
+        self.frontend.xwells_obj.draw_layers(e.value)
+
+        self.client_frontend[ip] = self.frontend.get_model()
+
+
     def on_save_oligomap(self):
         ip = app.storage.user.get('client_ip')
         self.pincode = self.client[ip]
@@ -170,10 +181,82 @@ class Oligomap_backend(api_db_interface):
         omap = oligomaps_search(self.db_IP, self.db_port)
         omap.pincode = self.pincode
 
+        self.frontend.oligomap_ag_grid.options['rowData'] = self.frontend.oligomap_rowdata
+        self.frontend.oligomap_ag_grid.update()
         rowData = self.frontend.oligomap_ag_grid.options['rowData']
         accord_rowData = self.frontend.accord_tab.options['rowData']
         rowData = omap.update_oligomap_status(rowData, accord_rowData)
         self.frontend.oligomap_ag_grid.options['rowData'] = rowData
+        self.frontend.oligomap_ag_grid.update()
+        self.frontend.xwells_obj.load_selrows(rowData)
+
+        self.client_frontend[ip] = self.frontend.get_model()
+
+
+    async def on_update_oligo_orders(self):
+        ip = app.storage.user.get('client_ip')
+        self.pincode = self.client[ip]
+
+        self.frontend.progressbar_1.visible = True
+        selrows = await self.frontend.oligomap_ag_grid.get_selected_rows()
+
+        omap = oligomaps_search(self.db_IP, self.db_port)
+        omap.pincode = self.pincode
+
+        pos_list = self.frontend.xwells_obj.get_selected_pos_list()
+        rowData_df = pd.DataFrame(self.frontend.oligomap_ag_grid.options['rowData'])
+        sel_rowData_df = rowData_df[rowData_df['Position'].isin(pos_list)]
+        omap.update_order_status(self.frontend.oligomap_ag_grid.options['rowData'], sel_rowData_df.to_dict('records'))
+
+        self.client_frontend[ip] = self.frontend.get_model()
+        self.frontend.progressbar_1.visible = False
+
+
+    def on_sel_done_btn(self, e):
+        ip = app.storage.user.get('client_ip')
+        self.pincode = self.client[ip]
+
+        omap = oligomaps_search(self.db_IP, self.db_port)
+        omap.pincode = self.pincode
+
+        rowData_df = pd.DataFrame(self.frontend.oligomap_ag_grid.options['rowData'])
+
+        selected_wells = self.frontend.xwells_obj.selected_wells
+        pos_list = []
+        for key, well in zip(selected_wells.keys(), selected_wells.values()):
+            pos_list.append(f"{well.symb}{well.num}")
+        conditions = (rowData_df[f"Do {e}"] == True)&(rowData_df['Position'].isin(pos_list))&(rowData_df[f"Done {e}"] == False)
+        #conditions_1 = (rowData_df[f"Do {e}"] == True)&(rowData_df['Position'].isin(pos_list))&(rowData_df[f"Done {e}"] == True)
+        rowData_df.loc[conditions, f"Done {e}"] = True
+        rowData_df.loc[~conditions, f"Done {e}"] = False
+
+        self.frontend.oligomap_rowdata = omap.set_omap_status(rowData_df.to_dict('records'))
+        self.frontend.oligomap_ag_grid.options['rowData'] = self.frontend.oligomap_rowdata
+        self.frontend.oligomap_ag_grid.update()
+
+        self.client_frontend[ip] = self.frontend.get_model()
+
+
+    def on_sel_do_btn(self, e):
+        ip = app.storage.user.get('client_ip')
+        self.pincode = self.client[ip]
+
+        omap = oligomaps_search(self.db_IP, self.db_port)
+        omap.pincode = self.pincode
+
+        rowData_df = pd.DataFrame(self.frontend.oligomap_ag_grid.options['rowData'])
+
+        selected_wells = self.frontend.xwells_obj.selected_wells
+        pos_list = []
+        for key, well in zip(selected_wells.keys(), selected_wells.values()):
+            pos_list.append(f"{well.symb}{well.num}")
+        conditions = (rowData_df[f"Do {e}"] == False)&(rowData_df['Position'].isin(pos_list))
+        #conditions_1 = (rowData_df[f"Do {e}"] == True)&(rowData_df['Position'].isin(pos_list))&(rowData_df[f"Done {e}"] == True)
+        rowData_df.loc[conditions, f"Do {e}"] = True
+        rowData_df.loc[~conditions, f"Do {e}"] = False
+
+        self.frontend.oligomap_rowdata = omap.set_omap_status(rowData_df.to_dict('records'))
+        self.frontend.oligomap_ag_grid.options['rowData'] = self.frontend.oligomap_rowdata
         self.frontend.oligomap_ag_grid.update()
 
         self.client_frontend[ip] = self.frontend.get_model()
@@ -367,3 +450,11 @@ class Oligomap_backend(api_db_interface):
             return self.on_save_oligomap
         if item == 'on_update_oligomap':
             return self.on_update_oligomap
+        if item == 'on_sel_done_btn':
+            return self.on_sel_done_btn
+        if item == 'on_sel_do_btn':
+            return self.on_sel_do_btn
+        if item == 'on_update_oligo_orders':
+            return self.on_update_oligo_orders
+        if item == 'wells_layer_selector':
+            return self.wells_layer_selector

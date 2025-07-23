@@ -1,6 +1,46 @@
+import pandas as pd
 from nicegui import events, ui, app
 from oligoMass import molmassOligo as mmo
 from datetime import datetime
+
+
+class click_azide():
+
+    def __init__(self, oligos_sequence, amount_oe):
+        self.seq = oligos_sequence
+        self.amount = amount_oe
+        self.tab = {}
+        self.__rools_protocol()
+
+    def __react_volume(self):
+        o = mmo.oligoNASequence(self.seq)
+        self.amount_nmol = self.amount * 1e6 / o.getExtinction()
+        self.tab['amount nmol'] = round(self.amount_nmol, 2)
+        self.tab['sequence'] = self.seq
+        self.tab['amount oe'] = round(self.amount, 2)
+        if self.amount_nmol >= 1 and self.amount_nmol <= 20:
+            return 100
+        elif self.amount_nmol > 20 and self.amount_nmol <= 40:
+            return 200
+        elif self.amount_nmol > 40 and self.amount_nmol <= 80:
+            return 400
+        elif self.amount_nmol > 80 and self.amount_nmol <= 600:
+            return 600
+        else:
+            return 700
+
+    def __rools_protocol(self):
+        react_volume = self.__react_volume()
+        self.tab['react volume, ul'] = react_volume
+        self.tab['azide volume, ul'] = round(self.amount_nmol * 0.15, 0)
+        self.tab['Cu buffer volume, ul'] = round(react_volume * 0.67, 0)
+        self.tab['activator volume, ul'] = round(react_volume * 0.02, 0)
+        self.tab['water volume, ul'] = round(react_volume - self.tab['azide volume, ul'] -
+                                        self.tab['Cu buffer volume, ul'] - self.tab['activator volume, ul'], 0)
+
+    def __call__(self, *args, **kwargs):
+        return self.tab
+
 
 class Well:
     def __init__(self, x, y, symb, num):
@@ -112,7 +152,7 @@ class Well:
         #    return '#f1f1f1'
             stype = self.get_support_type(sequence)
             if stype.find('_500') > -1:
-                return '#313131'
+                return '#717171'
             if stype.find('_1000') > -1:
                 return '#717171'
             if stype.find('_2000') > -1:
@@ -169,6 +209,7 @@ class XWell_plate:
         self.mouse_down = False
         self.wells = {}
         self.selected_wells = {}
+        self.layer_selector = 'Base layer'
         for x, num in zip(range(130, 1300, 100), '1 2 3 4 5 6 7 8 9 10 11 12'.split(' ')):
             for y, symb in zip(range(130, 900, 100), 'A B C D E F G H'.split(' ')):
                 self.wells[(x, y)] = Well(x, y, symb, num)
@@ -187,7 +228,8 @@ class XWell_plate:
                 self.wells[key].oligo_data = {}
         self.selected_wells = {}
         self.draw_selected_wells()
-        self.draw_oligo_data_layer()
+        #self.draw_oligo_data_layer()
+        self.draw_layers(self.layer_selector)
 
 
     def clear_selected_wells(self):
@@ -197,7 +239,19 @@ class XWell_plate:
                     self.wells[key].oligo_data = {}
         self.selected_wells = {}
         self.draw_selected_wells()
-        self.draw_oligo_data_layer()
+        #self.draw_oligo_data_layer()
+        self.draw_layers(self.layer_selector)
+
+
+    def well_selection_by_position(self, rowData):
+        df = pd.DataFrame(rowData)
+        pos_list = list(df['Position'])
+        #print(pos_list)
+        self.selected_wells = {}
+        for key, well in zip(self.wells.keys(), self.wells.values()):
+            if f"{well.symb}{well.num}" in pos_list:
+                self.selected_wells[key] = well
+        return self.selected_wells
 
 
     def total_select(self):
@@ -227,12 +281,14 @@ class XWell_plate:
             else:
                 break
 
-        self.draw_oligo_data_layer()
+        #self.draw_oligo_data_layer()
+        self.draw_layers(self.layer_selector)
 
 
     def load_selrows(self, selRows):
         self.clear_wells()
-        self.total_select()
+        self.frontend.xwells_obj.well_selection_by_position(selRows)
+        #self.total_select()
 
         row_index = 0
         for key, well in zip(self.selected_wells.keys(), self.selected_wells.values()):
@@ -242,7 +298,8 @@ class XWell_plate:
             else:
                 break
 
-        self.draw_oligo_data_layer()
+        #self.draw_oligo_data_layer()
+        self.draw_layers(self.layer_selector)
 
 
     def get_copy(self):
@@ -263,7 +320,8 @@ class XWell_plate:
         self.selected_wells = content['selected_wells'].copy()
 
         self.draw_selected_wells()
-        self.draw_oligo_data_layer()
+        #self.draw_oligo_data_layer()
+        self.draw_layers(self.layer_selector)
 
 
     def get_coord(self, x, y):
@@ -302,6 +360,19 @@ class XWell_plate:
             self.image.content += f'<text x="{1300}" y="{y}" fill="lightblue" font-size="48">{num}</text>'
 
 
+    def draw_layers(self, selector):
+        if selector == 'Base layer':
+            self.draw_oligo_data_layer()
+        elif selector == 'Status layer':
+            self.draw_status_layer()
+        elif selector == 'Purification layer':
+            self.draw_oligo_data_layer()
+        elif selector == 'Support layer':
+            self.draw_oligo_data_layer()
+        elif selector == 'Click layer':
+            self.draw_click_layer()
+
+
     def draw_oligo_data_layer(self):
         self.oligo_data_layer.content = ""
         for key, well in zip(self.wells.keys(), self.wells.values()):
@@ -319,13 +390,126 @@ class XWell_plate:
                     show_data = ''
                 self.oligo_data_layer.content += (f'<text x="{well.x - 25}" y="{well.y - 15}" '
                                                   f'fill="black" font-size="16">{show_data}</text>')
-                if 'Order id' in list(well.oligo_data['init_row'].keys()):
+                if 'Support type' in list(well.oligo_data['init_row'].keys()):
                     support_type = well.oligo_data['init_row']['Support type']
                     support = well.oligo_data['init_row']['Support type'][support_type.find('_'):]
                 else:
                     support = ''
                 self.oligo_data_layer.content += (f'<text x="{well.x - 35}" y="{well.y - 3}" '
                                                   f'fill="black" font-size="14">size{support}</text>')
+
+    def get_status_color(self, status):
+        if status == 'finished':
+            return 'lightgreen'
+        elif status == 'in queue' or status == 'synthesis':
+            return 'orange'
+        else:
+            return 'white'
+
+    def get_purification_color(self, well):
+        color = 'white'
+        if 'init_row' in list(well.oligo_data.keys()):
+            if well.oligo_data['init_row']['Do cart']:
+                color = 'lightgreen'
+            else:
+                color = 'yellow'
+            if well.oligo_data['init_row']['Wasted']:
+                color = 'red'
+        return color
+
+    def draw_status_layer(self):
+        self.oligo_data_layer.content = ""
+
+        for key, well in zip(self.wells.keys(), self.wells.values()):
+            if 'init_row' in list(well.oligo_data.keys()):
+                color = self.get_purification_color(well)
+                self.oligo_data_layer.content += (f'<circle cx="{well.x}" cy="{well.y}" r="32" fill="{color}" '
+                                                  f'stroke="{color}" stroke-width="6" />')
+                self.oligo_data_layer.content += (f'<circle cx="{well.x}" cy="{well.y}" r="10" fill="{well.dye_color}" '
+                                                  f'stroke="{well.dye_color}" stroke-width="6" />')
+
+                #self.oligo_data_layer.content += f'<path d = "M {well.x},{well.y} a 80,80 0 0,1 160,0" fill = "{well.dye_color}" / >'
+
+                if 'Status' in list(well.oligo_data['init_row'].keys()):
+                    show_data = f"{well.oligo_data['init_row']['Status']}"
+                else:
+                    show_data = ''
+                self.oligo_data_layer.content += (f'<text x="{well.x - 30}" y="{well.y}" '
+                                                  f'fill="black" font-size="16">{show_data}</text>')
+                if 'Order id' in list(well.oligo_data['init_row'].keys()):
+                    show_data = f"{well.oligo_data['init_row']['Order id']}"
+                else:
+                    show_data = ''
+                self.oligo_data_layer.content += (f'<text x="{well.x - 20}" y="{well.y - 15}" '
+                                                  f'fill="black" font-size="16">{show_data}</text>')
+
+
+    def culc_click(self):
+        for key, well in zip(self.wells.keys(), self.wells.values()):
+            if 'init_row' in list(well.oligo_data.keys()):
+                seq = well.oligo_data['init_row']['Sequence']
+                if seq.find('[Alk]') > -1:
+                    amount = well.oligo_data['init_row']['Dens, oe/ml'] * well.oligo_data['init_row']['Vol, ml']
+                    self.wells[key].oligo_data['click_data'] = click_azide(seq, amount)()
+                    self.wells[key].oligo_data['click_data']['water volume, ul'] = round(
+                    self.wells[key].oligo_data['click_data']['water volume, ul'] -
+                    well.oligo_data['init_row']['Vol, ml'] * 1000, 0)
+
+
+    def draw_click_layer(self):
+        self.oligo_data_layer.content = ""
+        self.culc_click()
+        for key, well in zip(self.wells.keys(), self.wells.values()):
+            if 'init_row' in list(well.oligo_data.keys()):
+                color = self.get_purification_color(well)
+                self.oligo_data_layer.content += (f'<circle cx="{well.x}" cy="{well.y}" r="32" fill="{well.color}" '
+                                                  f'stroke="{well.color}" stroke-width="6" />')
+                self.oligo_data_layer.content += (f'<circle cx="{well.x}" cy="{well.y}" r="10" fill="{well.dye_color}" '
+                                                  f'stroke="{well.dye_color}" stroke-width="6" />')
+
+                #self.oligo_data_layer.content += f'<path d = "M {well.x},{well.y} a 80,80 0 0,1 160,0" fill = "{well.dye_color}" / >'
+
+                if 'Purif type' in list(well.oligo_data['init_row'].keys()):
+                    show_data = f"{well.oligo_data['init_row']['Purif type']}"
+                    if show_data.find('_') > -1:
+                        show_data = show_data[show_data.find('_') + 1:]
+                    else:
+                        show_data = ''
+                else:
+                    show_data = ''
+                self.oligo_data_layer.content += (f'<text x="{well.x - 15}" y="{well.y - 18}" '
+                                                  f'fill="black" font-size="16">{show_data}</text>')
+                if 'click_data' in list(well.oligo_data.keys()):
+                    if 'azide volume, ul' in list(well.oligo_data['click_data'].keys()):
+                        show_data = f"az{int(well.oligo_data['click_data']['azide volume, ul'])}"
+                    else:
+                        show_data = ''
+                    self.oligo_data_layer.content += (f'<text x="{well.x - 35}" y="{well.y + 0}" '
+                                                      f'fill="black" font-size="16">{show_data}</text>')
+
+                    if 'activator volume, ul' in list(well.oligo_data['click_data'].keys()):
+                        show_data = f"ac{int(well.oligo_data['click_data']['activator volume, ul'])}"
+                    else:
+                        show_data = ''
+                    self.oligo_data_layer.content += (f'<text x="{well.x + 5}" y="{well.y + 0}" '
+                                                      f'fill="black" font-size="16">{show_data}</text>')
+
+                    if 'Cu buffer volume, ul' in list(well.oligo_data['click_data'].keys()):
+                        show_data = f"b{int(well.oligo_data['click_data']['Cu buffer volume, ul'])}"
+                    else:
+                        show_data = ''
+                    self.oligo_data_layer.content += (f'<text x="{well.x - 35}" y="{well.y + 23}" '
+                                                      f'fill="black" font-size="16">{show_data}</text>')
+
+                    if 'water volume, ul' in list(well.oligo_data['click_data'].keys()):
+                        show_data = f"w{int(well.oligo_data['click_data']['water volume, ul'])}"
+                    else:
+                        show_data = ''
+                    self.oligo_data_layer.content += (f'<text x="{well.x + 5}" y="{well.y + 23}" '
+                                                      f'fill="black" font-size="16">{show_data}</text>')
+
+                #self.oligo_data_layer.content += (f'<text x="{well.x - 20}" y="{well.y}" '
+                #                                  f'fill="black" font-size="16">{show_data}</text>')
 
 
     def draw_selected_wells(self):
@@ -336,6 +520,13 @@ class XWell_plate:
                 y = self.selected_wells[key].y
                 self.highlight_well_select.content += (f"<circle cx='{x}' cy='{y}' "
                                     f"r='45' fill='yellow' stroke='lightgreen' stroke-width='6' />")
+
+
+    def get_selected_pos_list(self):
+        pos_list = []
+        for key, well in zip(self.selected_wells.keys(), self.selected_wells.values()):
+            pos_list.append(f"{well.symb}{well.num}")
+        return pos_list
 
 
     def mouse_handler(self, e: events.MouseEventArguments):
