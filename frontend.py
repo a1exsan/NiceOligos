@@ -1,8 +1,10 @@
 import pandas as pd
-import matplotlib.pyplot as plt
+from nicegui import ui
+from io import BytesIO
+from invoce_chart import invoceChart
 
 class menu_front():
-    def __init__(self, ui):
+    def __init__(self):
         with ui.button(icon='menu'):
             with ui.menu():
                 ui.menu_item('Invoces', on_click=lambda: ui.open('https://example.com'))
@@ -72,7 +74,7 @@ class invoice_frontend():
         self.on_pincode_change = ui.input(label='pincode', placeholder='enter pincode')
 
         summary_panel = ui.row()
-        with (summary_panel):
+        with summary_panel:
             col1 = ui.column()
             with col1:
                 self.total_oligos_invoces = ui.circular_progress(min=0, max=1000, value=445,
@@ -108,19 +110,9 @@ class invoice_frontend():
                 self.total_price_oligos_invoces = ui.circular_progress(min=0, max=5000000, value=880000,
                                                                        size='96px', color='orange')
                 ui.label('Price')
-            #self.invoces_stat_mage = ui.image()
-            #self.invoces_stat_mage.set_source('images/number_oligos_plot_1.png')
-            #self.invoces_stat_mage.props('width=1250px height=180px')
 
-            #plt.style.use('dark_background')
-            #with ui.matplotlib(figsize=(15, 4)).figure as self.invoce_stat_figure:
-            #    x = [1,2,3]
-            #    y = [1,2,3]
-            #    self.invoce_stat_ax = self.invoce_stat_figure.gca()
-            #    self.invoce_stat_ax.hist(x, y)
-            #    self.invoce_stat_ax.set_xlabel('Month')
-            #    self.invoce_stat_ax.set_ylabel('Number of oligos')
-
+            with ui.column().classes('w-[1900px]'):
+                self.invoceChart = invoceChart()
 
         self.ag_grid = ui.aggrid(
             {
@@ -133,17 +125,8 @@ class invoice_frontend():
         ,
         theme='alpine-dark').classes('h-[800px]') # alpine  material  quartz  balham
         self.ag_grid.auto_size_columns = True
-
-        with ui.grid(columns=7).classes("w-full").style("grid-template-columns: 200px 200px 200px 200px 200px 200px 200px"):
-            self.on_load_button = ui.button('load invoces')
-            self.on_show_actual_invoces_button = ui.button('Show actual')
-            self.on_show_invoces_content = ui.button('invoce content')
-            self.on_print_invoce_passport = ui.button('print passport', color='#FFA000')
-            self.progressbar = ui.spinner(size='md', color='#FFA000')
-            self.on_send_oligos_button = ui.button('Send selection to map')
-
-        self.progressbar.visible = False
-        self.on_load_button.props('id="on_load_button"')
+        self.invoice_tab_rowdata = rowData.to_dict('records')
+        self.ag_grid.on("cellValueChanged", self.update_invoce_cell_data)
 
         status_list = [
             'in queue',
@@ -157,7 +140,44 @@ class invoice_frontend():
         ]
 
         with ui.row():
-            self.on_show_by_status = ui.select(options=status_list, with_input=True).classes('w-60')
+            self.on_load_button = ui.button('load invoces').classes('w-[200px]')
+            self.on_show_actual_invoces_button = ui.button('Show actual').classes('w-[200px]')
+            self.on_show_invoces_content = ui.button('invoce content', color='green').classes('w-[200px]')
+            self.on_update_invoces_tab = ui.button('update tab').classes('w-[200px]')
+            self.on_print_invoce_passport = ui.button('print passport', color='#FFA000').classes('w-[200px]')
+            self.progressbar = ui.spinner(size='md', color='#FFA000')
+            self.on_send_oligos_button = ui.button('Send selection to map', color='green').classes('w-[200px]')
+
+        with ui.row().classes('gap-5'):
+            with ui.column():
+                self.on_show_by_status = ui.select(options=status_list, with_input=True).classes('w-[200px]')
+                self.input_date()
+                self.on_print_orders_date_range = ui.button('Print data').classes('w-[200px]')
+            with ui.column().classes('w-[2400px]'):
+                self.set_order_tab()
+
+        self.progressbar.visible = False
+        self.on_load_button.props('id="on_load_button"')
+
+
+    def input_date(self):
+        with ui.input('Start date') as self.start_date:
+            with ui.menu().props('no-parent-event') as menu:
+                with ui.date().bind_value(self.start_date):
+                    with ui.row().classes('justify-end'):
+                        ui.button('Close', on_click=menu.close).props('flat')
+            with self.start_date.add_slot('append'):
+                ui.icon('edit_calendar').on('click', menu.open).classes('cursor-pointer')
+
+        with ui.input('End date') as self.end_date:
+            with ui.menu().props('no-parent-event') as menu:
+                with ui.date().bind_value(self.end_date):
+                    with ui.row().classes('justify-end'):
+                        ui.button('Close', on_click=menu.close).props('flat')
+            with self.end_date.add_slot('append'):
+                ui.icon('edit_calendar').on('click', menu.open).classes('cursor-pointer')
+
+    def set_order_tab(self):
 
         invoce_content_df = pd.DataFrame(
             {
@@ -180,12 +200,8 @@ class invoice_frontend():
         )
 
         columnDefs = [
-            {
-                "field": "#",
-                "checkboxSelection": True,
-                "headerCheckboxSelection": True,
-                "headerCheckboxSelectionFilteredOnly": True,
-            },
+            {"field": "#", 'filter': 'agTextColumnFilter', 'floatingFilter': True,
+             "checkboxSelection": True, "headerCheckboxSelection": True,},
             {"field": "Name", 'editable': True, 'filter': 'agTextColumnFilter', 'floatingFilter': True},
             {"field": "5'-end", 'editable': True, 'filter': 'agTextColumnFilter', 'floatingFilter': True},
             {"field": "Sequence", 'editable': True, 'filter': 'agTextColumnFilter', 'floatingFilter': True},
@@ -208,14 +224,11 @@ class invoice_frontend():
                 'rowData': invoce_content_df.to_dict('records'),
                 'rowSelection': 'multiple',
                 "pagination": True,
-                #"enterNavigatesVertically": True,
-                #"enterNavigatesVerticallyAfterEdit": True,
-                #"singleClickEdit": True
                 ':getRowStyle': '(params) => params.data.sufficiency < 0 ? { background: "red" } :'
                                 ' { background: "green" }',
             }
         ,
-        theme='alpine-dark').classes('h-[800px]') # alpine  material  quartz  balham
+        theme='alpine-dark').classes('h-[1200px]') # alpine  material  quartz  balham
         self.ag_grid.auto_size_columns = True
 
     def __getitem__(self, item):
@@ -233,6 +246,10 @@ class invoice_frontend():
             return self.on_print_invoce_passport
         elif item == 'on_send_oligos_button':
             return self.on_send_oligos_button
+        elif item == 'on_print_orders_date_range':
+            return self.on_print_orders_date_range
+        elif item == 'on_update_invoces_tab':
+            return self.on_update_invoces_tab
 
     def get_element_list(self, key):
         if key == 'button':
@@ -242,15 +259,26 @@ class invoice_frontend():
                 ('on_show_invoces_content', 'click'),
                 ('on_print_invoce_passport', 'click'),
                 ('on_send_oligos_button', 'click'),
+                ('on_print_orders_date_range', 'click'),
+                ('on_update_invoces_tab', 'click'),
             ]
         else:
             return []
 
     def save_passport(self, filename, data):
-        csv_data = data.to_csv(index=False, sep='\t').encode('utf-8')
-        #csv_data = data.to_excel(sheet_name='Sheet1', index=False, sep='\t').encode('utf-8')
-        self.ui.download(csv_data, f'{filename}.csv')
-        #self.ui.download(csv_data, f'{filename}.xslx')
+        #csv_data = data.to_csv(index=False, sep='\t').encode('utf-8')
+        #self.ui.download(csv_data, f'{filename}.csv')
+
+        buffer = BytesIO()
+        data.to_excel(buffer, index=False)
+        buffer.seek(0)
+        ui.download(buffer.read(), filename=f'{filename}.xlsx')
+
+
+    def update_invoce_cell_data(self, e):
+        self.invoice_tab_rowdata[e.args["rowIndex"]] = e.args["data"]
+        #print(e)
+        self.on_update_invoces_tab.run_method('click')
 
 
     def get_model(self):
@@ -264,6 +292,7 @@ class invoice_frontend():
         self.model['total_price_oligos_invoces'] = self.total_price_oligos_invoces
         self.model['ag_grid'] = self.ag_grid
         self.model['invoce_content_tab'] = self.invoce_content_tab
+        self.model['invoice_tab_rowdata'] = self.invoice_tab_rowdata
         return self.model
 
     def set_model(self, model):
@@ -279,4 +308,5 @@ class invoice_frontend():
         self.ag_grid.update()
         self.invoce_content_tab.options['rowData'] = model['invoce_content_tab'].options['rowData']
         self.invoce_content_tab.update()
+        self.invoice_tab_rowdata = model['invoice_tab_rowdata']
 

@@ -2,6 +2,8 @@ import pandas as pd
 from nicegui import events, ui, app
 from oligoMass import molmassOligo as mmo
 from datetime import datetime
+import random
+from collections import Counter
 
 
 class click_azide():
@@ -152,13 +154,13 @@ class Well:
         #    return '#f1f1f1'
             stype = self.get_support_type(sequence)
             if stype.find('_500') > -1:
-                return '#717171'
+                return '#afafaf'
             if stype.find('_1000') > -1:
-                return '#717171'
+                return '#afaf6f'
             if stype.find('_2000') > -1:
-                return '#919191'
+                return '#6fafaf'
             if stype.find('_3000') > -1:
-                return '#a1a1a1'
+                return '#c1c1c1'
             else:
                 return '#ffffff'
 
@@ -172,7 +174,7 @@ class Well:
             return '#f1f101'
         elif (sequence.find('ROX') > -1) or (sequence.find('TAMRA') > -1):
             return '#f100f1'
-        elif (sequence.find('Cy5') > -1) or (sequence.find('Cy5.5') > -1):
+        elif (sequence.find('Cy5') > -1) or (sequence.find('Cy5.5') > -1) or (sequence.find('Cy7') > -1):
             return '#1a00f1'
         else:
             return '#f0f0f0'
@@ -198,6 +200,12 @@ class Well:
         else:
             return {'cart': True, 'hplc': False, 'lcms': False, 'click': False}
 
+
+def random_color_hex(r_min=0, r_max=255, g_min=0, g_max=255, b_min=0, b_max=255):
+    r = random.randint(r_min, r_max)
+    g = random.randint(g_min, g_max)
+    b = random.randint(b_min, b_max)
+    return f'#{r:02X}{g:02X}{b:02X}'
 
 
 class XWell_plate:
@@ -366,11 +374,13 @@ class XWell_plate:
         elif selector == 'Status layer':
             self.draw_status_layer()
         elif selector == 'Purification layer':
-            self.draw_oligo_data_layer()
+            self.draw_purification_layer()
         elif selector == 'Support layer':
-            self.draw_oligo_data_layer()
+            self.draw_support_layer()
         elif selector == 'Click layer':
             self.draw_click_layer()
+        elif selector == 'Order layer':
+            self.draw_order_layer()
 
 
     def draw_oligo_data_layer(self):
@@ -398,6 +408,135 @@ class XWell_plate:
                 self.oligo_data_layer.content += (f'<text x="{well.x - 35}" y="{well.y - 3}" '
                                                   f'fill="black" font-size="14">size{support}</text>')
 
+    def draw_support_layer(self):
+        self.oligo_data_layer.content = ""
+        for key, well in zip(self.wells.keys(), self.wells.values()):
+            if 'init_row' in list(well.oligo_data.keys()):
+                self.oligo_data_layer.content += (f'<circle cx="{well.x}" cy="{well.y}" r="32" fill="{well.color}" '
+                                                  f'stroke="{well.color}" stroke-width="6" />')
+                #self.oligo_data_layer.content += (f'<circle cx="{well.x}" cy="{well.y}" r="20" fill="{well.dye_color}" '
+                #                                  f'stroke="{well.dye_color}" stroke-width="6" />')
+
+                #self.oligo_data_layer.content += f'<path d = "M {well.x},{well.y} a 80,80 0 0,1 160,0" fill = "{well.dye_color}" / >'
+
+                if 'Order id' in list(well.oligo_data['init_row'].keys()):
+                    show_data = f"{well.oligo_data['init_row']['Order id']}"
+                else:
+                    show_data = ''
+                self.oligo_data_layer.content += (f'<text x="{well.x - 25}" y="{well.y - 15}" '
+                                                  f'fill="black" font-size="16">{show_data}</text>')
+                if 'Support type' in list(well.oligo_data['init_row'].keys()):
+                    support_type = well.oligo_data['init_row']['Support type']
+                    support = well.oligo_data['init_row']['Support type'][support_type.find('_'):]
+                else:
+                    support = ''
+                self.oligo_data_layer.content += (f'<text x="{well.x - 35}" y="{well.y + 5}" '
+                                                  f'fill="black" font-size="14">size{support}</text>')
+                if 'CPG, mg' in list(well.oligo_data['init_row'].keys()):
+                    amount = well.oligo_data['init_row']['CPG, mg']
+                else:
+                    amount = ''
+                self.oligo_data_layer.content += (f'<text x="{well.x - 20}" y="{well.y + 20}" '
+                                                  f'fill="black" font-size="14">{amount}</text>')
+
+
+    def set_repeated_wells_color(self):
+        self.repeated_wells_colors = {}
+        repeated_orders = []#Counter([well.oligo_data['init_row']['Order id'] for well in self.wells.values()])
+        color = '#1f1fff'
+        for key, well in zip(self.wells.keys(), self.wells.values()):
+            if 'init_row' in list(well.oligo_data.keys()):
+                repeated_orders.append(well.oligo_data['init_row']['Order id'])
+                self.repeated_wells_colors[well.oligo_data['init_row']['Order id']] = '#000000'
+        repeated_orders = Counter(repeated_orders)
+        for key, well in zip(self.wells.keys(), self.wells.values()):
+            if 'init_row' in list(well.oligo_data.keys()):
+                if repeated_orders[well.oligo_data['init_row']['Order id']] > 1:
+                    #color = random_color_hex(150, 250, 150, 250, 150, 250)
+                    if self.repeated_wells_colors[well.oligo_data['init_row']['Order id']] == '#000000':
+                        if color == '#1f1fff':
+                            color = 'orange'
+                        else:
+                            color = '#1f1fff'
+                        self.repeated_wells_colors[well.oligo_data['init_row']['Order id']] = color
+
+    def draw_purification_layer(self):
+        self.oligo_data_layer.content = ""
+        self.set_repeated_wells_color()
+        for key, well in zip(self.wells.keys(), self.wells.values()):
+            color = self.get_purification_color(well)
+            pur_type = self.get_purification_text(well)
+            if 'init_row' in list(well.oligo_data.keys()):
+                well_color = self.repeated_wells_colors[well.oligo_data['init_row']['Order id']]
+                if well_color == '#000000':
+                    well_color = color
+                self.oligo_data_layer.content += (f'<circle cx="{well.x}" cy="{well.y}" r="30" fill="{color}" '
+                                                  f'stroke="{color}" stroke-width="6" />')
+                self.oligo_data_layer.content += (f'<circle cx="{well.x}" cy="{well.y}" r="15" fill="{well_color}" '
+                                                  f'stroke="{well_color}" stroke-width="6" />')
+
+                #self.oligo_data_layer.content += f'<path d = "M {well.x},{well.y} a 80,80 0 0,1 160,0" fill = "{well.dye_color}" / >'
+
+                if 'Order id' in list(well.oligo_data['init_row'].keys()):
+                    show_data = f"{well.oligo_data['init_row']['Order id']}"
+                else:
+                    show_data = ''
+                self.oligo_data_layer.content += (f'<text x="{well.x - 25}" y="{well.y - 15}" '
+                                                  f'fill="black" font-size="16">{show_data}</text>')
+
+                self.oligo_data_layer.content += (f'<text x="{well.x - 30}" y="{well.y + 5}" '
+                                                  f'fill="black" font-size="14">{pur_type}</text>')
+
+
+    def set_invoce_data(self, order_tab):
+        data = pd.DataFrame(order_tab)
+        self.order_colors = {}
+        self.order_label = {}
+        for key, well in zip(self.frontend.xwells_obj.wells.keys(), self.frontend.xwells_obj.wells.values()):
+            if 'init_row' in list(well.oligo_data.keys()):
+                self.wells[key].oligo_data['invoce'] = (
+                    data[data['#'] == well.oligo_data['init_row']['Order id']]['order id'].max())
+                self.order_colors[self.wells[key].oligo_data['invoce']] = '#f1f1f1'
+                text_key = self.wells[key].oligo_data['invoce']
+                if text_key.find('УТ') > -1:
+                    self.order_label[self.wells[key].oligo_data['invoce']] = text_key[text_key.find('УТ'):]
+                else:
+                    self.order_label[self.wells[key].oligo_data['invoce']] = text_key[:5]
+
+        for order_id in list(self.order_colors.keys()):
+            color = random_color_hex(100, 250, 100, 250, 100, 250)
+            self.order_colors[order_id] = color
+            #print(order_id, color)
+
+
+    def draw_order_layer(self):
+        self.oligo_data_layer.content = ""
+        for key, well in zip(self.wells.keys(), self.wells.values()):
+            if 'init_row' in list(well.oligo_data.keys()):
+                color = self.order_colors[well.oligo_data['invoce']]
+                self.oligo_data_layer.content += (f'<circle cx="{well.x}" cy="{well.y}" r="32" fill="{color}" '
+                                                  f'stroke="{color}" stroke-width="6" />')
+                #self.oligo_data_layer.content += (f'<circle cx="{well.x}" cy="{well.y}" r="20" fill="{well.dye_color}" '
+                #                                  f'stroke="{well.dye_color}" stroke-width="6" />')
+
+                #self.oligo_data_layer.content += f'<path d = "M {well.x},{well.y} a 80,80 0 0,1 160,0" fill = "{well.dye_color}" / >'
+
+                if 'Order id' in list(well.oligo_data['init_row'].keys()):
+                    show_data = f"{well.oligo_data['init_row']['Order id']}"
+                else:
+                    show_data = ''
+                self.oligo_data_layer.content += (f'<text x="{well.x - 20}" y="{well.y - 15}" '
+                                                  f'fill="black" font-size="16">{show_data}</text>')
+
+                if 'invoce' in list(well.oligo_data.keys()):
+                    show_data = f"{self.order_label[well.oligo_data['invoce']]}"
+                else:
+                    show_data = ''
+                self.oligo_data_layer.content += (f'<text x="{well.x - 33}" y="{well.y + 4}" '
+                                                  f'fill="black" font-size="16">{show_data}</text>')
+
+
+
     def get_status_color(self, status):
         if status == 'finished':
             return 'lightgreen'
@@ -412,10 +551,23 @@ class XWell_plate:
             if well.oligo_data['init_row']['Do cart']:
                 color = 'lightgreen'
             else:
-                color = 'yellow'
+                color = '#a100f1'
             if well.oligo_data['init_row']['Wasted']:
                 color = 'red'
         return color
+
+    def get_purification_text(self, well):
+        ret = 'RP-Cart'
+        if 'init_row' in list(well.oligo_data.keys()):
+            if well.oligo_data['init_row']['Do cart']:
+                ret = 'RP-Cart'
+            else:
+                ret = 'HPLC'
+            if well.oligo_data['init_row']['Wasted']:
+                ret = 'Wasted'
+            if well.oligo_data['init_row']['Do paag']:
+                ret = 'PAAG'
+        return ret
 
     def draw_status_layer(self):
         self.oligo_data_layer.content = ""
@@ -527,6 +679,55 @@ class XWell_plate:
         for key, well in zip(self.selected_wells.keys(), self.selected_wells.values()):
             pos_list.append(f"{well.symb}{well.num}")
         return pos_list
+
+
+    def get_selected_labels(self):
+        lb_list = []
+        for key, well in zip(self.selected_wells.keys(), self.selected_wells.values()):
+            if 'init_row' in list(well.oligo_data.keys()):
+                lb_list.append(well.oligo_data['init_row'])
+        pass_df = self.print_pass(lb_list)
+        return pass_df
+
+
+    def  print_pass(self, rowData):
+        out_tab = []
+        index_ = 1
+
+        for row in rowData:
+            nseq = row['Sequence']
+            if type(row['Purif type']) == str:
+                if row['Purif type'].find('_') > 0:
+                    fluoro = row['Purif type'][row['Purif type'].find('_')+1:]
+                    nseq = row['Sequence'].replace('[Alk]', f"[{fluoro}]")
+                    #print(nseq)
+                    o = mmo.oligoNASequence(nseq)
+                else:
+                    o = mmo.oligoNASequence(row['Sequence'])
+            d = {}
+            d['#'] = index_
+            index_ += 1
+            #d['Position'] = row['Position']
+            d['Name'] = row['Name'] + f"  ({row['Synt number']}_{row['Position']})"
+            d['Sequence'] = nseq
+            d['Amount,_oe'] = int(round(row['Dens, oe/ml'] * row['Vol, ml'], 0))
+            if o.getExtinction() > 0:
+                d['Amount,_nmol'] = int(round(d['Amount,_oe'] * 1e6 / o.getExtinction(), 0))
+            else:
+                d['Amount,_nmol'] = 0.
+            d['Desolving'] = int(d['Amount,_nmol'] * 10)
+
+            d['Purification'] = row['Purif type']
+            d['order_ID'] = row['Order id']
+            d['Status'] = row['Status']
+            try:
+                d['Mass,_Da'] = round(o.getAvgMass(), 2)
+            except:
+                d['Mass,_Da'] = 'unknown modiff'
+            d['Extinction'] = o.getExtinction()
+
+            out_tab.append(d)
+        return pd.DataFrame(out_tab)
 
 
     def mouse_handler(self, e: events.MouseEventArguments):

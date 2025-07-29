@@ -4,3 +4,4 @@ pandas
 oligoMass
 matplotlib
 nicegui-tabulator
+openpyxl

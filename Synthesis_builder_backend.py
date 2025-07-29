@@ -1,10 +1,11 @@
 from oligoMass import molmassOligo as mmo
 from OligoMap_utils import api_db_interface
 import pandas as pd
-from nicegui import app
+from nicegui import app, ui
 from OligoMap_utils import oligomaps_search
 import requests
 from collections import Counter
+from io import BytesIO
 
 class Oligomap_backend(api_db_interface):
     def __init__(self, api_IP, db_port, stack):
@@ -37,6 +38,15 @@ class Oligomap_backend(api_db_interface):
             self.oligomap_stack.input_selected_rows[ip] = []
             self.frontend.oligos_stack_tab.options['rowData'] = []
             self.frontend.oligos_stack_tab.update()
+        self.frontend.oligomap_rowdata = []
+        self.frontend.accord_tab.options['rowData'] = []
+        self.frontend.accord_tab.update()
+        self.frontend.oligomap_ag_grid.options['rowData'] = []
+        self.frontend.oligomap_ag_grid.update()
+        self.frontend.synth_name_label.text = ''
+        self.frontend.synth_number_label.text = ''
+
+        self.frontend.set_model()
 
 
     async def on_add_sel_oligo_to_plate(self):
@@ -71,6 +81,8 @@ class Oligomap_backend(api_db_interface):
 
         self.frontend.oligomap_ag_grid.options['rowData'] = rowData
         self.frontend.oligomap_ag_grid.update()
+
+        self.frontend.oligomap_rowdata = rowData
 
         self.client_frontend[ip] = self.frontend.get_model()
 
@@ -123,6 +135,8 @@ class Oligomap_backend(api_db_interface):
         self.frontend.xwells_obj.load_selrows(rowData)
 
         self.client_frontend[ip] = self.frontend.get_model()
+        #print(self.client_frontend.keys(), ip)
+        #print(self.client_frontend[ip]['xwells_obj'])
 
 
     def on_del_sel_oligo_to_plate(self):
@@ -149,7 +163,10 @@ class Oligomap_backend(api_db_interface):
         ip = app.storage.user.get('client_ip')
         self.pincode = self.client[ip]
 
-        #print(e.value)
+        if e.value == 'Order layer':
+            orders = self.get_orders_by_status('total data')
+            self.frontend.xwells_obj.set_invoce_data(orders)
+
         self.frontend.xwells_obj.layer_selector = e.value
         self.frontend.xwells_obj.draw_layers(e.value)
 
@@ -226,9 +243,9 @@ class Oligomap_backend(api_db_interface):
         for key, well in zip(selected_wells.keys(), selected_wells.values()):
             pos_list.append(f"{well.symb}{well.num}")
         conditions = (rowData_df[f"Do {e}"] == True)&(rowData_df['Position'].isin(pos_list))&(rowData_df[f"Done {e}"] == False)
-        #conditions_1 = (rowData_df[f"Do {e}"] == True)&(rowData_df['Position'].isin(pos_list))&(rowData_df[f"Done {e}"] == True)
+        conditions_1 = (rowData_df[f"Do {e}"] == True)&(rowData_df['Position'].isin(pos_list))&(rowData_df[f"Done {e}"] == True)
         rowData_df.loc[conditions, f"Done {e}"] = True
-        rowData_df.loc[~conditions, f"Done {e}"] = False
+        rowData_df.loc[conditions_1, f"Done {e}"] = False
 
         self.frontend.oligomap_rowdata = omap.set_omap_status(rowData_df.to_dict('records'))
         self.frontend.oligomap_ag_grid.options['rowData'] = self.frontend.oligomap_rowdata
@@ -251,9 +268,9 @@ class Oligomap_backend(api_db_interface):
         for key, well in zip(selected_wells.keys(), selected_wells.values()):
             pos_list.append(f"{well.symb}{well.num}")
         conditions = (rowData_df[f"Do {e}"] == False)&(rowData_df['Position'].isin(pos_list))
-        #conditions_1 = (rowData_df[f"Do {e}"] == True)&(rowData_df['Position'].isin(pos_list))&(rowData_df[f"Done {e}"] == True)
+        conditions_1 = (rowData_df[f"Do {e}"] == True)&(rowData_df['Position'].isin(pos_list))
         rowData_df.loc[conditions, f"Do {e}"] = True
-        rowData_df.loc[~conditions, f"Do {e}"] = False
+        rowData_df.loc[conditions_1, f"Do {e}"] = False
 
         self.frontend.oligomap_rowdata = omap.set_omap_status(rowData_df.to_dict('records'))
         self.frontend.oligomap_ag_grid.options['rowData'] = self.frontend.oligomap_rowdata
@@ -261,6 +278,15 @@ class Oligomap_backend(api_db_interface):
 
         self.client_frontend[ip] = self.frontend.get_model()
 
+
+    def on_selprint_excel_button(self):
+        ip = app.storage.user.get('client_ip')
+        self.pincode = self.client[ip]
+
+        pass_df = self.frontend.xwells_obj.get_selected_labels()
+        self.save_passport('plate_label', pass_df)
+
+        self.client_frontend[ip] = self.frontend.get_model()
 
     def check_pincode(self):
         url = f'{self.api_db_url}/get_all_invoces/{self.db_name}'
@@ -426,6 +452,27 @@ class Oligomap_backend(api_db_interface):
         return accord.to_dict('records')
 
 
+    def get_orders_by_status(self, status):
+
+        def get_in_progress(find_list = ['synthesis', 'purification', 'formulation']):
+            out = []
+            for st in find_list:
+                url = f'{self.api_db_url}/get_orders_by_status/{self.db_name}/{st}'
+                ret = requests.get(url, headers=self.headers())
+                out.extend(ret.json())
+            return out
+        out = []
+        if status == 'in progress':
+            out = get_in_progress(find_list = ['synthesis', 'purification', 'formulation'])
+        elif status == 'total data':
+            out = get_in_progress(find_list = ['in queue', 'synthesis', 'purification', 'formulation', 'finished'])
+        else:
+            url = f'{self.api_db_url}/get_orders_by_status/{self.db_name}/{status}'
+            ret = requests.get(url, headers=self.headers())
+            out.extend(ret.json())
+        return out
+
+
 
     def __getitem__(self, item):
         if item == 'on_new_oligomap_button':
@@ -458,3 +505,12 @@ class Oligomap_backend(api_db_interface):
             return self.on_update_oligo_orders
         if item == 'wells_layer_selector':
             return self.wells_layer_selector
+        if item == 'on_selprint_excel_button':
+            return self.on_selprint_excel_button
+
+
+    def save_passport(self, filename, data):
+        buffer = BytesIO()
+        data.to_excel(buffer, index=False)
+        buffer.seek(0)
+        ui.download(buffer.read(), filename=f'{filename}.xlsx')

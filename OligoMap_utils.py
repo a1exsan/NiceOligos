@@ -303,7 +303,6 @@ class oligomaps_search(api_db_interface):
                     order_id = row['Order id']
                     order_date = row['Date']
                     order_status = row['Status']
-
                 if order_id != '###':
                     url = f"{self.api_db_url}/update_data/{self.db_name}/orders_tab/{order_id}"
                     r = requests.put(url,

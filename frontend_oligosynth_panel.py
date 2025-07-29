@@ -13,8 +13,9 @@ class oligosynth_panel():
             self.synth_number_label = ui.label('Synthesis number')
 
         with (ui.grid(columns=3).classes("w-full").style("grid-template-columns: 1200px 200px 1300px")):
-            with ui.grid(columns=3).classes("w-full").style("grid-template-columns: 200px 200px 200px"):
+            with ui.row().classes('gap-20'):
                 self.on_clear_plate_button = ui.button("Clear plate", color="#FF1000").classes('w-[200px]')
+                self.on_selprint_excel_button = ui.button("Print label").classes('w-[200px]')
             ui.label('Cell12')
             with ui.row():
                 self.on_new_oligomap_button = ui.button("New Map", color="#E1A100").classes('w-[200px]')
@@ -45,7 +46,8 @@ class oligosynth_panel():
                         ui.item(key, on_click=lambda n=key: self.do_event(n))
                 self.on_sel_do_btn.props['color'] = 'orange'
                 self.wells_layer_selector = ui.radio(
-                    ['Base layer', 'Status layer', 'Purification layer', 'Support layer', 'Click layer'],
+                    ['Base layer', 'Status layer', 'Purification layer', 'Support layer', 'Click layer',
+                            'Order layer'],
                     value='Base layer').props('inline')
 
             self.get_oligos_stack_grid()
@@ -73,6 +75,8 @@ class oligosynth_panel():
         self.model['oligomap_ag_grid'] = self.oligomap_ag_grid
         self.model['oligomap_db_tab'] = self.oligomap_db_tab
         self.model['accord_tab'] = self.accord_tab
+        self.model['actual_synt_name'] = self.synth_name_label.text
+        self.model['synth_number_label'] = self.synth_number_label.text
         return self.model
 
 
@@ -85,6 +89,8 @@ class oligosynth_panel():
         self.oligomap_rowdata = model['oligomap_db_tab'].options['rowData']
         self.accord_tab.options['rowData'] = model['accord_tab'].options['rowData']
         self.accord_tab.update()
+        self.synth_name_label.text = model['actual_synt_name']
+        self.synth_number_label.text = model['synth_number_label']
 
 
     def get_element_list(self, key):
@@ -101,6 +107,7 @@ class oligosynth_panel():
                 ('on_save_oligomap', 'click'),
                 ('on_update_oligomap', 'click'),
                 ('on_update_oligo_orders', 'click'),
+                ('on_selprint_excel_button', 'click'),
             ]
         else:
             return []
@@ -137,6 +144,8 @@ class oligosynth_panel():
             return self.on_update_oligo_orders
         if item == 'wells_layer_selector':
             return self.wells_layer_selector
+        if item == 'on_selprint_excel_button':
+            return self.on_selprint_excel_button
 
 
     def get_oligomap_grid(self):
