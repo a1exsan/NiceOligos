@@ -147,6 +147,7 @@ class invoice_frontend():
             self.on_print_invoce_passport = ui.button('print passport', color='#FFA000').classes('w-[200px]')
             self.progressbar = ui.spinner(size='md', color='#FFA000')
             self.on_send_oligos_button = ui.button('Send selection to map', color='green').classes('w-[200px]')
+            self.on_show_oligos_synt_button = ui.button('Show synth number').classes('w-[200px]')
 
         with ui.row().classes('gap-5'):
             with ui.column():
@@ -195,7 +196,8 @@ class invoice_frontend():
                 'output date': [''],
                 'client id': [''],
                 'order id': [''],
-                'sufficiency': [0.]
+                'sufficiency': [0.],
+                'synt, positions': [''],
             }
         )
 
@@ -215,7 +217,8 @@ class invoice_frontend():
             {"field": "output date", 'editable': True, 'filter': 'agTextColumnFilter', 'floatingFilter': True},
             {"field": "order id", 'filter': 'agTextColumnFilter', 'floatingFilter': True},
             {"field": "client id", 'filter': 'agTextColumnFilter', 'floatingFilter': True},
-            {"field": "sufficiency", 'filter': 'agTextColumnFilter', 'floatingFilter': True}
+            {"field": "synt, positions", 'filter': 'agTextColumnFilter', 'floatingFilter': True},
+            {"field": "sufficiency", 'filter': 'agTextColumnFilter', 'floatingFilter': True},
         ]
 
         self.invoce_content_tab = ui.aggrid(
@@ -250,6 +253,8 @@ class invoice_frontend():
             return self.on_print_orders_date_range
         elif item == 'on_update_invoces_tab':
             return self.on_update_invoces_tab
+        elif item == 'on_show_oligos_synt_button':
+            return self.on_show_oligos_synt_button
 
     def get_element_list(self, key):
         if key == 'button':
@@ -261,6 +266,7 @@ class invoice_frontend():
                 ('on_send_oligos_button', 'click'),
                 ('on_print_orders_date_range', 'click'),
                 ('on_update_invoces_tab', 'click'),
+                ('on_show_oligos_synt_button', 'click'),
             ]
         else:
             return []
@@ -293,6 +299,7 @@ class invoice_frontend():
         self.model['ag_grid'] = self.ag_grid
         self.model['invoce_content_tab'] = self.invoce_content_tab
         self.model['invoice_tab_rowdata'] = self.invoice_tab_rowdata
+        #self.model['invoce_chart_mode'] = self.invoceChart.sorting_mode
         return self.model
 
     def set_model(self, model):
@@ -309,4 +316,5 @@ class invoice_frontend():
         self.invoce_content_tab.options['rowData'] = model['invoce_content_tab'].options['rowData']
         self.invoce_content_tab.update()
         self.invoice_tab_rowdata = model['invoice_tab_rowdata']
+        #self.invoceChart.sorting_mode = self.model['invoce_chart_mode']
 

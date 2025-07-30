@@ -166,14 +166,17 @@ class oligomaps_search(api_db_interface):
                 d['Date'] = r['1']
                 d['map data'] = json.loads(r['4'])
                 out.append(d)
+                #print(d['Synth number'])
             return out
         else:
             return []
 
     def find_amount_by_order_id(self, order_id):
         maps = pd.DataFrame()
-        for map in self.map_list['map data']:
-            maps = pd.concat([maps, pd.DataFrame(map)])
+        for map, syn in zip(self.map_list['map data'], self.map_list['Synth number']):
+            map = pd.DataFrame(map)
+            map['Synt number'] = syn
+            maps = pd.concat([maps, map])
         maps.reset_index(inplace=True)
         maps = maps[(maps['Order id'] == int(order_id))&(maps['Wasted'] == False)]
         return maps

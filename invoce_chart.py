@@ -1,6 +1,7 @@
 import pandas as pd
 from nicegui import events, ui, app
 import random
+from datetime import datetime
 
 class PolylineSVG:
     def __init__(self, points):
@@ -27,10 +28,12 @@ class history_stat_data_sorter():
     def __init__(self, data):
         self.data = data
 
-        self.sorting_mode = 'total quarter'
+        self.sorting_mode = 'total month'
+        self.sorting_mode = 'total week'
+        self.sorting_mode = 'total week'
         self.sorting_mode = 'last Y month'
         self.sorting_mode = 'last Y week'
-        self.sorting_mode = 'total month'
+        self.sorting_mode = 'total quarter'
 
     def get_sorting_data(self, status='finished'):
         y_data = [int(row['data'][status]) for row in self.data]
@@ -44,10 +47,12 @@ class history_stat_data_sorter():
         df = df.sort_values('x_day', ascending=True)
 
         ff = 'M'
-        if self.sorting_mode == 'total quarter':
+        if self.sorting_mode.find('quarter') > -1:
             ff = 'Q'
-        elif self.sorting_mode == 'total month':
+        elif self.sorting_mode.find('month') > -1:
             ff = 'M'
+        elif self.sorting_mode.find('week') > -1:
+            ff = 'W'
 
         df_g = df.groupby(pd.Grouper(key='x_day', freq=ff)).max()
         df_g['y_max'] = df_g['y']
@@ -59,7 +64,10 @@ class history_stat_data_sorter():
         df_g.reset_index(inplace=True)
         df_g['y_sub'] = df_g['y_max'] - df_g['y_min']
 
-        #print(df_g)
+        if self.sorting_mode.find('Y') > -1:
+            now_Y = datetime.now().strftime('%Y')
+            df_g = df_g[df_g['x_day'].dt.strftime('%Y') == now_Y]
+
         return df_g
 
 
@@ -71,16 +79,24 @@ class invoceChart():
         self.width = 2000
         self.height = 200
         self.height_shift = 30
+        self.r_rad = 8
+
+        self.sorting_mode = 'total month'
 
         self.image = ui.interactive_image(f'/img/{self.chart_bkg}', on_mouse=self.mouse_handler,  # cross='red',
-                                          events=['mousedown', 'mousemove', 'mouseup'])
+                                          events=['mousedown', 'mousemove', 'mouseup', 'click'])
         self.base_layer = self.image.add_layer()
         self.test_chart = self.image.add_layer()
         self.finished_bar_layer = self.image.add_layer()
         self.fin_oligos_chart = self.image.add_layer()
+        self.radio_btns = self.image.add_layer()
+
+        self.mode_radio_btns = {}
+        self.init_mode_radio_btns()
+
         self.draw()
-        #self.draw_bar_diagram()
         self.draw_test_data()
+        self.draw_radio_buttons()
 
     def draw_stat_data(self, history_stat_data):
         self.stat_data = history_stat_data
@@ -100,12 +116,21 @@ class invoceChart():
         self.draw_bar_diagram([i for i in range(df.shape[0])], list(df['y']))
 
         data_sorter = history_stat_data_sorter(self.stat_data)
+        data_sorter.sorting_mode = self.get_mode_radio_btns()
         data = data_sorter.get_sorting_data(status='finished')
 
         x_data = list(data['x'])
         y_data = list(data['y_sub'])
 
         self.draw_date_bar_chart(x_data, y_data)
+
+    def get_date_text(self, date):
+        if self.sorting_mode.find('Y') > -1:
+            return date[:-5]
+        elif self.sorting_mode.find('week') > -1:
+            return date[:-5]
+        else:
+            return date
 
     def draw_date_bar_chart(self, date_list, y_list):
 
@@ -117,8 +142,10 @@ class invoceChart():
         x_data = self.normalisation(x_list, 100, self.width - 100)
 
         width = self.width // len(date_list) // 2
+        if width > 70:
+            width = 70
+
         for x, y, date, fin in zip(x_data, y_data, date_list, y_list):
-            #print(x, y, date)
             self.finished_bar_layer.content += (f'<rect x={x - width} '
                                                f'y={self.height - y} '
                                                f'width={width} '
@@ -129,11 +156,13 @@ class invoceChart():
                                                f'stroke-width="2"/>')
 
             self.finished_bar_layer.content += (f'<text x="{x - width}" y="{self.height - self.height_shift + 20}" '
-                                                  f'fill="white" font-size="14">{date}</text>')
+                                                  f'fill="white" font-size="14">{self.get_date_text(date)}</text>')
 
-            self.finished_bar_layer.content += (f'<text x="{x - width // 2 - 10}" y="{self.height - y - self.height_shift + 25}" '
+            delta = 25
+            if self.height - y - self.height_shift <= 20:
+                delta = 45
+            self.finished_bar_layer.content += (f'<text x="{x - width // 2 - 10}" y="{self.height - y - self.height_shift + delta}" '
                                                 f'fill="white" font-size="14">{fin}</text>')
-
 
 
     def draw_test_data(self):
@@ -152,7 +181,7 @@ class invoceChart():
     def normalisation(self, z_data, z_min, z_max):
         z_range = max(z_data) - min(z_data)
         k = (z_max - z_min) / z_range
-        return [int(round(z * k  + z_min)) for z in z_data]
+        return [int(round((z - min(z_data)) * k  + z_min)) for z in z_data]
 
 
     def draw_bar_diagram(self, x_data, y_data):
@@ -231,7 +260,62 @@ class invoceChart():
     def draw(self):
         self.base_layer.content = f'<rect x=0 y=0 width=2000 height=200 fill="none" stroke="orange" stroke-width="4"/>'
 
+    def init_mode_radio_btns(self):
+        x, y = 1920, 50
+        self.mode_radio_btns[(x, y)] = {'1':'month', '2':True}
+        x, y = 1920, 80
+        self.mode_radio_btns[(x, y)] = {'1':'week', '2':False}
+        x, y = 1920, 110
+        self.mode_radio_btns[(x, y)] = {'1':'Y month', '2':False}
+        x, y = 1920, 140
+        self.mode_radio_btns[(x, y)] = {'1':'Y week', '2':False}
+        x, y = 1920, 170
+        self.mode_radio_btns[(x, y)] = {'1':'quarter', '2':False}
+
+
+    def get_mode_radio_btns(self):
+        for key, value in zip(self.mode_radio_btns.keys(), self.mode_radio_btns.values()):
+            if value['2']:
+                return value['1']
+
+
+    def draw_radio_buttons(self):
+        self.radio_btns.content = ""
+        color = 'orange'
+        fell_color = 'red'
+        text = 'total month'
+        for key, value in zip(self.mode_radio_btns.keys(), self.mode_radio_btns.values()):
+            text = value['1']
+            if value['2']:
+                fell_color = 'gray'
+            else:
+                fell_color = 'none'
+            self.radio_btns.content += (f'<circle cx="{key[0]}" cy="{key[1]}" r="{self.r_rad}" fill="{fell_color}" '
+                                    f'stroke="{color}" stroke-width="2" />')
+
+            self.radio_btns.content += (f'<text x="{key[0] + 20}" y="{key[1]}" '
+                                                  f'fill="white" font-size="14">{text}</text>')
+
+    def push_radio_btn(self, x, y, r):
+        count = 0
+        for key in self.mode_radio_btns.keys():
+            num = (key[0] - x) ** 2 + (key[1] - y) ** 2
+            if num <= r ** 2:
+                count = 1
+        if count == 1:
+            for key in self.mode_radio_btns.keys():
+                num = (key[0] - x)**2 + (key[1] - y)**2
+                if num <= r**2:
+                    self.mode_radio_btns[key]['2'] = True
+                else:
+                    self.mode_radio_btns[key]['2'] = False
+        self.draw_radio_buttons()
+        self.sorting_mode = self.get_mode_radio_btns()
+        self.draw_stat_data(self.stat_data)
 
     def mouse_handler(self, e: events.MouseEventArguments):
-        #print(e)
-        pass
+
+        x, y = e.image_x, e.image_y
+
+        if e.type == 'click':
+            self.push_radio_btn(x, y, self.r_rad)

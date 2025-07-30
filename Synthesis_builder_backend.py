@@ -251,6 +251,8 @@ class Oligomap_backend(api_db_interface):
         self.frontend.oligomap_ag_grid.options['rowData'] = self.frontend.oligomap_rowdata
         self.frontend.oligomap_ag_grid.update()
 
+        self.frontend.on_update_oligomap.run_method('click')
+
         self.client_frontend[ip] = self.frontend.get_model()
 
 
@@ -275,6 +277,8 @@ class Oligomap_backend(api_db_interface):
         self.frontend.oligomap_rowdata = omap.set_omap_status(rowData_df.to_dict('records'))
         self.frontend.oligomap_ag_grid.options['rowData'] = self.frontend.oligomap_rowdata
         self.frontend.oligomap_ag_grid.update()
+
+        self.frontend.on_update_oligomap.run_method('click')
 
         self.client_frontend[ip] = self.frontend.get_model()
 

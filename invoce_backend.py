@@ -369,6 +369,36 @@ class invoce_table(api_db_interface):
 
         #print(len(self.oligomap_stack.input_selected_rows[ip]))
 
+    async def on_show_oligos_synt_button(self):
+        ip = self.app.storage.user.get('client_ip')
+        self.pincode = self.client[ip]
+        selrows = await self.frontend.invoce_content_tab.get_selected_rows()
+        sel_orders = list(pd.DataFrame(selrows)['#'])
+        rowdata = self.frontend.invoce_content_tab.options['rowData']
+
+        out = []
+        oserch = oligomaps_search(self.db_IP, self.db_port)
+        oserch.pincode = self.pincode
+        date = datetime.strptime(selrows[0]['input date'], '%m.%d.%Y')
+        date = date - timedelta(days=10)
+        oserch.map_list = pd.DataFrame(oserch.get_oligomaps_date_tail(date.strftime('%Y-%m-%d'), tail_len=30))
+        for row in rowdata:
+            d = row.copy()
+            if row['#'] in sel_orders:
+                maps = oserch.find_amount_by_order_id(row['#'])
+                s = ""
+                for syn, pos in zip(maps['Synt number'], maps['Position']):
+                    #print(syn, pos)
+                    s += f'{syn}_{pos}, '
+                d['synt, positions'] = s
+            out.append(d)
+
+        self.frontend.invoce_content_tab.options['rowData'] = out
+        self.frontend.invoce_content_tab.update()
+
+        self.client_frontend[ip] = self.frontend.get_model()
+
+
     def on_print_orders_date_range(self):
         ip = self.app.storage.user.get('client_ip')
         self.pincode = self.client[ip]
@@ -436,6 +466,9 @@ class invoce_table(api_db_interface):
             url = f'{self.api_db_url}/get_all_tab_data/{self.status_hist_db}/main_tab'
             ret = requests.get(url, headers=self.headers())
 
+            #maps = oligomaps_search(self.api_db_url, self.db_port)
+            #maps_tab = maps.get_oligomaps()
+
             self.history_stat_data = []
             for row in ret.json():
                 d = {}
@@ -469,3 +502,5 @@ class invoce_table(api_db_interface):
             return self.on_print_orders_date_range
         elif item == 'on_update_invoces_tab':
             return self.on_update_invoces_tab
+        elif item == 'on_show_oligos_synt_button':
+            return self.on_show_oligos_synt_button
