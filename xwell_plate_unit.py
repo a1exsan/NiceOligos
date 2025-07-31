@@ -251,6 +251,26 @@ class XWell_plate:
         self.draw_layers(self.layer_selector)
 
 
+    def replace_to_selected_wells(self):
+        wells_list = []
+        for key, well in zip(self.wells.keys(), self.wells.values()):
+            if 'init_row' in list(self.wells[key].oligo_data.keys()):
+                wells_list.append(well.oligo_data.copy())
+
+        for key, well in zip(self.wells.keys(), self.wells.values()):
+            self.wells[key].oligo_data = {}
+
+        index = 0
+        for key, well in zip(self.selected_wells.keys(), self.selected_wells.values()):
+            if index < len(wells_list):
+                wells_list[index]['init_row']['Position'] = f"{well.symb}{well.num}"
+                self.wells[key].load_init_row(wells_list[index]['init_row'])
+                index += 1
+
+        self.draw_selected_wells()
+        self.draw_layers(self.layer_selector)
+
+
     def well_selection_by_position(self, rowData):
         df = pd.DataFrame(rowData)
         pos_list = list(df['Position'])

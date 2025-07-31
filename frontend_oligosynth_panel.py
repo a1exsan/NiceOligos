@@ -34,6 +34,7 @@ class oligosynth_panel():
                 self.number_of_copies_oligo = ui.input('', value=1)
                 self.on_add_sel_oligo_to_plate = ui.button('Add selected', color="#e1a000").classes('w-[200px]')
                 self.on_del_sel_oligo_to_plate = ui.button('Del selected', color="#f11000").classes('w-[200px]')
+                self.on_replace_sel_oligo_to_plate = ui.button('Replace to selected', color="#e1a000").classes('w-[200px]')
                 ui.label('Select synthesis scale:')
                 self.synth_scale_selector = ui.radio(['1 mg', '3 mg', '5 mg'], value='3 mg').props('inline')
                 self.on_generate_oligomap_button = ui.button("Generate map", color="#00a100").classes('w-[200px]')
@@ -89,6 +90,7 @@ class oligosynth_panel():
         self.oligomap_rowdata = model['oligomap_db_tab'].options['rowData']
         self.accord_tab.options['rowData'] = model['accord_tab'].options['rowData']
         self.accord_tab.update()
+        self.accordtab_rowdata = self.accord_tab.options['rowData']
         self.synth_name_label.text = model['actual_synt_name']
         self.synth_number_label.text = model['synth_number_label']
 
@@ -108,6 +110,7 @@ class oligosynth_panel():
                 ('on_update_oligomap', 'click'),
                 ('on_update_oligo_orders', 'click'),
                 ('on_selprint_excel_button', 'click'),
+                ('on_replace_sel_oligo_to_plate', 'click'),
             ]
         else:
             return []
@@ -146,6 +149,8 @@ class oligosynth_panel():
             return self.wells_layer_selector
         if item == 'on_selprint_excel_button':
             return self.on_selprint_excel_button
+        if item == 'on_replace_sel_oligo_to_plate':
+            return self.on_replace_sel_oligo_to_plate
 
 
     def get_oligomap_grid(self):
@@ -255,6 +260,11 @@ class oligosynth_panel():
     def update_oligomap_cell_data(self, e):
         self.oligomap_rowdata[e.args["rowIndex"]] = e.args["data"]
 
+    def update_accordtab_cell_data(self, e):
+        self.accordtab_rowdata[e.args["rowIndex"]] = e.args["data"]
+        self.accord_tab.options['rowData'] = self.accordtab_rowdata
+        self.accord_tab.update()
+
     def get_oligos_stack_grid(self):
         invoce_content_df = pd.DataFrame(
             {
@@ -315,6 +325,7 @@ class oligosynth_panel():
             theme='alpine-dark').classes('h-[800px]')  # alpine  material  quartz  balham
         self.oligos_stack_tab.auto_size_columns = True
 
+
     def get_oligomaps_list_grid(self):
         map_db_tab = pd.DataFrame(
             {
@@ -360,6 +371,24 @@ class oligosynth_panel():
             theme='alpine-dark').classes('h-[800px]')  # alpine  material  quartz  balham
         self.oligomap_db_tab.auto_size_columns = True
 
+    def get_init_accordtab_rowdata(self):
+        return pd.DataFrame(
+            {
+                'Modification': ['A', 'C', 'G', 'T', '+A', '+C', '+G', '+T', '6FAM', 'Alk', 'R6G', 'HEX',
+                                 'DEBL', 'ACTIV', 'CAPA', 'CAPB', 'OXID', 'R2', 'W1', 'W2'],
+                'asm2000 position': ['A', 'C', 'G', 'T', '5', '6', '7', '8', '9', '[10]', '[11]', '[12]',
+                                     'DEBL', 'ACTIV', 'CAPA', 'CAPB', 'OXID', 'R2', 'W1', 'W2'],
+                'Conc, g/ml': [0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1,
+                               1, 1, 1, 1, 1, 1, 1, 1],
+                'ul on step': [40., 40., 40., 40., 75., 75., 75., 75., 75., 75., 75., 75.,
+                               240., 54., 45., 45., 110., 91., 110., 650.],
+                'Amount 5mg, g': [0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
+                                  0., 0., 0., 0., 0., 0., 0., 0.],
+                'Amount 5mg, ml': [0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
+                                   0., 0., 0., 0., 0., 0., 0., 0.]
+            }
+        ).to_dict('records')
+
     def get_accord_tab(self):
         accord_tab = pd.DataFrame(
             {
@@ -377,6 +406,8 @@ class oligosynth_panel():
                                    0., 0., 0., 0., 0., 0., 0., 0.]
             }
         )
+
+        self.accordtab_rowdata = accord_tab.to_dict('records')
 
         columnDefs = [
             {"field": "Modification", 'editable': True},
@@ -406,4 +437,5 @@ class oligosynth_panel():
             ,
             theme='alpine-dark').classes('h-[800px]')  # alpine  material  quartz  balham
         self.accord_tab.auto_size_columns = True
+        self.accord_tab.on("cellValueChanged", self.update_accordtab_cell_data)
 

@@ -39,7 +39,8 @@ class Oligomap_backend(api_db_interface):
             self.frontend.oligos_stack_tab.options['rowData'] = []
             self.frontend.oligos_stack_tab.update()
         self.frontend.oligomap_rowdata = []
-        self.frontend.accord_tab.options['rowData'] = []
+        self.frontend.accord_tab.options['rowData'] = self.frontend.get_init_accordtab_rowdata()
+        self.frontend.accordtab_rowdata = self.frontend.get_init_accordtab_rowdata()
         self.frontend.accord_tab.update()
         self.frontend.oligomap_ag_grid.options['rowData'] = []
         self.frontend.oligomap_ag_grid.update()
@@ -147,6 +148,13 @@ class Oligomap_backend(api_db_interface):
 
         self.client_frontend[ip] = self.frontend.get_model()
 
+    def on_replace_sel_oligo_to_plate(self):
+        ip = app.storage.user.get('client_ip')
+        self.pincode = self.client[ip]
+
+        self.frontend.xwells_obj.replace_to_selected_wells()
+
+        self.client_frontend[ip] = self.frontend.get_model()
 
     def synth_scale_selector(self, e):
         ip = app.storage.user.get('client_ip')
@@ -321,16 +329,17 @@ class Oligomap_backend(api_db_interface):
             r = row.copy()
             if ((str(tab['prefix'].loc[1]).find('FAM') == -1) and (str(tab['prefix'].loc[1]) != '') and
                     (str(tab['prefix'].loc[1]).find('Alk') == -1)):
-                #sseq = [f'{i}{j}']
-                #seq = f"[Alk]{''.join(list(tab['nt']))}{str(tab['suffix'].loc[tab.shape[0]])}"
-                sseq = row['Sequence']
-                seq = sseq.replace(sseq[sseq.find('[') + 1: sseq.find(']')], 'Alk')
-                pref = str(tab['prefix'].loc[1])
-                pref = pref.replace('[', '')
-                pref = pref.replace(']', '')
-                purif_type = row['Purif type'] + f"_{pref}"
-                r['Sequence'] = seq
-                r['Purif type'] = purif_type
+                if str(tab['prefix'].loc[1]).find('Biotin') == -1:
+                    #sseq = [f'{i}{j}']
+                    #seq = f"[Alk]{''.join(list(tab['nt']))}{str(tab['suffix'].loc[tab.shape[0]])}"
+                    sseq = row['Sequence']
+                    seq = sseq.replace(sseq[sseq.find('[') + 1: sseq.find(']')], 'Alk')
+                    pref = str(tab['prefix'].loc[1])
+                    pref = pref.replace('[', '')
+                    pref = pref.replace(']', '')
+                    purif_type = row['Purif type'] + f"_{pref}"
+                    r['Sequence'] = seq
+                    r['Purif type'] = purif_type
             out.append(r)
 
         return out
@@ -511,6 +520,8 @@ class Oligomap_backend(api_db_interface):
             return self.wells_layer_selector
         if item == 'on_selprint_excel_button':
             return self.on_selprint_excel_button
+        if item == 'on_replace_sel_oligo_to_plate':
+            return self.on_replace_sel_oligo_to_plate
 
 
     def save_passport(self, filename, data):
