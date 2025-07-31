@@ -1,0 +1,125 @@
+	#	3'-end	5'-end	Amount, oe	Lenght	Name	Purification	Sequence	client id	input date	order id	output date	status	Date
+6102	6224	none	none	15-20	20	H-B2M-F2	RP-картридж	GGTTTACTCACGTCATCCAG	Kolya	07.17.2025	HKG_Yulia	24.07.2025	finished	2025-07-17
+6103	6225	none	none	15-20	22	H-B2M-R2	RP-картридж	CACTTAACTATCTTGGGCTGTG	Kolya	07.17.2025	HKG_Yulia	24.07.2025	finished	2025-07-17
+6104	6226	BHQ1	6FAM	10-15	20	H-B2M-P2	Хроматография	GAATTCACCCCCACTGAAAA	Kolya	07.17.2025	HKG_Yulia	24.07.2025	finished	2025-07-17
+6105	6227	none	none	15-20	20	H-PKM-FW 	RP-картридж	TGGAGAAACAGCCAAAGGGG	Kolya	07.17.2025	HKG_Yulia	24.07.2025	finished	2025-07-17
+6106	6228	none	none	15-20	20	H-PKM-RV 	RP-картридж	GCGGCGGAGTTCCTCAAATA	Kolya	07.17.2025	HKG_Yulia	24.07.2025	finished	2025-07-17
+6107	6229	BHQ1	6FAM	10-15	20	H-PKM-P 	Хроматография	AGGCTGTGCGCATGCAGCAC	Kolya	07.17.2025	HKG_Yulia	24.07.2025	finished	2025-07-17
+6108	6230	none	none	15-20	21	H-GAPDH-F1 	RP-картридж	TCCTGCACCACCAACTGCTTA	Kolya	07.17.2025	HKG_Yulia	24.07.2025	finished	2025-07-17
+6109	6231	none	none	15-20	22	H-GAPDH-R1 	RP-картридж	GCAGGGATGATGTTCTGGAGAG	Kolya	07.17.2025	HKG_Yulia	24.07.2025	finished	2025-07-17
+6110	6233	none	none	15-20	20	H-HPRT-F-2 	RP-картридж	AGTTCTGTGGCCATCTGCTT 	Kolya	07.17.2025	HKG_Yulia	24.07.2025	finished	2025-07-17
+6111	6234	none	none	15-20	20	H-HPRT-R-2 	RP-картридж	AGTTAAACAACAATCCGCCC	Kolya	07.17.2025	HKG_Yulia	24.07.2025	finished	2025-07-17
+6112	6236	none	none	15-20	25	H-HSPA5-F-2	RP-картридж	CAACCAACTGTTACAATCAAGGTCT	Kolya	07.17.2025	HKG_Yulia	24.07.2025	finished	2025-07-17
+6113	6237	none	none	15-20	21	H-HSPA5-R-2	RP-картридж	AGCAGGAGGAATTCCAGTCAG	Kolya	07.17.2025	HKG_Yulia	24.07.2025	finished	2025-07-17
+6114	6239	none	none	15-20	20	H-PPIA-F2	RP-картридж	ACCGTGTTCTTCGACATTGC	Kolya	07.17.2025	HKG_Yulia	24.07.2025	finished	2025-07-17
+6115	6240	none	none	15-20	23	H-PPIA-R2	RP-картридж	TAACCAAATCCTTTCTCTCCAGT	Kolya	07.17.2025	HKG_Yulia	24.07.2025	finished	2025-07-17
+6116	6242	none	none	15-20	22	M-B2M-F 	RP-картридж	CCCCACTGAGACTGATACATAC	Kolya	07.17.2025	HKG_Yulia	24.07.2025	finished	2025-07-17
+6117	6243	none	none	15-20	26	M-B2M-R	RP-картридж	GTATAGCATATTAGAAACTGGATTTG	Kolya	07.17.2025	HKG_Yulia	24.07.2025	finished	2025-07-17
+6118	6244	BHQ1	6FAM	10-15	23	M-B2M-P	Хроматография	AGCCCAAGACCGTCTACTGGGAT 	Kolya	07.17.2025	HKG_Yulia	24.07.2025	finished	2025-07-17
+6119	6245	none	none	15-20	21	M-Gapdh-F1	RP-картридж	GTGGAGTCTACTGGTGTCTTC	Kolya	07.17.2025	HKG_Yulia	24.07.2025	finished	2025-07-17
+6120	6246	none	none	15-20	20	M-Gapdh-R1	RP-картридж	GGTTCACACCCATCACAAAC	Kolya	07.17.2025	HKG_Yulia	24.07.2025	finished	2025-07-17
+6121	6247	BHQ1	6FAM	10-15	24	M-Gapdh-P1	Хроматография	GAGAAGGCCGGGGCCCACTTGAAG	Kolya	07.17.2025	HKG_Yulia	24.07.2025	finished	2025-07-17
+6122	6248	none	none	15-20	22	M-Cphn-F1	RP-картридж	GTTTTTTATCTGCACTGCCAAG	Kolya	07.17.2025	HKG_Yulia	24.07.2025	finished	2025-07-17
+6123	6249	none	none	15-20	21	M-Cphn-R1	RP-картридж	TTCTTGCTGGTCTTGCCATTC	Kolya	07.17.2025	HKG_Yulia	24.07.2025	finished	2025-07-17
+6124	6251	none	none	15-20	19	M-Actb-F	RP-картридж	TCTTTGCAGCTCCTTCGTT	Kolya	07.17.2025	HKG_Yulia	24.07.2025	finished	2025-07-17
+6125	6252	none	none	15-20	18	M-Actb-R	RP-картридж	CGATGGAGGGGAATACAG	Kolya	07.17.2025	HKG_Yulia	24.07.2025	finished	2025-07-17
+6126	6254	none	none	15-20	21	M-GusB-F	RP-картридж	CGTCTACAAGACTGACACCTC	Kolya	07.17.2025	HKG_Yulia	24.07.2025	finished	2025-07-17
+6127	6255	none	none	15-20	20	M-GusB-R	RP-картридж	CGATGTCTTGCTCCACATTA	Kolya	07.17.2025	HKG_Yulia	24.07.2025	finished	2025-07-17
+6128	6257	none	none	1-3	21	1 -F 	RP-картридж	GGCATTACTTGGTACCTTGGC	ВНИИГРЖ	07.17.2025	ВНИИГРЖ/БЛМ/УТ1198 (деб.)	24.07.2025	finished	2025-07-17
+6129	6258	none	none	1-3	21	1-R 	RP-картридж	TCAAACACCGGTTCTGAAACA	ВНИИГРЖ	07.17.2025	ВНИИГРЖ/БЛМ/УТ1198 (деб.)	24.07.2025	finished	2025-07-17
+6130	6259	none	none	1-3	20	2-F 	RP-картридж	CAGTGGTTGCTGCTGTTGTC	ВНИИГРЖ	07.17.2025	ВНИИГРЖ/БЛМ/УТ1198 (деб.)	24.07.2025	finished	2025-07-17
+6131	6260	none	none	1-3	22	2-R 	RP-картридж	GCATGATGTACCATTTTCCGGT	ВНИИГРЖ	07.17.2025	ВНИИГРЖ/БЛМ/УТ1198 (деб.)	24.07.2025	finished	2025-07-17
+6132	6261	none	none	1-3	20	3-F 	RP-картридж	TGTGCCAGTCTGAGCTCTTG	ВНИИГРЖ	07.17.2025	ВНИИГРЖ/БЛМ/УТ1198 (деб.)	24.07.2025	finished	2025-07-17
+6133	6262	none	none	1-3	20	3-R	RP-картридж	CCCCTATGCTCGTGTCCATC	ВНИИГРЖ	07.17.2025	ВНИИГРЖ/БЛМ/УТ1198 (деб.)	24.07.2025	finished	2025-07-17
+6134	6263	none	none	1-3	20	4-F 	RP-картридж	CCTCTGAAGGAGGCGGAAAG	ВНИИГРЖ	07.17.2025	ВНИИГРЖ/БЛМ/УТ1198 (деб.)	24.07.2025	finished	2025-07-17
+6135	6264	none	none	1-3	20	4-R 	RP-картридж	TCTCAGGGGGACTGGTACTG	ВНИИГРЖ	07.17.2025	ВНИИГРЖ/БЛМ/УТ1198 (деб.)	24.07.2025	finished	2025-07-17
+6136	6265	none	none	1-3	20	5-F 	RP-картридж	GGAATCCCGATGTTGTCGCT	ВНИИГРЖ	07.17.2025	ВНИИГРЖ/БЛМ/УТ1198 (деб.)	24.07.2025	finished	2025-07-17
+6137	6266	none	none	1-3	20	5-R 	RP-картридж	GCTTGGTGTACCAGGTGAGT	ВНИИГРЖ	07.17.2025	ВНИИГРЖ/БЛМ/УТ1198 (деб.)	24.07.2025	finished	2025-07-17
+6138	6267	none	none	10-15	20	LCF	RP-картридж	GTGACAGAGCAGGACTCAAA	"ООО ""НЕВА-БИО"""	07.17.2025	"ООО ""НЕВА-БИО""/БЛМ/УТ1195"	24.07.2025	finished	2025-07-17
+6139	6268	none	none	10-15	18	LCR	RP-картридж	TTCGCAGGCGTACACTTT	"ООО ""НЕВА-БИО"""	07.17.2025	"ООО ""НЕВА-БИО""/БЛМ/УТ1195"	24.07.2025	finished	2025-07-17
+6140	6269	none	none	10-15	19	HCF	RP-картридж	TGCACAACGCCAAGACTAA	"ООО ""НЕВА-БИО"""	07.17.2025	"ООО ""НЕВА-БИО""/БЛМ/УТ1195"	24.07.2025	finished	2025-07-17
+6141	6270	none	none	10-15	20	HCR	RP-картридж	TCCTTCCCATTCAGCCAATC	"ООО ""НЕВА-БИО"""	07.17.2025	"ООО ""НЕВА-БИО""/БЛМ/УТ1195"	24.07.2025	finished	2025-07-17
+6142	6271	none	none	10-15	22	GAPDHF	RP-картридж	CTGTACTGTAAGCCAGGTGATG	"ООО ""НЕВА-БИО"""	07.17.2025	"ООО ""НЕВА-БИО""/БЛМ/УТ1195"	24.07.2025	finished	2025-07-17
+6143	6272	none	none	10-15	20	GAPDHR	RP-картридж	GGGCTGCTTTGAGGCTAATA	"ООО ""НЕВА-БИО"""	07.17.2025	"ООО ""НЕВА-БИО""/БЛМ/УТ1195"	24.07.2025	finished	2025-07-17
+6144	6281	none	none	1-3	20	Праймер F2-1	Переосаждение	CACCTTGATGAAGTGCGTGC	Бурыгин Геннадий Леонидович	07.18.2025	Бурыгин Геннадий Леонидович/БЛМ/УТ1222	24.07.2025	finished	2025-07-18
+6145	6282	none	none	1-3	20	Праймер R2-1	Переосаждение	TCCAGAACGAACTGATGGGC	Бурыгин Геннадий Леонидович	07.18.2025	Бурыгин Геннадий Леонидович/БЛМ/УТ1222	24.07.2025	finished	2025-07-18
+6146	6283	none	none	1-3	20	Праймер F2-2	Переосаждение	TCAAGATGCTCAAGGGGCTG	Бурыгин Геннадий Леонидович	07.18.2025	Бурыгин Геннадий Леонидович/БЛМ/УТ1222	24.07.2025	finished	2025-07-18
+6147	6284	none	none	1-3	20	Праймер R2-2	Переосаждение	CTTGTGGATGTCGGTGGGAA	Бурыгин Геннадий Леонидович	07.18.2025	Бурыгин Геннадий Леонидович/БЛМ/УТ1222	24.07.2025	finished	2025-07-18
+6148	6285	none	none	1-3	22	Праймер F2-3	Переосаждение	GGAAGTCGCAGACATCCTTATC	Бурыгин Геннадий Леонидович	07.18.2025	Бурыгин Геннадий Леонидович/БЛМ/УТ1222	24.07.2025	finished	2025-07-18
+6149	6286	none	none	1-3	21	Праймер R2-3	Переосаждение	GCCTTCGAGTTCAAGCAAATC	Бурыгин Геннадий Леонидович	07.18.2025	Бурыгин Геннадий Леонидович/БЛМ/УТ1222	24.07.2025	finished	2025-07-18
+6150	6287	none	none	1-3	20	Праймер F2-4	Переосаждение	TCTCCATCATTGCCCACATC	Бурыгин Геннадий Леонидович	07.18.2025	Бурыгин Геннадий Леонидович/БЛМ/УТ1222	24.07.2025	finished	2025-07-18
+6151	6288	none	none	1-3	22	Праймер R2-4	Переосаждение	GTCGATCAGGTTCAGGTTGTAG	Бурыгин Геннадий Леонидович	07.18.2025	Бурыгин Геннадий Леонидович/БЛМ/УТ1222	24.07.2025	finished	2025-07-18
+6152	6289	none	none	1-3	23	Праймер F2-5	Переосаждение	ACACAGCTTCAATCCTACCTAAC	Бурыгин Геннадий Леонидович	07.18.2025	Бурыгин Геннадий Леонидович/БЛМ/УТ1222	24.07.2025	finished	2025-07-18
+6153	6290	none	none	1-3	22	Праймер R2-5	Переосаждение	GACTTCCTGTTCCTTCACTTCC	Бурыгин Геннадий Леонидович	07.18.2025	Бурыгин Геннадий Леонидович/БЛМ/УТ1222	24.07.2025	finished	2025-07-18
+6154	6291	none	none	1-3	20	Праймер F3-1	Переосаждение	GTTCCTTTTCGTCCAGCACC	Бурыгин Геннадий Леонидович	07.18.2025	Бурыгин Геннадий Леонидович/БЛМ/УТ1222	24.07.2025	finished	2025-07-18
+6155	6292	none	none	1-3	20	Праймер R3-1	Переосаждение	ACCCGATTATCAGAAGCCCG	Бурыгин Геннадий Леонидович	07.18.2025	Бурыгин Геннадий Леонидович/БЛМ/УТ1222	24.07.2025	finished	2025-07-18
+6156	6293	none	none	1-3	20	Праймер F3-2	Переосаждение	GCTCCCAAGTGGCATCAAAG	Бурыгин Геннадий Леонидович	07.18.2025	Бурыгин Геннадий Леонидович/БЛМ/УТ1222	24.07.2025	finished	2025-07-18
+6157	6294	none	none	1-3	20	Праймер R3-2	Переосаждение	GCTGGACGAAAAGGAACTGG	Бурыгин Геннадий Леонидович	07.18.2025	Бурыгин Геннадий Леонидович/БЛМ/УТ1222	24.07.2025	finished	2025-07-18
+6158	6295	none	none	1-3	20	Праймер F3-3	Переосаждение	CACGCTCAGGTAATCGACCA	Бурыгин Геннадий Леонидович	07.18.2025	Бурыгин Геннадий Леонидович/БЛМ/УТ1222	24.07.2025	finished	2025-07-18
+6159	6296	none	none	1-3	20	Праймер R3-3	Переосаждение	ATCTGATCCAGCTGCGTGTC	Бурыгин Геннадий Леонидович	07.18.2025	Бурыгин Геннадий Леонидович/БЛМ/УТ1222	24.07.2025	finished	2025-07-18
+6160	6297	none	none	1-3	20	Праймер F3-4	Переосаждение	CAGCTGCAGGGATTTTTCGT	Бурыгин Геннадий Леонидович	07.18.2025	Бурыгин Геннадий Леонидович/БЛМ/УТ1222	24.07.2025	finished	2025-07-18
+6161	6298	none	none	1-3	20	Праймер R3-4	Переосаждение	AGCTGGGAAGTGGACTTGTG	Бурыгин Геннадий Леонидович	07.18.2025	Бурыгин Геннадий Леонидович/БЛМ/УТ1222	24.07.2025	finished	2025-07-18
+6162	6299	none	none	1-3	20	Праймер F3-5	Переосаждение	GGATCAACTGGAGGGTGTCG	Бурыгин Геннадий Леонидович	07.18.2025	Бурыгин Геннадий Леонидович/БЛМ/УТ1222	24.07.2025	finished	2025-07-18
+6163	6300	none	none	1-3	20	Праймер R3-5	Переосаждение	CTGTACCGTTCCGTCTTGCT	Бурыгин Геннадий Леонидович	07.18.2025	Бурыгин Геннадий Леонидович/БЛМ/УТ1222	24.07.2025	finished	2025-07-18
+6164	6301	none	none	1-3	20	Праймер F3-6	Переосаждение	CCAGGTTGTCCTCCACTTCG	Бурыгин Геннадий Леонидович	07.18.2025	Бурыгин Геннадий Леонидович/БЛМ/УТ1222	24.07.2025	finished	2025-07-18
+6165	6302	none	none	1-3	20	Праймер R3-6	Переосаждение	GAGTCATCGGAACTCGGCAA	Бурыгин Геннадий Леонидович	07.18.2025	Бурыгин Геннадий Леонидович/БЛМ/УТ1222	24.07.2025	finished	2025-07-18
+6166	6303	none	none	1-3	20	Праймер F3-7	Переосаждение	ACTGGCACCCTATACCGAGT	Бурыгин Геннадий Леонидович	07.18.2025	Бурыгин Геннадий Леонидович/БЛМ/УТ1222	24.07.2025	finished	2025-07-18
+6167	6304	none	none	1-3	20	Праймер R3-7	Переосаждение	GTGATCCCATCGCCTGGAAC	Бурыгин Геннадий Леонидович	07.18.2025	Бурыгин Геннадий Леонидович/БЛМ/УТ1222	24.07.2025	finished	2025-07-18
+6168	6305	none	none	1-3	20	Праймер F3-8	Переосаждение	ATCGCTCACGCAACCCATTT	Бурыгин Геннадий Леонидович	07.18.2025	Бурыгин Геннадий Леонидович/БЛМ/УТ1222	24.07.2025	finished	2025-07-18
+6169	6306	none	none	1-3	20	Праймер R3-8	Переосаждение	GCACGGTCTGCTTGTATTGC	Бурыгин Геннадий Леонидович	07.18.2025	Бурыгин Геннадий Леонидович/БЛМ/УТ1222	24.07.2025	finished	2025-07-18
+6170	6307	none	none	1-3	20	Праймер F3-9	Переосаждение	CTCAGCTTTCGCCAGATGGA	Бурыгин Геннадий Леонидович	07.18.2025	Бурыгин Геннадий Леонидович/БЛМ/УТ1222	24.07.2025	finished	2025-07-18
+6171	6308	none	none	1-3	20	Праймер R3-9	Переосаждение	TTGAATCAGATGGCGGCTGT	Бурыгин Геннадий Леонидович	07.18.2025	Бурыгин Геннадий Леонидович/БЛМ/УТ1222	24.07.2025	finished	2025-07-18
+6172	6309	none	none	1-3	20	Праймер F3-10	Переосаждение	CTCATCAAGCCAGACGCTGA	Бурыгин Геннадий Леонидович	07.18.2025	Бурыгин Геннадий Леонидович/БЛМ/УТ1222	24.07.2025	finished	2025-07-18
+6173	6310	none	none	1-3	20	Праймер R3-10	Переосаждение	ACGAGTATGAAGGGCAGCAG	Бурыгин Геннадий Леонидович	07.18.2025	Бурыгин Геннадий Леонидович/БЛМ/УТ1222	24.07.2025	finished	2025-07-18
+6174	6311	none	none	1-3	20	Праймер F3-11	Переосаждение	TCCGTCGAAGTCGTAGAAGC	Бурыгин Геннадий Леонидович	07.18.2025	Бурыгин Геннадий Леонидович/БЛМ/УТ1222	24.07.2025	finished	2025-07-18
+6175	6312	none	none	1-3	20	Праймер R3-11	Переосаждение	GCTTCGCCAACCAGATGTTC	Бурыгин Геннадий Леонидович	07.18.2025	Бурыгин Геннадий Леонидович/БЛМ/УТ1222	24.07.2025	finished	2025-07-18
+6176	6313	none	none	1-3	20	Праймер F3-12	Переосаждение	GGCGTACTGGAACATCTGGT	Бурыгин Геннадий Леонидович	07.18.2025	Бурыгин Геннадий Леонидович/БЛМ/УТ1222	24.07.2025	finished	2025-07-18
+6177	6314	none	none	1-3	20	Праймер R3-12	Переосаждение	GAGGTCTTGTTCAGGCTCGG	Бурыгин Геннадий Леонидович	07.18.2025	Бурыгин Геннадий Леонидович/БЛМ/УТ1222	24.07.2025	finished	2025-07-18
+6178	6315	none	none	1-3	20	Праймер F3-13	Переосаждение	CCTCCAAGCTGATGACGGAG	Бурыгин Геннадий Леонидович	07.18.2025	Бурыгин Геннадий Леонидович/БЛМ/УТ1222	24.07.2025	finished	2025-07-18
+6179	6316	none	none	1-3	20	Праймер R3-13	Переосаждение	GACATGGATGTAGTCGCGGA	Бурыгин Геннадий Леонидович	07.18.2025	Бурыгин Геннадий Леонидович/БЛМ/УТ1222	24.07.2025	finished	2025-07-18
+6180	6317	none	none	1-3	20	Праймер F3-14	Переосаждение	GGGATCGACAAGGTGGTCTT	Бурыгин Геннадий Леонидович	07.18.2025	Бурыгин Геннадий Леонидович/БЛМ/УТ1222	24.07.2025	finished	2025-07-18
+6181	6318	none	none	1-3	20	Праймер R3-14	Переосаждение	TGAAGTAGCGCAGGATGACG	Бурыгин Геннадий Леонидович	07.18.2025	Бурыгин Геннадий Леонидович/БЛМ/УТ1222	24.07.2025	finished	2025-07-18
+6182	6319	none	none	1-3	20	Праймер F3-15	Переосаждение	CACGACCTCGGTTACATCGG	Бурыгин Геннадий Леонидович	07.18.2025	Бурыгин Геннадий Леонидович/БЛМ/УТ1222	24.07.2025	finished	2025-07-18
+6183	6320	none	none	1-3	20	Праймер R3-15	Переосаждение	GCATGATGTTCGGCTGGTTG	Бурыгин Геннадий Леонидович	07.18.2025	Бурыгин Геннадий Леонидович/БЛМ/УТ1222	24.07.2025	finished	2025-07-18
+6184	6321	none	none	1-3	20	Праймер F3-16	Переосаждение	GATGGAGGACGGAGTGAACG	Бурыгин Геннадий Леонидович	07.18.2025	Бурыгин Геннадий Леонидович/БЛМ/УТ1222	24.07.2025	finished	2025-07-18
+6185	6322	none	none	1-3	20	Праймер R3-16	Переосаждение	AAGGTGTCATCAACCCGCAG	Бурыгин Геннадий Леонидович	07.18.2025	Бурыгин Геннадий Леонидович/БЛМ/УТ1222	24.07.2025	finished	2025-07-18
+6186	6323	none	none	1-3	20	Праймер F3-17	Переосаждение	TTGCGGTTCAGGGCATAGAG	Бурыгин Геннадий Леонидович	07.18.2025	Бурыгин Геннадий Леонидович/БЛМ/УТ1222	24.07.2025	finished	2025-07-18
+6187	6324	none	none	1-3	20	Праймер R3-17	Переосаждение	ACGACAAGCTCAAGACCGAG	Бурыгин Геннадий Леонидович	07.18.2025	Бурыгин Геннадий Леонидович/БЛМ/УТ1222	24.07.2025	finished	2025-07-18
+6188	6325	none	none	1-3	20	Праймер F3-18	Переосаждение	TTCTCCAGCGGCATCATCAG	Бурыгин Геннадий Леонидович	07.18.2025	Бурыгин Геннадий Леонидович/БЛМ/УТ1222	24.07.2025	finished	2025-07-18
+6189	6326	none	none	1-3	20	Праймер R3-18	Переосаждение	GCGGTGGACAAGTTCGAGTA	Бурыгин Геннадий Леонидович	07.18.2025	Бурыгин Геннадий Леонидович/БЛМ/УТ1222	24.07.2025	finished	2025-07-18
+6190	6327	none	none	1-3	52	P5_Tn5_VNP	RP-картридж	TCGTCGGCAGCGTCAGATGTGTATAAGAGACAGCGATGAAGCTGGTGGTCAA	БиоЛинк	07.18.2025	БиоЛинк/БЛМ/УТ1225	24.07.2025	finished	2025-07-18
+6191	6328	none	none	1-3	54	P7_Tn5_VNP	RP-картридж	GTCTCGTGGGCTCGGAGATGTGTATAAGAGACAGCGCCACGAACTTGTAGCATC	БиоЛинк	07.18.2025	БиоЛинк/БЛМ/УТ1225	24.07.2025	finished	2025-07-18
+6192	6329	none	none	1-3	22	3Fs	ПААГ	GCTAAGATCTGAACCCGAGACG	БиоЛинк	07.18.2025	БиоЛинк/БЛМ/УТ1225	24.07.2025	finished	2025-07-18
+6193	6330	none	none	1-3	22	3Rs	ПААГ	TGTGGTAATTGGTGGTGTGGAG	БиоЛинк	07.18.2025	БиоЛинк/БЛМ/УТ1225	24.07.2025	finished	2025-07-18
+6194	6331	none	none	1-3	22	4Fs	ПААГ	AGGAAAGTGGTGCATTGATGGA	БиоЛинк	07.18.2025	БиоЛинк/БЛМ/УТ1225	24.07.2025	finished	2025-07-18
+6195	6332	none	none	1-3	22	5Fs	ПААГ	GTCCCAGCAGGTAGATAGGAGT	БиоЛинк	07.18.2025	БиоЛинк/БЛМ/УТ1225	24.07.2025	finished	2025-07-18
+6196	6333	none	none	1-3	22	5Rs	ПААГ	CACCCGGCCTGTACTCTTATTC	БиоЛинк	07.18.2025	БиоЛинк/БЛМ/УТ1225	24.07.2025	finished	2025-07-18
+6197	6334	none	none	1-3	22	6Fs	ПААГ	CCACTATGCCTGGCCTGAAATA	БиоЛинк	07.18.2025	БиоЛинк/БЛМ/УТ1225	24.07.2025	finished	2025-07-18
+6198	6335	none	none	1-3	22	6Rs	ПААГ	TGTCTTGTTTACCCCCGACATG	БиоЛинк	07.18.2025	БиоЛинк/БЛМ/УТ1225	24.07.2025	finished	2025-07-18
+6199	6336	none	none	1-3	22	7Fs	ПААГ	TGCTTGTCTTTTCTGGACCTGT	БиоЛинк	07.18.2025	БиоЛинк/БЛМ/УТ1225	24.07.2025	finished	2025-07-18
+6200	6337	none	none	1-3	22	7Rs	ПААГ	AGCACCATGAGGGCTATATCCT	БиоЛинк	07.18.2025	БиоЛинк/БЛМ/УТ1225	24.07.2025	finished	2025-07-18
+6201	6338	none	none	1-3	22	8Fs	ПААГ	GCTAGGCAGTGTATGTGTAGGC	БиоЛинк	07.18.2025	БиоЛинк/БЛМ/УТ1225	24.07.2025	finished	2025-07-18
+6202	6339	none	none	1-3	24	8Rs	ПААГ	GCAACCCCAACTATGTTACCTACC	БиоЛинк	07.18.2025	БиоЛинк/БЛМ/УТ1225	24.07.2025	finished	2025-07-18
+6203	6340	none	none	1-3	22	9Fs	ПААГ	ACCAAATCCCAAGTCGTGTGTT	БиоЛинк	07.18.2025	БиоЛинк/БЛМ/УТ1225	24.07.2025	finished	2025-07-18
+6204	6341	none	none	1-3	22	9Rs	ПААГ	CCAGCCCCAGACATTTTAGTGT	БиоЛинк	07.18.2025	БиоЛинк/БЛМ/УТ1225	24.07.2025	finished	2025-07-18
+6205	6342	none	none	1-3	22	10Rs	ПААГ	GCTTTGTGGTGAGGTGTTGAGA	БиоЛинк	07.18.2025	БиоЛинк/БЛМ/УТ1225	24.07.2025	finished	2025-07-18
+6206	6343	none	none	1-3	22	q-1Fs	ПААГ	TGAAACAAAGAAACAGTTGAGC	БиоЛинк	07.18.2025	БиоЛинк/БЛМ/УТ1225	24.07.2025	finished	2025-07-18
+6207	6344	none	none	1-3	22	q-1Rs	ПААГ	TGAGGCAGCTTAAATACCTTTT	БиоЛинк	07.18.2025	БиоЛинк/БЛМ/УТ1225	24.07.2025	finished	2025-07-18
+6208	6345	none	none	1-3	22	q-11Fs	ПААГ	GAGTTGGATTTTTCGTTCTCAC	БиоЛинк	07.18.2025	БиоЛинк/БЛМ/УТ1225	24.07.2025	finished	2025-07-18
+6209	6346	none	none	1-3	22	q-11Rs	ПААГ	TGTGGCTCCATTATTAGCTTTT	БиоЛинк	07.18.2025	БиоЛинк/БЛМ/УТ1225	24.07.2025	finished	2025-07-18
+6210	6347	none	none	5-10	23	BifidoF	RP-картридж	AACGCGTTAAGCATCCCGCCTGG	Kolya	07.21.2025	бакмасса кишечника	24.07.2025	finished	2025-07-21
+6211	6348	none	none	5-10	20	BifidoR	RP-картридж	AGGTAAGGTTCTTCGCGTTG	Kolya	07.21.2025	бакмасса кишечника	24.07.2025	finished	2025-07-21
+6212	6350	none	none	5-10	20	ER-F2	RP-картридж	AGAAGCTTGCTCTTTGCTGA	Kolya	07.21.2025	бакмасса кишечника	24.07.2025	finished	2025-07-21
+6213	6351	none	none	5-10	20	ER-R2	RP-картридж	CTTTGGTCTTGCGACGTTAT	Kolya	07.21.2025	бакмасса кишечника	24.07.2025	finished	2025-07-21
+6214	6353	none	none	5-10	20	Faecalib-F	RP-картридж	TAATCCACCTGGGGAGTACG	Kolya	07.21.2025	бакмасса кишечника	24.07.2025	finished	2025-07-21
+6215	6354	none	none	5-10	20	Faecalib-R	RP-картридж	TGGTAAGGTTCTTCGCGTTG	Kolya	07.21.2025	бакмасса кишечника	24.07.2025	finished	2025-07-21
+6216	6356	none	none	5-10	20	ClostrF	RP-картридж	GTGAAACTCAAAGGAATTGA	Kolya	07.21.2025	бакмасса кишечника	24.07.2025	finished	2025-07-21
+6217	6357	none	none	5-10	20	ClostrR	RP-картридж	TAGGTAAGGTTCTTCGCGTT	Kolya	07.21.2025	бакмасса кишечника	24.07.2025	finished	2025-07-21
+6218	6359	none	none	5-10	20	Lacto-F	RP-картридж	GAAGCTGGAATCGCTAGTAA	Kolya	07.21.2025	бакмасса кишечника	24.07.2025	finished	2025-07-21
+6219	6360	none	none	5-10	20	Lacto-R	RP-картридж	ACACCGCCCGTCACACCATG	Kolya	07.21.2025	бакмасса кишечника	24.07.2025	finished	2025-07-21
+6220	6362	none	none	5-10	19	CandF	RP-картридж	TACAGTGAAACTGCGAATG	Kolya	07.21.2025	бакмасса кишечника	24.07.2025	finished	2025-07-21
+6221	6363	none	none	5-10	21	CandR	RP-картридж	AATAAATACATCCCTTCCAAA	Kolya	07.21.2025	бакмасса кишечника	24.07.2025	finished	2025-07-21
+6222	6365	none	none	5-10	21	KlebsF	RP-картридж	TCGACCGCCTGGGGAGTACGG	Kolya	07.21.2025	бакмасса кишечника	24.07.2025	finished	2025-07-21
+6223	6366	none	none	5-10	20	KlebsR	RP-картридж	TAAGGGTTGCGCTCGTTGCG	Kolya	07.21.2025	бакмасса кишечника	24.07.2025	finished	2025-07-21
+6224	6368	none	none	5-10	22	StaphAuF	RP-картридж	ACTAGCCCCATCACTTCAATAA	Kolya	07.21.2025	бакмасса кишечника	24.07.2025	finished	2025-07-21
+6225	6369	none	none	5-10	26	StaphAuR	RP-картридж	TGCAATTGAATACTAAGGAACTACTA	Kolya	07.21.2025	бакмасса кишечника	24.07.2025	finished	2025-07-21
