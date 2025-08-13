@@ -5,14 +5,17 @@ import frontend
 import invoce_backend
 import frontend_oligosynth_panel
 import Synthesis_builder_backend
+import raw_mat_frontend
+import stock_backend
 
 oligo_map_stack = oligos_data_stack()
 
-#IP_addr = '127.0.0.1'
-IP_addr = '192.168.16.145'
+IP_addr = '127.0.0.1'
+#IP_addr = '192.168.16.145'
 
 invoce_tab = invoce_backend.invoce_table(IP_addr, '8012', oligo_map_stack)
 oligomap_tab = Synthesis_builder_backend.Oligomap_backend(IP_addr, '8012', oligo_map_stack)
+stock_tab = stock_backend.stock_backend_model(IP_addr, '8012')
 
 
 app.add_static_files('/img', 'static_images')
@@ -61,7 +64,15 @@ async def oligosynth_panel_page(client):
     oligosynt_front.done_event = oligomap_tab.on_sel_done_btn
     oligosynt_front.do_event = oligomap_tab.on_sel_do_btn
 
-    #print('INIT', oligomap_tab.client_frontend[ip[0]])
+@ui.page('/rawmaterials_panel')
+async def rawmaterials_panel_page(client):
+        await client.connected()
+        ip = client.environ['asgi.scope']['client']
+        navi_front = frontend.navigation_menu(ui)
+
+        rawmat_panel = raw_mat_frontend.rawmaterial_panel(stock_tab, IP_addr, 8012)
+        rawmat_panel.pincode = invoce_tab.get_pincode(ip[0])
+        rawmat_panel.init_frontend()
 
 
 ui.run(storage_secret='NiceGUI_oligo_app_1')

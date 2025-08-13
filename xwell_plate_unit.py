@@ -447,11 +447,16 @@ class XWell_plate:
                                                   f'fill="black" font-size="16">{show_data}</text>')
                 if 'Support type' in list(well.oligo_data['init_row'].keys()):
                     support_type = well.oligo_data['init_row']['Support type']
-                    support = well.oligo_data['init_row']['Support type'][support_type.find('_'):]
+                    if support_type.find('bhq') == -1:
+                        support = well.oligo_data['init_row']['Support type'][support_type.find('_'):]
+                        support = f'size{support}'
+                    else:
+                        support = well.oligo_data['init_row']['Support type'][support_type.find('bhq'):4]
+                        support = support.upper()
                 else:
                     support = ''
                 self.oligo_data_layer.content += (f'<text x="{well.x - 35}" y="{well.y + 5}" '
-                                                  f'fill="black" font-size="14">size{support}</text>')
+                                                  f'fill="black" font-size="14">{support}</text>')
                 if 'CPG, mg' in list(well.oligo_data['init_row'].keys()):
                     amount = well.oligo_data['init_row']['CPG, mg']
                 else:
