@@ -21,9 +21,12 @@ class Oligomap_backend(api_db_interface):
         if ip not in list(self.client.keys()):
             self.client[ip] = pincode
             self.client_frontend[ip] = front.get_model()
+
+        #print(ip, pincode)
         self.client[ip] = pincode
         self.frontend = front
         self.frontend.set_model(self.client_frontend[ip])
+        #print(self.client_frontend[ip])
 
         if ip in list(self.oligomap_stack.input_selected_rows.keys()):
             if len(self.oligomap_stack.input_selected_rows[ip]) > 0:
@@ -170,6 +173,7 @@ class Oligomap_backend(api_db_interface):
     def wells_layer_selector(self, e):
         ip = app.storage.user.get('client_ip')
         self.pincode = self.client[ip]
+        #ui.run_javascript('location.reload()')
 
         if e.value == 'Order layer':
             orders = self.get_orders_by_status('total data')

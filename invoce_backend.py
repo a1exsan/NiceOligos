@@ -300,6 +300,7 @@ class invoce_table(api_db_interface):
 
 
     def on_pincode_change(self, text):
+        #print(self.app.storage.user.get('client_ip'))
         self.client[self.app.storage.user.get('client_ip')] = text.value
         self.client_frontend[self.app.storage.user.get('client_ip')] = self.frontend.get_model()
         #self.frontend.ui.run_javascript('simulateClick()')

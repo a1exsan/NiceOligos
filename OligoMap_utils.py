@@ -16,6 +16,11 @@ class api_db_interface():
     def headers(self):
         return {'Authorization': f'Pincode {self.pincode}'}
 
+    def check_pincode(self):
+        url = f'{self.api_db_url}/check_pincode'
+        ret = requests.get(url, headers=self.headers())
+        return ret
+
 class oligos_data_stack():
     def __init__(self):
         self.input_selected_rows = {}

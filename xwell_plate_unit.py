@@ -209,15 +209,15 @@ def random_color_hex(r_min=0, r_max=255, g_min=0, g_max=255, b_min=0, b_max=255)
 
 
 class XWell_plate:
-    def __init__(self, frontend, backend):
-        self.frontend = frontend
-        self.backend = backend
+    def __init__(self):
         self.plate_bkg = 'plate_bkg_2.png'
         self.well_rad = 45
         self.mouse_down = False
         self.wells = {}
         self.selected_wells = {}
         self.layer_selector = 'Base layer'
+        self.order_colors = {}
+        self.order_label = {}
         for x, num in zip(range(130, 1300, 100), '1 2 3 4 5 6 7 8 9 10 11 12'.split(' ')):
             for y, symb in zip(range(130, 900, 100), 'A B C D E F G H'.split(' ')):
                 self.wells[(x, y)] = Well(x, y, symb, num)
@@ -315,7 +315,7 @@ class XWell_plate:
 
     def load_selrows(self, selRows):
         self.clear_wells()
-        self.frontend.xwells_obj.well_selection_by_position(selRows)
+        self.well_selection_by_position(selRows)
         #self.total_select()
 
         row_index = 0
@@ -332,9 +332,12 @@ class XWell_plate:
 
     def get_copy(self):
         return {
+            'layer_selector': self.layer_selector,
             'plate_bkg': self.plate_bkg,
             'well_rad': self.well_rad,
             'mouse_down': self.mouse_down,
+            'order_colors': self.order_colors,
+            'order_label': self.order_label,
             'wells': self.wells.copy(),
             'selected_wells': self.selected_wells.copy(),
         }
@@ -346,6 +349,10 @@ class XWell_plate:
         self.mouse_down = content['mouse_down']
         self.wells = content['wells'].copy()
         self.selected_wells = content['selected_wells'].copy()
+
+        self.layer_selector = content['layer_selector']
+        self.order_colors = content['order_colors']
+        self.order_label = content['order_label']
 
         self.draw_selected_wells()
         #self.draw_oligo_data_layer()
@@ -517,7 +524,7 @@ class XWell_plate:
         data = pd.DataFrame(order_tab)
         self.order_colors = {}
         self.order_label = {}
-        for key, well in zip(self.frontend.xwells_obj.wells.keys(), self.frontend.xwells_obj.wells.values()):
+        for key, well in zip(self.wells.keys(), self.wells.values()):
             if 'init_row' in list(well.oligo_data.keys()):
                 self.wells[key].oligo_data['invoce'] = (
                     data[data['#'] == well.oligo_data['init_row']['Order id']]['order id'].max())
@@ -531,8 +538,6 @@ class XWell_plate:
         for order_id in list(self.order_colors.keys()):
             color = random_color_hex(100, 250, 100, 250, 100, 250)
             self.order_colors[order_id] = color
-            #print(order_id, color)
-
 
     def draw_order_layer(self):
         self.oligo_data_layer.content = ""
@@ -791,6 +796,3 @@ class XWell_plate:
                 else:
                     self.selected_wells[coord['key']] = coord['well']
                     self.draw_selected_wells()
-
-            self.backend.client_frontend[ip] = self.frontend.get_model()
-            #print('GET MODEL', self.backend.client_frontend[ip])

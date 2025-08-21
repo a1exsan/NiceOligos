@@ -1,13 +1,14 @@
-from nicegui import ui
+from nicegui import app, ui
 from raw_mat_widget import rawMatWidget
 from raw_mat_widget import infoPanel
 
-class rawmaterial_panel():
-    def __init__(self, backend_model, ip_addr, port):
-        self.backend_model = backend_model
-        self.model = {}
+class rawmaterial_panel_page_model():
+    def __init__(self, ip_addr, port):
         self.ip_addr, self.port = ip_addr, port
         self.pincode = ''
+
+        self.init_frontend()
+        self.init_data()
 
 
     def widgets_stack(self):
@@ -61,6 +62,7 @@ class rawmaterial_panel():
             rawMatWidget(self.ip_addr, self.port, 'INIT_BASE_CODE_OLIGO_LAB_0000172', self.pincode)
 
     def init_frontend(self):
+        self.pincode = app.storage.user.get('pincode')
         if self.pincode != '':
             with (((ui.grid(columns=2).classes("w-full").style(f"grid-template-columns: {1550}px {1200}px")))):
                 with ui.column():
@@ -75,6 +77,9 @@ class rawmaterial_panel():
                         #self.on_search = ui.button('Search', color="#00a100").classes('w-[200px]')
 
                     #self.search_text.on_value_change = self.info_panel.search_by_name
+
+    def init_data(self):
+        self.pincode = app.storage.user.get('pincode')
 
 
 
