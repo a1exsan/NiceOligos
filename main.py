@@ -1,10 +1,10 @@
 from nicegui import ui, app
 from OligoMap_utils import oligos_data_stack
 
-from frontend import invoice_page_model
-from frontend import navigation_menu
-from frontend_oligosynth_panel import oligosynth_panel_page_model
-from raw_mat_frontend import rawmaterial_panel_page_model
+from invoce_page import invoice_page_model
+from invoce_page import navigation_menu
+from oligosynth_page import oligosynth_panel_page_model
+from raw_material_page import rawmaterial_panel_page_model
 
 oligo_map_stack = oligos_data_stack()
 

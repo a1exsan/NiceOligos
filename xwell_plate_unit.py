@@ -543,7 +543,10 @@ class XWell_plate:
         self.oligo_data_layer.content = ""
         for key, well in zip(self.wells.keys(), self.wells.values()):
             if 'init_row' in list(well.oligo_data.keys()):
-                color = self.order_colors[well.oligo_data['invoce']]
+                if 'invoce' in list(well.oligo_data.keys()):
+                    color = self.order_colors[well.oligo_data['invoce']]
+                else:
+                    color = 'red'
                 self.oligo_data_layer.content += (f'<circle cx="{well.x}" cy="{well.y}" r="32" fill="{color}" '
                                                   f'stroke="{color}" stroke-width="6" />')
                 #self.oligo_data_layer.content += (f'<circle cx="{well.x}" cy="{well.y}" r="20" fill="{well.dye_color}" '

@@ -17,7 +17,7 @@ class navigation_menu(api_db_interface):
         super().__init__(api_IP, db_port)
 
         dark = ui.dark_mode(True)
-        #ui.switch('Dark mode').bind_value(dark)
+
         self.pincode = ''
 
         navigation = ui.row()
@@ -41,7 +41,8 @@ class navigation_menu(api_db_interface):
             ui.notify('pincode verified')
 
     def init_data(self):
-        try:
+        self.pincode = ''
+        if 'pincode' in list(app.storage.user.keys()):
             self.pincode = app.storage.user.get('pincode')
             self.on_pincode_change.value = self.pincode
             if self.check_pincode().status_code == 200:
@@ -49,8 +50,6 @@ class navigation_menu(api_db_interface):
             else:
                 ui.notify('Please, Enter pincode')
                 self.on_pincode_change.value = ''
-        except:
-            self.pincode = ''
 
 
 class invoice_page_model(api_db_interface):
@@ -435,7 +434,8 @@ class invoice_page_model(api_db_interface):
 
 
     def load_history_ivoces(self):
-        self.pincode = app.storage.user.get('pincode')
+        if 'pincode' in list(app.storage.user.keys()):
+            self.pincode = app.storage.user.get('pincode')
         if len(self.pincode) == 4:
             url = f'{self.api_db_url}/get_all_tab_data/{self.status_hist_db}/main_tab'
             ret = requests.get(url, headers=self.headers())

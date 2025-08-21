@@ -62,7 +62,8 @@ class rawmaterial_panel_page_model():
             rawMatWidget(self.ip_addr, self.port, 'INIT_BASE_CODE_OLIGO_LAB_0000172', self.pincode)
 
     def init_frontend(self):
-        self.pincode = app.storage.user.get('pincode')
+        if 'pincode' in list(app.storage.user.keys()):
+            self.pincode = app.storage.user.get('pincode')
         if self.pincode != '':
             with (((ui.grid(columns=2).classes("w-full").style(f"grid-template-columns: {1550}px {1200}px")))):
                 with ui.column():
@@ -79,7 +80,8 @@ class rawmaterial_panel_page_model():
                     #self.search_text.on_value_change = self.info_panel.search_by_name
 
     def init_data(self):
-        self.pincode = app.storage.user.get('pincode')
+        if 'pincode' in list(app.storage.user.keys()):
+            self.pincode = app.storage.user.get('pincode')
 
 
 

@@ -832,8 +832,11 @@ class oligosynth_panel_page_model(api_db_interface):
             self.accord_tab.options['rowData'] = app.storage.user.get('accord_tab_rowdata')
             self.accord_tab.update()
 
-        self.synth_name_label.text = app.storage.user.get('synth_name_label')
-        self.synth_number_label.text = app.storage.user.get('synth_number_label')
+        if 'synth_name_label' in list(app.storage.user.keys()):
+            self.synth_name_label.text = app.storage.user.get('synth_name_label')
+
+        if 'synth_number_label' in list(app.storage.user.keys()):
+            self.synth_number_label.text = app.storage.user.get('synth_number_label')
 
         if 'scale_selector_value' in list(app.storage.user.keys()):
             self.synth_scale_selector.value = app.storage.user.get('scale_selector_value')
