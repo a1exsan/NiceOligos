@@ -3,11 +3,444 @@ from OligoMap_utils import api_db_interface
 import requests
 import pandas as pd
 
+
+class raw_mat_base_widget(api_db_interface):
+    def __init__(self, api_IP, db_port, unicode, pincode):
+        super().__init__(api_IP, db_port)
+
+        self.db_name = 'stock_oligolab_5.db'
+        self.strftime_format = "%Y-%m-%d"
+        self.time_format = "%H:%M:%S"
+
+        self.unicode = unicode
+        self.pincode = pincode
+
+    def get_info_from_base(self):
+        self.info_data = self.get_unicode_data_in_tab()
+        self.remain = self.get_remaining_stock(self.unicode)
+        #print(self.info_data)
+        #print(self.remain)
+
+    def get_remaining_stock(self, unicode):
+        url = f"{self.api_db_url}/get_remaining_stock/{self.db_name}/{unicode}"
+        input_ret = requests.get(url, headers=self.headers())
+        try:
+            return input_ret.json()
+        except:
+            return {'exist': 0.}
+
+    def get_unicode_data_in_tab(self):
+        url = f'{self.api_db_url}/get_keys_data/{self.db_name}/total_tab/unicode/{self.unicode}'
+        ret = requests.get(url, headers=self.headers())
+        return ret.json()
+
+
+class event():
+    def __init__(self):
+        self.type = 'null'
+        self.x = 0
+        self.y = 0
+
+class menuItem():
+    def __init__(self, name, color, canvas):
+        self.name = name
+        self.color = color
+        self.canvas = canvas
+
+        self.pos_x = 10
+        self.pos_y = 10
+        self.width = 110
+        self.height = 40
+
+        self.draw(event())
+
+    def check_coord_click(self, e):
+        if (e.image_x >= self.pos_x) and (e.image_x <= self.width + self.pos_x):
+            if (e.image_y >= self.pos_y) and (e.image_y <= self.height + self.pos_y):
+                return True
+            else:
+                return False
+        else:
+            return False
+
+    def draw(self, e):
+        fillop = 0.2
+        if e.type == 'mousedown':
+            fillop = 0.6
+
+        self.canvas.content = ""
+        self.canvas.content += (f'<text x="{self.pos_x + 8}" y="{self.pos_y + 25}" '
+                                      f'fill="white" font-size="20">{self.name}</text>')
+        self.canvas.content += (f'<rect x={self.pos_x} y={self.pos_y} '
+                               f'width={self.width} height={self.height} '
+                                   f' rx=10 ry=10 fill="{self.color}" fill-opacity="{fillop}"'
+                                   f'stroke="{self.color}" stroke-width="4"/>')
+
+    def on_click(self, e):
+        pass
+
+    def do_mousedown(self, e):
+        if self.check_coord_click(e):
+            self.draw(e)
+            self.on_click(e)
+
+    def do_mouseup(self, e):
+        self.draw(e)
+
+
+class infoPanel_menu():
+    def __init__(self, layer):
+        self.items = {}
+        self.layer = layer
+        self.items['show info'] = menuItem('Show info', 'teal', self.layer)
+
+    def do_mousedown(self, e):
+        for item in self.items.values():
+            item.do_mousedown(e)
+
+    def do_mouseup(self, e):
+        for item in self.items.values():
+            item.do_mouseup(e)
+
+# red (красный)
+# orange (оранжевый)
+# amber (янтарный)
+# yellow (жёлтый)
+# lime (лаймовый)
+# green (зелёный)
+# emerald (изумрудный)
+# teal (сине-зелёный)
+# cyan (голубой)
+# sky (небесный)
+# blue (синий)
+# indigo (индиго)
+# violet (фиолетовый)
+# purple (пурпурный)
+# fuchsia (фуксия)
+# pink (розовый)
+# rose (роза)
+# slate (сланцевый)
+# gray (серый)
+# zinc (цинковый)
+# neutral (нейтральный)
+# stone (каменный)
+
+#Каждый цвет имеет оттенки с номерами 50, 100, 200… до 950, где 50 — самый светлый, 950 — самый тёмный. Например, для синего это могут быть классы text-blue-500 или bg-blue-200.
+
+
+class rawMatList(api_db_interface):
+    def __init__(self, api_IP, db_port, pincode, image, label_obj):
+        super().__init__(api_IP, db_port)
+        self.image = image
+        self.label_obj = label_obj
+        self.pincode = pincode
+        self.visible = True
+
+        self.db_name = 'stock_oligolab_5.db'
+        self.strftime_format = "%Y-%m-%d"
+        self.time_format = "%H:%M:%S"
+
+        self.width = 1000
+        self.height = 800
+        self.search_top = 10
+        self.scrol_width = 20
+        self.menu_height = 100
+
+        self.search_color = 'orange'
+        self.selection_color = 'yellow'
+        self.border_color = 'orange'
+        self.selected_list_color = 'green'
+
+        self.search_layer = self.image.add_layer()
+        self.search_selection_layer = self.image.add_layer()
+        self.selected_list_layer = self.image.add_layer()
+
+        self.scroll_layer = self.image.add_layer()
+        self.scroll_len = 30
+        self.scroll_pos = 2
+        self.scroll_yy = 2
+        self.scroll_down = False
+        self.scroll_border = self.height - self.menu_height - self.scroll_len - 5
+
+        self.pushed_obj = {}
+        self.selected_list = {}
+        self.selected_row = {}
+
+        self.main_tab_data_df = pd.DataFrame(self.get_all_data_in_tab('total_tab'))
+        self.search_dataframe = self.main_tab_data_df
+        self.search_list_index = 0
+
+        self.on_mouse_down = self.on_down_event
+        self.on_mouse_click = self.on_click_event
+        self.draw_scroll()
+
+    def set_visible(self, value):
+        self.visible = value
+        if not value:
+            d = {}
+            d['self.search_layer'] = self.search_layer.content
+            d['self.search_selection_layer'] = self.search_selection_layer.content
+            d['self.selected_list_layer'] = self.selected_list_layer.content
+            d['self.scroll_layer'] = self.scroll_layer.content
+
+            self.search_layer.content = ""
+            self.search_selection_layer.content = ""
+            self.selected_list_layer.content = ""
+            self.scroll_layer.content = ""
+
+            app.storage.user['raw_list_dict'] = d
+        else:
+            if 'raw_list_dict' in list(app.storage.user.keys()):
+                d = app.storage.user.get('raw_list_dict')
+                self.search_layer.content = d['self.search_layer']
+                self.search_selection_layer.content = d['self.search_selection_layer']
+                self.selected_list_layer.content = d['self.selected_list_layer']
+                self.scroll_layer.content = d['self.scroll_layer']
+
+
+
+    def do_mousedown(self, e):
+        if self.visible:
+            x, y = e.image_x, e.image_y
+            if self.check_scroll_catching(x, y):
+                self.scroll_down = True
+                self.scroll_yy = y
+            self.on_mouse_down(e)
+
+    def do_mousemove(self, e):
+        if self.visible:
+            x, y = e.image_x, e.image_y
+            if self.scroll_down:
+                self.move_scroll(y)
+            if self.search_layer.content != "":
+                self.draw_search_selection(x, y)
+
+
+    def do_mouseup(self, e):
+        if self.visible:
+            x, y = e.image_x, e.image_y
+            self.scroll_down = False
+
+    def do_mouseclick(self, e):
+        if self.visible:
+            self.on_mouse_click(e)
+
+
+    def check_seldown_event(self, key, y):
+        for key in self.search_dict.keys():
+            if (y >= key[1]) and (y <= key[3]):
+                return True
+        return False
+
+    def check_selection_list_area(self, e):
+        if e.image_y >= self.menu_height + 10:
+            return True
+        else:
+            return False
+
+    def on_down_event(self, e):
+        if self.check_selection_list_area(e):
+            if not e.ctrl:
+                self.selected_list = {}
+            if 'key' in list(self.selected_row.keys()):
+                if self.check_seldown_event(self.selected_row['key'], e.image_y):
+                    self.pushed_obj = self.selected_row.copy()
+            if 1 in list(self.selected_row.keys()):
+                self.label_obj.set_text(f"Info panel:  <<  {self.pushed_obj[1]}  >>")
+                ui.notify(self.selected_row)
+
+        self.draw_selected_list()
+
+    def on_click_event(self, e):
+        if 'key' in list(self.pushed_obj.keys()):
+            self.selected_list[self.pushed_obj['key']] = self.pushed_obj.copy()
+        if e.shift:
+            pass
+        self.draw_selected_list()
+
+    def draw(self):
+        self.base_layer.content = (f'<rect x=0 y=0 width={self.width} height={self.height} '
+                                   f' rx=10 ry=10 fill="none" '
+                                   f'stroke="{self.border_color}" stroke-width="4"/>')
+        self.draw_scroll()
+
+    def draw_scroll(self):
+        self.scroll_layer.content = ""
+
+        self.scroll_layer.content = (f'<rect x={self.width - self.scrol_width} y={self.menu_height + self.scroll_pos} '
+                                     f'width={15} height={self.scroll_len} '
+                                     f' rx=10 ry=10 fill="none" '
+                                     f'stroke="{self.border_color}" stroke-width="4"/>')
+
+    def draw_search_layer(self, df):
+        self.search_layer.content = ""
+        dd = df.to_dict('records')
+        x, y = 20, self.menu_height
+        self.search_dict = {}
+        for row in dd[self.search_list_index:]:
+            d = row.copy()
+            d['key'] = (x, y, self.width - 20, y + 35)
+            self.search_dict[(x, y, self.width - 20, y + 35)] = d
+
+            self.search_layer.content += (f'<text x="{20}" y="{y + 23}" '
+                                          f'fill="white" font-size="20">{row[1]}</text>')
+
+            self.search_layer.content += (f'<rect x={10} y={y} '
+                                          f'width={self.width - 20 - self.scrol_width} height={35} '
+                                          f'fill="{self.search_color}" fill-opacity="0.2"'
+                                          f'stroke="{self.search_color}" stroke-width="2"/>')
+
+            # print(y, self.height)
+            y += 45
+            if y > self.height:
+                break
+
+    def draw_selected_list(self):
+        self.selected_list_layer.content = ""
+        for row in self.selected_list.values():
+            # print(row)
+            key = row['key']
+            self.selected_list_layer.content += (f'<rect x={10} y={key[1]} '
+                                                 f'width={self.width - 20 - self.scrol_width} height={35} '
+                                                 f'fill="{self.selected_list_color}" fill-opacity="0.2"'
+                                                 f'stroke="{self.selected_list_color}" stroke-width="2"/>')
+
+    def draw_search_selection(self, x, y):
+        self.search_selection_layer.content = ""
+        for key in self.search_dict.keys():
+            if (y >= key[1]) and (y <= key[3]):
+                self.selected_row = self.search_dict[key]
+                self.search_selection_layer.content += (f'<rect x={10} y={key[1]} '
+                                                        f'width={self.width - 20 - self.scrol_width} height={35} '
+                                                        f'fill="{self.selection_color}" fill-opacity="0.2"'
+                                                        f'stroke="{self.selection_color}" stroke-width="2"/>')
+
+    def check_scroll_catching(self, x, y):
+        if (x >= self.width - self.scrol_width) and (x <= self.width - self.scrol_width + 15):
+            if (y >= self.menu_height + self.scroll_pos) and (
+                    y <= self.menu_height + self.scroll_pos + self.scroll_len):
+                return True
+            else:
+                return False
+        else:
+            return False
+
+    def move_scroll(self, y):
+        if (self.scroll_pos > 0) and (self.scroll_pos < self.scroll_border):
+            self.scroll_pos = self.scroll_pos + y - self.scroll_yy
+            if self.scroll_pos <= 0:
+                self.scroll_pos = 2
+            if self.scroll_pos >= self.scroll_border:
+                self.scroll_pos = self.scroll_border - 1
+            self.scroll_yy = y
+
+        if self.search_dataframe.shape[0] >= 16:
+            index = (self.search_dataframe.shape[0] - 16) * (self.scroll_pos - 2) / self.scroll_border
+            index = int(round(index, 0))
+        else:
+            index = 0
+        self.search_list_index = index
+        self.draw_scroll()
+        self.draw_search_layer(self.search_dataframe)
+
+    def search_by_name(self, e):
+        if e.value != '':
+            self.search_dataframe = self.main_tab_data_df[self.main_tab_data_df[1].str.contains(e.value,
+                                                                                                case=False, na=False)]
+        else:
+            self.search_dataframe = self.main_tab_data_df
+
+        self.draw_search_layer(self.search_dataframe)
+
+
+    def get_all_data_in_tab(self, tab_name):
+        url = f'{self.api_db_url}/get_all_tab_data/{self.db_name}/{tab_name}'
+        ret = requests.get(url, headers=self.headers())
+        return ret.json()
+
+
+class descriptionPanel(raw_mat_base_widget):
+    def __init__(self, api_IP, db_port, unicode, pincode, canvas, pos_x=20, pos_y=110, width=960, height=660):
+        super().__init__(api_IP, db_port, unicode, pincode)
+
+        self.main_layer = canvas
+        self.visible = True
+
+        self.pos_x = pos_x
+        self.pos_y = pos_y
+        self.width= width
+        self.height = height
+        self.color = 'neutral'#'orange' # neutral
+
+        self.get_info_from_base()
+        #print(self.info_data)
+        #print(self.remain)
+        #[[1, 'Ацетонитрил. ХЧ', 'INIT_BASE_CODE_OLIGO_LAB_0000001', '1L flask',
+        #  'Ацетонитрил. ХЧ; 80 ppm H2O; для синтеза (необходимо сушить над ситами 3 или 4 ангстрема) и ВЭЖХ', 20, 1]]
+        #{'exist': 21.0}
+        self.draw()
+
+    def draw_desc_string(self, text_line, pos_y):
+        self.main_layer.content += (f'<text x="{self.pos_x + 8}" y="{self.pos_y + pos_y}" '
+                                f'fill="white" font-size="20">{text_line}</text>')
+
+    def draw_description(self):
+        init_s = self.info_data[0][4]
+        curs, str_curs = 0, 0
+        text = ''
+        pos_y = self.height * 2 // 3
+        drawed = False
+        while True:
+            space = init_s.find(' ', curs)
+            if space == -1:
+                space = len(init_s)
+            if len(init_s[str_curs:space]) <= 70:
+                text += f' {init_s[curs: space]}'
+                drawed = False
+            else:
+                text += f' {init_s[curs: space]}'
+                self.draw_desc_string(text, pos_y)
+                drawed = True
+                str_curs = space + 1
+                text = ''
+                pos_y += 25
+            curs = space + 1
+            if curs >= len(init_s):
+                if not drawed and text != '':
+                    self.draw_desc_string(text, pos_y)
+                break
+
+    def draw(self):
+        fillop = 0.2
+
+        self.main_layer.content = ""
+        self.draw_description()
+
+        remain = self.remain['exist']
+        units = self.info_data[0][3]
+        self.main_layer.content += (f'<text x="{self.pos_x + 8}" y="{self.pos_y + 25}" '
+                                f'fill="white" font-size="20">Остаток на складе: {remain} {units}</text>')
+        self.main_layer.content += (f'<rect x={self.pos_x} y={self.pos_y} '
+                                f'width={self.width} height={self.height} '
+                                f' rx=10 ry=10 fill="{self.color}" fill-opacity="{fillop}"'
+                                f'stroke="{self.color}" stroke-width="4"/>')
+
+    def set_visible(self, value):
+        self.visible = value
+        if value:
+            self.draw()
+        else:
+            self.main_layer.content = ""
+
+
+
 class infoPanel(api_db_interface):
 
-    def __init__(self, api_IP, db_port, pincode):
+    def __init__(self, api_IP, db_port, pincode, lbl_obj):
         super().__init__(api_IP, db_port)
+        self.api_IP, self.db_port = api_IP, db_port
         self.pincode = pincode
+        self.label_obj = lbl_obj
         self._bkg = 'infopanel_bkg_2.png'
 
         self.db_name = 'stock_oligolab_5.db'
@@ -17,19 +450,26 @@ class infoPanel(api_db_interface):
         self.width = 1000
         self.height = 800
         self.search_top = 10
+        self.scrol_width = 20
+        self.menu_height = 100
 
         self.search_color = 'orange'
         self.selection_color = 'yellow'
         self.border_color = 'orange'
+        self.selected_list_color = 'green'
 
         self.image = ui.interactive_image(f'/img/{self._bkg}', on_mouse=self.mouse_handler,  # cross='red',
                                           events=['mousedown', 'mousemove', 'mouseup', 'click'])
-        self.base_layer = self.image.add_layer()
-        self.search_layer = self.image.add_layer()
-        self.search_selection_layer = self.image.add_layer()
-        self.draw()
 
-        self.main_tab_data_df = pd.DataFrame(self.get_all_data_in_tab('total_tab'))
+        self.base_layer = self.image.add_layer()
+        self.panel_layer = self.image.add_layer()
+        self.info_layer = self.image.add_layer()
+
+        self.draw()
+        self.info_menu = infoPanel_menu(self.panel_layer)
+        self.rawMat = rawMatList(api_IP, db_port, pincode, self.image, self.label_obj)
+
+        self.info_menu.items['show info'].on_click = self.on_show_info_menu_click
 
 
     def draw(self):
@@ -37,78 +477,52 @@ class infoPanel(api_db_interface):
                                    f' rx=10 ry=10 fill="none" '
                                    f'stroke="{self.border_color}" stroke-width="4"/>')
 
+    def on_show_info_menu_click(self, e):
+        self.rawMat.set_visible(not self.rawMat.visible)
 
-    def draw_search_layer(self, df):
-        self.search_layer.content = ""
-        dd = df.to_dict('records')
-        x, y = 20, 10
-        self.search_dict = {}
-        for row in dd:
-            self.search_dict[(x, y, self.width - 20, y + 35)] = row
+        if not self.rawMat.visible:
+            self.info_menu.items['show info'].color = 'red'
+            self.info_menu.items['show info'].name = 'close info'
 
-            self.search_layer.content += (f'<text x="{20}" y="{y + 23}" '
-                                          f'fill="white" font-size="20">{row[1]}</text>')
-
-            self.search_layer.content += (f'<rect x={10} y={y} '
-                                        f'width={self.width - 20} height={35} '
-                                        f'fill="{self.search_color}" fill-opacity="0.2"'
-                                        f'stroke="{self.search_color}" stroke-width="2"/>')
-
-            y += 45
-
-    def draw_search_selection(self, x, y):
-        self.search_selection_layer.content = ""
-        for key in self.search_dict.keys():
-            if (y >= key[1]) and (y <= key[3]):
-                self.selected_row = self.search_dict[key]
-
-                self.search_selection_layer.content += (f'<rect x={10} y={key[1]} '
-                                              f'width={self.width - 20} height={35} '
-                                              f'fill="{self.selection_color}" fill-opacity="0.2"'
-                                              f'stroke="{self.selection_color}" stroke-width="2"/>')
-
+            #if len(self.rawMat.selected_list.values()) > 0:
+                #unicode = self.rawMat.selected_list.values()[0][2]
+            if 2 in list(self.rawMat.pushed_obj.keys()):
+                unicode = self.rawMat.pushed_obj[2]
+            else:
+                unicode = ''
+            self.descript_panel = descriptionPanel(self.api_IP, self.db_port, unicode, self.pincode, self.info_layer)
+        else:
+            if self.descript_panel != None:
+                self.descript_panel.set_visible(False)
+            self.info_menu.items['show info'].color = 'teal'
+            self.info_menu.items['show info'].name = 'show info'
 
     def mouse_handler(self, e: events.MouseEventArguments):
         x, y = e.image_x, e.image_y
 
+        if e.type == 'mousedown':
+            self.rawMat.do_mousedown(e)
+            self.info_menu.do_mousedown(e)
+
         if e.type == 'mousemove':
-            if self.search_layer.content != "":
-                self.draw_search_selection(x, y)
+            self.rawMat.do_mousemove(e)
+
+        if e.type == 'mouseup':
+            self.rawMat.do_mouseup(e)
+            self.info_menu.do_mouseup(e)
 
         if e.type == 'click':
-            pass
-
-
-    def search_by_name(self, e):
-        self.search_dataframe = self.main_tab_data_df[self.main_tab_data_df[1].str.contains(e.value,
-                                                                                            case=False, na=False)]
-        if e.value != '':
-            self.draw_search_layer(self.search_dataframe)
-        else:
-            self.search_layer.content = ""
-
-
-    def get_all_data_in_tab(self, tab_name):
-        url = f'{self.api_db_url}/get_all_tab_data/{self.db_name}/{tab_name}'
-        ret = requests.get(url, headers=self.headers())
-        return ret.json()
+            self.rawMat.do_mouseclick(e)
 
 
 
 
-class rawMatWidget(api_db_interface):
+class rawMatWidget(raw_mat_base_widget):
 
     def __init__(self, api_IP, db_port, unicode, pincode):
-        super().__init__(api_IP, db_port)
+        super().__init__(api_IP, db_port, unicode, pincode)
 
-        self.db_name = 'stock_oligolab_5.db'
-        self.strftime_format = "%Y-%m-%d"
-        self.time_format = "%H:%M:%S"
-
-        self.unicode = unicode
         self.lable = 'raw material'
-
-        self.pincode = pincode
         self.widget_bkg = 'widget_bkg_2.png'
 
         self.width = 150
@@ -168,22 +582,3 @@ class rawMatWidget(api_db_interface):
 
         if e.type == 'click':
             self.get_info_from_base()
-
-    def get_info_from_base(self):
-        self.info_data = self.get_unicode_data_in_tab()
-        self.remain = self.get_remaining_stock(self.unicode)
-        #print(self.info_data)
-        #print(self.remain)
-
-    def get_remaining_stock(self, unicode):
-        url = f"{self.api_db_url}/get_remaining_stock/{self.db_name}/{unicode}"
-        input_ret = requests.get(url, headers=self.headers())
-        try:
-            return input_ret.json()
-        except:
-            return {'exist': 0.}
-
-    def get_unicode_data_in_tab(self):
-        url = f'{self.api_db_url}/get_keys_data/{self.db_name}/total_tab/unicode/{self.unicode}'
-        ret = requests.get(url, headers=self.headers())
-        return ret.json()

@@ -69,12 +69,12 @@ class rawmaterial_panel_page_model():
                 with ui.column():
                     self.widgets_stack()
                 with ui.column():
-                    ui.label('Info panel:').style('font-size: 30px;')
-                    self.info_panel = infoPanel(self.ip_addr, self.port, self.pincode)
+                    self.lbl_info_panel = ui.label('Info panel:').style('font-size: 30px;')
+                    self.info_panel = infoPanel(self.ip_addr, self.port, self.pincode, self.lbl_info_panel)
                     with ui.row():
                         ui.label('Search by name:').style('font-size: 30px;')
                         self.search_text = ui.input(label='', placeholder='Search name',
-                                                    on_change=self.info_panel.search_by_name).style('font-size: 30px;').classes('w-[700px]')
+                                                    on_change=self.info_panel.rawMat.search_by_name).style('font-size: 30px;').classes('w-[700px]')
                         #self.on_search = ui.button('Search', color="#00a100").classes('w-[200px]')
 
                     #self.search_text.on_value_change = self.info_panel.search_by_name
