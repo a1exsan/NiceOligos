@@ -594,6 +594,8 @@ class XWell_plate:
         if 'init_row' in list(well.oligo_data.keys()):
             if well.oligo_data['init_row']['Do cart']:
                 ret = 'RP-Cart'
+            elif well.oligo_data['init_row']['Do sed']:
+                ret = 'Sediment'
             else:
                 ret = 'HPLC'
             if well.oligo_data['init_row']['Wasted']:
