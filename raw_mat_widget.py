@@ -788,17 +788,19 @@ class rawMatWidget(raw_mat_base_widget):
         self.info_layer.content += (f'<text x="{10}" y="{15}" '
                                                   f'fill="white" font-size="12">{name}</text>')
         fill_color = 'green'
+        fill_const = 20
         fill_width_div = 1
         if self.remain['exist'] <= self.info_data[0][5]:
             fill_color = 'red'
             fill_width_div = 2
+            fill_const = 0
         #self.info_layer.content += (f'<text x="{15}" y="{self.title_height + 25}" '
         #                            f'fill="white" font-size="10">{self.info_data[0][3]}</text>')
         amount = f"{round(self.remain['exist'], 2)} / {self.info_data[0][5]}"
         self.info_layer.content += (f'<text x="{15}" y="{self.title_height + 15}" '
                                     f'fill="white" font-size="10">{amount}</text>')
         self.info_layer.content += (f'<rect x=8 y={self.title_height} '
-                                    f'width={self.width // fill_width_div - 18} height={self.title_height} '
+                                    f'width={self.width // fill_width_div - fill_const} height={self.title_height} '
                                     f'fill="{fill_color}" fill-opacity="0.4"'
                                     f'stroke="{fill_color}" stroke-width="2"/>')
 

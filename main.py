@@ -5,11 +5,12 @@ from invoce_page import invoice_page_model
 from invoce_page import navigation_menu
 from oligosynth_page import oligosynth_panel_page_model
 from raw_material_page import rawmaterial_panel_page_model
+from chemicals_page import chemicals_page_model
 
 oligo_map_stack = oligos_data_stack()
 
-IP_addr = '127.0.0.1'
-#IP_addr = '192.168.16.145'
+#IP_addr = '127.0.0.1'
+IP_addr = '192.168.16.145'
 
 app.add_static_files('/img', 'static_images')
 
@@ -33,6 +34,11 @@ def oligosynth_panel_page(client):
 def rawmaterials_panel_page():
         navi_front = navigation_menu(IP_addr, '8012')
         rawmat_panel = rawmaterial_panel_page_model(IP_addr, 8012)
+
+@ui.page('/chemicals_panel')
+def chemicals_panel_page():
+        navi_front = navigation_menu(IP_addr, '8012')
+        chem_page = chemicals_page_model(IP_addr, 8012)
 
 
 ui.run(storage_secret='NiceGUI_oligo_app_1')

@@ -5,3 +5,4 @@ oligoMass
 matplotlib
 nicegui-tabulator
 openpyxl
+pubchempy

@@ -11,6 +11,48 @@ from oligoMass import molmassOligo as mmo
 from datetime import datetime
 from datetime import timedelta
 
+class change_status_dialog(api_db_interface):
+    def __init__(self, api_IP, db_port, pincode, rowdata):
+        super().__init__(api_IP, db_port)
+        self.pincode = pincode
+        self.db_name = 'scheduler_oligolab_2.db'
+
+        self.rowdata = rowdata
+
+        status_list = [
+            'in queue',
+            'synthesis',
+            'purification',
+            'formulation',
+            'finished',
+            'arhive'
+        ]
+
+        with ui.dialog() as self.dialog:
+            with ui.card():
+                ui.label('Установить статус:').style('font-size: 20px;')
+                ui.label(f'Выбрано олигов: {len(self.rowdata)} ').style('font-size: 20px;')
+                self.set_status = ui.select(options=status_list, with_input=True,
+                                               on_change=self.on_set_status_event).classes('w-[400px]').style('font-size: 20px;')
+                ui.button('Отмена', on_click=self.dialog.close)
+
+    def on_set_status_event(self):
+        for row in self.rowdata:
+            order_id = row['#']
+            self.update_status(order_id, self.set_status.value)
+            #print(order_id, self.set_status.value)
+        self.dialog.close()
+        ui.notify('Выполнено')
+
+    def update_status(self, order_id, order_status):
+        url = f"{self.api_db_url}/update_data/{self.db_name}/orders_tab/{order_id}"
+        r = requests.put(url,
+                         json=json.dumps({
+                             'name_list': ['status'],
+                             'value_list': [order_status]
+                         })
+                         , headers=self.headers())
+
 
 class navigation_menu(api_db_interface):
     def __init__(self, api_IP, db_port):
@@ -26,6 +68,7 @@ class navigation_menu(api_db_interface):
             ui.link('Invoces', '/invoce_panel').style('font-size: 24px;')
             ui.link('Oligo synthesis', '/oligosynth_panel').style('font-size: 24px;')
             ui.link('Raw materials', '/rawmaterials_panel').style('font-size: 24px;')
+            ui.link('Chemicals', '/chemicals_panel').style('font-size: 24px;')
 
 
         self.on_pincode_change = ui.input(label='pincode', placeholder='enter pincode',
@@ -188,6 +231,9 @@ class invoice_page_model(api_db_interface):
                 self.input_date()
                 self.on_print_orders_date_range = ui.button('Print data',
                                                 on_click=self.on_print_orders_date_range_event).classes('w-[200px]')
+                self.change_status_btn = ui.button('Change status', color='green',
+                                                            on_click=self.on_change_status_event).classes(
+                    'w-[200px]')
             with ui.column().classes('w-[2400px]'):
                 self.set_order_tab()
 
@@ -674,6 +720,11 @@ class invoice_page_model(api_db_interface):
         df = data[conditions][columns]
         self.save_passport('data_range', df)
         app.storage.user['invoce_content_tab_rowdata'] = self.invoce_content_tab.options['rowData']
+
+    async def on_change_status_event(self):
+        selrows = await self.invoce_content_tab.get_selected_rows()
+        status_dialog = change_status_dialog(self.db_IP, self.db_port, self.pincode, selrows)
+        status_dialog.dialog.open()
 
 
     def init_data(self):
