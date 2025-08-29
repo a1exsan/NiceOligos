@@ -6,3 +6,4 @@ matplotlib
 nicegui-tabulator
 openpyxl
 pubchempy
+rdkit

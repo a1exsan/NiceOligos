@@ -715,6 +715,12 @@ class XWell_plate:
             pos_list.append(f"{well.symb}{well.num}")
         return pos_list
 
+    def get_selected_rows(self):
+        lb_list = []
+        for key, well in zip(self.selected_wells.keys(), self.selected_wells.values()):
+            if 'init_row' in list(well.oligo_data.keys()):
+                lb_list.append(well.oligo_data['init_row'])
+        return lb_list
 
     def get_selected_labels(self):
         lb_list = []

@@ -9,6 +9,77 @@ from io import BytesIO
 
 import xwell_plate_unit as XWells
 
+class set_param_dialog():
+    def __init__(self, rowdata, selrowdata):
+        self.selrowdata = selrowdata
+        self.rowdata = rowdata
+
+        support_type = ['biocomma_500', 'biocomma_1000', 'biocomma_2000', 'biocomma_3000',
+                        'bhq1_1000_hg', 'bhq2_1000_hg', 'bhq1_1000', 'bhq2_1000',
+                        'bhq3_500', 'PO3_500']
+        cpg_amount = ['1 mg', '2 mg', '3 mg', '4 mg', '5 mg', '6 mg', '7 mg', '8 mg']
+
+        with ui.dialog() as self.dialog:
+            with ui.card():
+                ui.label('Установите параметры').style('font-size: 20px;')
+                ui.label(f'Выбрано строк: {len(self.selrowdata)} ').style('font-size: 20px;')
+
+                self.set_support = ui.select(options=support_type, with_input=True, label='Support type',
+                            on_change=self.on_set_support_type_event).classes('w-[400px]').style('font-size: 20px;')
+
+                self.set_cpg = ui.select(options=cpg_amount, with_input=True, label='Support amount',
+                                            on_change=self.on_set_cpg_amount_event).classes('w-[400px]').style(
+                    'font-size: 20px;')
+
+                with ui.row():
+                    self.volume = ui.input(label='volume').classes('w-[200px]').style('font-size: 20px;')
+                    self.volume_btn = ui.button('Set volume', color='green', on_click=self.on_set_volume_event)
+
+                with ui.row():
+                    self.syn_number = ui.input(label='synth number').classes('w-[200px]').style('font-size: 20px;')
+                    self.syn_number_btn = ui.button('Set synth number', color='green',
+                                                    on_click=self.on_set_syn_number_event)
+
+
+                with ui.row():
+                    ui.button('Подтвердить', on_click=self.on_compleet_settings)
+                    ui.button('Отмена', on_click=self.dialog.close)
+
+
+    def set_param(self, param, value):
+            sel_index, result = [], []
+            if len(self.selrowdata) > 0:
+                sel_index = list(pd.DataFrame(self.selrowdata)['#'])
+            for row in self.rowdata:
+                d = row.copy()
+                if row['#'] in sel_index:
+                    d[param] = value
+                result.append(d)
+            return result
+
+    def on_set_volume_event(self):
+        self.rowdata = self.set_param('Vol, ml', self.volume.value)
+
+    def on_set_syn_number_event(self):
+        self.rowdata = self.set_param('Synt number', self.syn_number.value)
+
+    def on_set_support_type_event(self):
+        self.rowdata = self.set_param('Support type', self.set_support.value)
+
+    def on_set_cpg_amount_event(self):
+        self.rowdata = self.set_param('CPG, mg', self.set_cpg.value)
+
+    def on_compleet_settings(self):
+        self.on_send_data(self.rowdata)
+        self.dialog.close()
+
+    def on_send_data(self, data):
+        pass
+
+
+
+
+
 class oligosynth_panel_page_model(api_db_interface):
     def __init__(self, api_IP, db_port):
         super().__init__(api_IP, db_port)
@@ -28,6 +99,9 @@ class oligosynth_panel_page_model(api_db_interface):
                                                        color="#FF1000").classes('w-[200px]')
                 self.on_selprint_excel_button = ui.button("Print label",
                                                 on_click=self.on_selprint_excel_button_event).classes('w-[200px]')
+                self.set_param_btn = ui.button("Set params", color='green',
+                                                          on_click=self.on_set_param_btn_event).classes(
+                    'w-[200px]')
             ui.label('Cell12')
             with ui.row():
                 self.on_new_oligomap_button = ui.button("New Map", on_click=self.on_new_oligomap_button_event,
@@ -813,6 +887,18 @@ class oligosynth_panel_page_model(api_db_interface):
 
         app.storage.user['accord_tab_rowdata'] = self.accord_tab.options['rowData']
         app.storage.user['oligomap_ag_grid_rowdata'] = self.oligomap_ag_grid.options['rowData']
+
+    def on_set_param_btn_event(self):
+        param_dialog = set_param_dialog(self.oligomap_ag_grid.options['rowData'], self.xwells_obj.get_selected_rows())
+        param_dialog.on_send_data = self.on_set_param_dialog_rowdata
+        param_dialog.dialog.open()
+
+    def on_set_param_dialog_rowdata(self, data):
+        self.oligomap_ag_grid.options['rowData'] = data
+        self.oligomap_ag_grid.update()
+        self.oligomap_rowdata = data
+        self.on_update_oligomap.run_method('click')
+
 
 
     def init_data(self):

@@ -173,15 +173,15 @@ class event():
         self.y = 0
 
 class menuItem():
-    def __init__(self, name, color, canvas, x=10, y=10):
+    def __init__(self, name, color, canvas, x=10, y=10, w=110, h=40):
         self.name = name
         self.color = color
         self.canvas = canvas.add_layer()
 
         self.pos_x = x
         self.pos_y = y
-        self.width = 110
-        self.height = 40
+        self.width = w
+        self.height = h
 
         self.draw(event())
 
@@ -226,6 +226,8 @@ class infoPanel_menu():
         self.items['show info'] = menuItem('Show info', 'teal', self.image)
         self.items['write-off'] = menuItem('Write-off', 'orange', self.image, x=150)
         self.items['write-in'] = menuItem('Write-in', 'teal', self.image, x=270)
+        self.items['add-btn'] = menuItem('Add reagent', 'teal', self.image, x=410, w=130)
+        self.items['edit-btn'] = menuItem('Edit reagent', 'orange', self.image, x=550, w=130)
 
     def do_mousedown(self, e):
         for item in self.items.values():
