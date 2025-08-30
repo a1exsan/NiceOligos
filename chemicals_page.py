@@ -52,15 +52,52 @@ class pubchem_interface():
 
         #ui.notify(out)
 
+class moleculeInfo():
+    def __init__(self, text_struct):
+        self.text_struct = text_struct
+        if text_struct.find('InChI') > -1:
+            self.mol = Chem.inchi.MolFromInchi(text_struct)
+        else:
+            self.mol = Chem.MolFromSmiles(text_struct)
+        if self.mol is None:
+            raise ValueError('Некорректный InChI')
+
+    def draw_svg(self, width=600, height=400):
+        drawer = rdMolDraw2D.MolDraw2DSVG(width, height)
+        rdMolDraw2D.SetDarkMode(drawer)
+        # opts = drawer.drawOptions()
+        drawer.DrawMolecule(self.mol)
+        drawer.FinishDrawing()
+        return drawer.GetDrawingText()
+
+
+    def get_props(self):
+        return {
+            'Mol weight, Da ': round(Descriptors.MolWt(self.mol), 2),
+            'Brutto ': rdMolDescriptors.CalcMolFormula(self.mol),
+            # 'ЛогP (октанол/вода)': Descriptors.MolLogP(mol),
+            # 'Доноры водородных связей': rdMolDescriptors.CalcNumHBD(mol),
+            # 'Акцепторы водородных связей': rdMolDescriptors.CalcNumHBA(mol),
+            # 'TPSA (полярная поверхность)': rdMolDescriptors.CalcTPSA(mol),
+            # 'Число ротируемых связей': Descriptors.NumRotatableBonds(mol),
+            # 'Число колец': Descriptors.RingCount(mol),
+        }
+
 class phys_chem_props_interface():
     def __init__(self):
+        self.mol_lumiprobe_dict = {}
+        self.props = {}
+        self.adduct_props = {}
+
         self.draw()
 
     def draw(self):
         with ui.card():
 
             with ui.column():
-                self.compound_name = ui.input(label='Название материала:').classes('w-[400px]').style('font-size: 20px;')
+                with ui.row():
+                    self.compound_name = ui.input(label='Название материала:').classes('w-[400px]').style('font-size: 20px;')
+                    self.compound_limit = ui.input(label='Нижняя граница:').classes('w-[400px]').style('font-size: 20px;')
                 self.producer = ui.input(label='Производитель:').classes('w-[400px]').style('font-size: 20px;')
                 self.supplyer = ui.input(label='Поставщик:').classes('w-[400px]').style('font-size: 20px;')
                 with ui.row():
@@ -75,7 +112,7 @@ class phys_chem_props_interface():
             self.structure = ui.textarea(on_change=self.draw_structure).classes('w-[1000px]')
 
             with ui.row():
-                self.props = {}
+
                 self.mol_svg = ui.html('')
                 #self.mol_image = ui.image('').style('width: 600px; height: 400px; margin-top: 20px;')
                 with ui.column():
@@ -88,7 +125,7 @@ class phys_chem_props_interface():
             self.structure_adduct = ui.textarea(label='Введити InChi аддукта (это данные для массспектрометрии)',
                                                 on_change=self.draw_adduct_structure).classes('w-[1000px]')
             with ui.row():
-                self.adduct_props = {}
+
                 self.mol_adduct_svg = ui.html('')
                 #self.mol_image = ui.image('').style('width: 600px; height: 400px; margin-top: 20px;')
                 with ui.column():
@@ -97,8 +134,8 @@ class phys_chem_props_interface():
             with ui.row():
                 self.save_data = ui.button('Сохранить', color='green',
                                        on_click=self.save_product_data_to_base).classes('w-[200px]')
-                self.save_data = ui.button('Отмена', color='orange',
-                                       on_click=self.on_cencel).classes('w-[200px]')
+                self.cencel_data = ui.button('Отмена', color='orange',
+                                       on_click=self.do_cencel).classes('w-[200px]')
 
 
     def on_save(self, data):
@@ -107,12 +144,14 @@ class phys_chem_props_interface():
     def save_product_data_to_base(self):
         desc = {}
         desc['name'] = self.compound_name.value
+        desc['low_limit'] = self.compound_limit.value
         desc['producer'] = self.producer.value
         desc['supplyer'] = self.supplyer.value
         desc['price'] = self.price.value
         desc['price_units'] = self.units.value
         desc['price_date'] = datetime.now().date().strftime('%d.%m.%Y')
         desc['price_date_format'] = '%d.%m.%Y'
+        desc['common_description'] = self.description.value
         desc['mol_inchi'] = self.structure.value
         desc['mol_props'] = json.dumps(self.props)
         desc['mol_lumiprobe_data'] = json.dumps(self.mol_lumiprobe_dict)
@@ -124,6 +163,9 @@ class phys_chem_props_interface():
 
     def on_cencel(self):
         pass
+
+    def do_cencel(self):
+        self.on_cencel()
 
     def parse_mol_description(self):
         s = self.mol_description.value
@@ -163,30 +205,13 @@ class phys_chem_props_interface():
         img_str = base64.b64encode(buffer.getvalue()).decode("utf-8")
         return f"data:image/png;base64,{img_str}"
 
-    def draw_mol_svg(self, inchi):
-        mol = Chem.inchi.MolFromInchi(inchi)
-        drawer = rdMolDraw2D.MolDraw2DSVG(600, 400)
-        rdMolDraw2D.SetDarkMode(drawer)
-        #opts = drawer.drawOptions()
-        drawer.DrawMolecule(mol)
-        drawer.FinishDrawing()
-        return drawer.GetDrawingText()
+    def draw_mol_svg(self, text):
+        mol = moleculeInfo(text)
+        return mol.draw_svg(600, 400)
 
-
-    def get_physchem_properties(self, inchi):
-        mol = Chem.inchi.MolFromInchi(inchi)
-        if mol is None:
-            raise ValueError('Некорректный InChI')
-        return {
-            'Mol weight, Da ': round(Descriptors.MolWt(mol), 2),
-            'Brutto ': rdMolDescriptors.CalcMolFormula(mol),
-            #'ЛогP (октанол/вода)': Descriptors.MolLogP(mol),
-            #'Доноры водородных связей': rdMolDescriptors.CalcNumHBD(mol),
-            #'Акцепторы водородных связей': rdMolDescriptors.CalcNumHBA(mol),
-            #'TPSA (полярная поверхность)': rdMolDescriptors.CalcTPSA(mol),
-            #'Число ротируемых связей': Descriptors.NumRotatableBonds(mol),
-            #'Число колец': Descriptors.RingCount(mol),
-        }
+    def get_physchem_properties(self, text):
+        mol = moleculeInfo(text)
+        return mol.get_props()
 
 
 

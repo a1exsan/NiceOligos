@@ -4,6 +4,209 @@ import requests
 import pandas as pd
 import json
 import datetime
+from chemicals_page import phys_chem_props_interface
+import hashlib
+
+class reagent_form_dialog():
+    def __init__(self, data, new=False):
+        self.data = data
+
+        if new:
+            self.data_obj = {}
+            desc = {}
+            desc['name'] = ''
+            desc['low_limit'] = ''
+            desc['producer'] = ''
+            desc['supplyer'] = ''
+            desc['price'] = ''
+            desc['price_units'] = ''
+            desc['price_date'] = datetime.datetime.now().date().strftime('%d.%m.%Y')
+            desc['price_date_format'] = '%d.%m.%Y'
+            desc['common_description'] = ''
+            desc['mol_inchi'] = ''
+            desc['mol_props'] = ''
+            desc['mol_lumiprobe_data'] = ''
+            desc['adduct_inchi'] = ''
+            desc['adduct_props'] = ''
+            self.data_obj['smart'] = desc
+        else:
+            try:
+                self.data_obj = json.loads(data[4])
+            except:
+                self.data_obj = {
+                'simple': {
+                    'name': data[1],
+                    'common_description': data[4],
+                    'price_units': data[3],
+                    'low_limit': data[5],
+                           },
+                'smart' : {}
+                        }
+
+        self.new = new
+        with ui.dialog() as self.dialog:
+            with ui.card().style('width: auto; max-width: none;'):
+                self.phyChemForm = phys_chem_props_interface()
+                if self.data_obj['smart'] == {}:
+                    self.phyChemForm.description.value = self.data_obj['simple']['common_description']
+                    self.phyChemForm.compound_name.value = self.data_obj['simple']['name']
+                    self.phyChemForm.units.value = self.data_obj['simple']['price_units']
+                    self.phyChemForm.compound_limit.value = self.data_obj['simple']['low_limit']
+                else:
+                    self.phyChemForm.description.value = self.data_obj['smart']['common_description']
+                    self.phyChemForm.compound_name.value = self.data_obj['smart']['name']
+                    self.phyChemForm.units.value = self.data_obj['smart']['price_units']
+                    self.phyChemForm.compound_limit.value = self.data_obj['smart']['low_limit']
+                    self.phyChemForm.producer.value = self.data_obj['smart']['producer']
+                    self.phyChemForm.supplyer.value = self.data_obj['smart']['supplyer']
+                    self.phyChemForm.price.value = self.data_obj['smart']['price']
+                    self.phyChemForm.units.value = self.data_obj['smart']['price_units']
+                    self.phyChemForm.structure.value = self.data_obj['smart']['mol_inchi']
+                    if self.data_obj['smart']['mol_inchi'] != '':
+                        self.phyChemForm.draw_structure()
+                    if self.data_obj['smart']['mol_lumiprobe_data'] != '':
+                        mol_desc = json.loads(self.data_obj['smart']['mol_lumiprobe_data'])
+                        self.phyChemForm.mol_description.value = str(mol_desc)
+                        self.phyChemForm.mol_lumiprobe_dict = json.loads(self.data_obj['smart']['mol_lumiprobe_data'])
+                    self.phyChemForm.structure_adduct.value = self.data_obj['smart']['adduct_inchi']
+        self.phyChemForm.on_save = self.do_save
+        self.phyChemForm.on_cencel = self.do_cencel
+
+    def on_save_data(self, data):
+        pass
+
+    def do_cencel(self):
+        self.dialog.close()
+
+    def do_save(self, data):
+        self.data_obj['smart'] = data
+        self.on_save_data(self.data_obj)
+        self.dialog.close()
+
+
+class add_widgets_dialog():
+    def __init__(self, data, wis):
+        self.data = data
+        self.wis_list = []
+        if len(wis) > 0:
+            self.wis = json.loads(wis[0][4])
+            self.wis_list = [key for key in self.wis.keys()]
+        df = pd.DataFrame([i for i in self.data.values()])
+        dict = {
+            'name': list(df[1]),
+            'unicode': list(df[2]),
+            'label': ['' for i in range(df.shape[0])]
+        }
+        colDefs = [
+            {"field": "name"},
+            {"field": "label", 'editable': True},
+        ]
+        rowData = pd.DataFrame(dict)
+        with ui.dialog() as self.dialog:
+            with ui.card():
+                self.selected_group = ui.label(text='')
+                self.wis_group = ui.select(label='Установите группу:', options=self.wis_list, with_input=True,
+                                            on_change=self.on_select_wis_event).classes('w-[400px]').style(
+                    'font-size: 20px;')
+                self.ag_grid = ui.aggrid(
+                    {
+                        'columnDefs': colDefs,
+                        'rowData': rowData.to_dict('records'),
+                        'rowSelection': 'multiple',
+                        "pagination": True,
+                        # "enableRangeSelection": True,
+                    }
+                    ,
+                    theme='alpine-dark').classes('h-[800px]')  # alpine  material  quartz  balham
+                self.ag_grid.auto_size_columns = True
+                self.tab_rowdata = rowData.to_dict('records')
+                self.ag_grid.on("cellValueChanged", self.update_cell_data)
+
+                with ui.row():
+                    self.new_group_name = ui.input(label='Имя новой группы').classes(
+                        'w-[200px]').style('font-size: 20px;')
+                    self.new_group_btn = ui.button('добавить группу', color='green',
+                                                   on_click=self.on_new_group_event)
+
+                with ui.row():
+                    ui.button('Добавить', on_click=self.on_add_widgets_event)
+                    ui.button('Отмена', on_click=self.dialog.close)
+
+    def on_addjas_new_widgets(self, data):
+        print(data)
+
+    def on_new_group_event(self):
+        self.group = self.new_group_name.value
+        self.selected_group.set_text(self.group)
+
+    def on_add_widgets_event(self):
+        if self.group not in self.wis_list:
+            self.wis[self.group] = []
+        for row in self.tab_rowdata:
+            self.wis[self.group].append([row['unicode'], row['label']])
+
+        self.on_addjas_new_widgets(self.wis)
+        self.dialog.close()
+
+    def update_cell_data(self, e):
+        self.tab_rowdata[e.args["rowIndex"]] = e.args["data"]
+
+    def on_select_wis_event(self):
+        self.group = self.wis_group.value
+        self.selected_group.set_text(self.group)
+
+
+class delete_widget_dialog():
+    def __init__(self, data):
+        self.data = data
+
+        df = pd.DataFrame(self.data['group_data'])
+        rowData = pd.DataFrame({
+            'name': df[1],
+            'delete': [False for i in range(df.shape[0])],
+            'unicode': df[0]
+        })
+
+        colDefs = [
+            {"field": "name"},
+            {"field": "delete", 'editable': True},
+        ]
+        with ui.dialog() as self.dialog:
+            with ui.card():
+                self.ag_grid = ui.aggrid(
+                    {
+                        'columnDefs': colDefs,
+                        'rowData': rowData.to_dict('records'),
+                        'rowSelection': 'multiple',
+                        "pagination": True,
+                        # "enableRangeSelection": True,
+                    }
+                    ,
+                    theme='alpine-dark').classes('h-[800px]')  # alpine  material  quartz  balham
+                self.ag_grid.auto_size_columns = True
+                self.tab_rowdata = rowData.to_dict('records')
+                self.ag_grid.on("cellValueChanged", self.update_cell_data)
+
+                with ui.row():
+                    ui.button('Удалить', on_click=self.do_delete)
+                    ui.button('Отмена', on_click=self.dialog.close)
+
+    def update_cell_data(self, e):
+        self.tab_rowdata[e.args["rowIndex"]] = e.args["data"]
+
+    def on_delete(self, data, meta):
+        print(data)
+
+    def do_delete(self):
+        edited = []
+        for row in self.tab_rowdata:
+            if not row['delete']:
+                edited.append([row['unicode'], row['name']])
+        self.data['wi_list'][self.data['group']] = edited
+        self.on_delete(self.data['wi_list'], self.data['meta'])
+        self.dialog.close()
+
+
 
 
 class writeOff_dialog(api_db_interface):
@@ -213,10 +416,11 @@ class menuItem():
     def do_mousedown(self, e):
         if self.check_coord_click(e):
             self.draw(e)
-            self.on_click(e)
 
     def do_mouseup(self, e):
-        self.draw(e)
+        if self.check_coord_click(e):
+            self.draw(e)
+            self.on_click(e)
 
 
 class infoPanel_menu():
@@ -228,6 +432,7 @@ class infoPanel_menu():
         self.items['write-in'] = menuItem('Write-in', 'teal', self.image, x=270)
         self.items['add-btn'] = menuItem('Add reagent', 'teal', self.image, x=410, w=130)
         self.items['edit-btn'] = menuItem('Edit reagent', 'orange', self.image, x=550, w=130)
+        self.items['add-widget-btn'] = menuItem('Add widgets', 'teal', self.image, x=710, w=130)
 
     def do_mousedown(self, e):
         for item in self.items.values():
@@ -382,7 +587,7 @@ class rawMatList(api_db_interface):
                     self.pushed_obj = self.selected_row.copy()
             if 1 in list(self.selected_row.keys()):
                 self.label_obj.set_text(f"Info panel:  <<  {self.pushed_obj[1]}  >>")
-                ui.notify(self.selected_row)
+                ui.notify(self.selected_row[1])
 
         self.draw_selected_list()
 
@@ -558,11 +763,28 @@ class descriptionPanel(raw_mat_base_widget):
         self.main_layer.content += (f'<text x="{self.pos_x + 8}" y="{self.pos_y + pos_y}" '
                                 f'fill="white" font-size="20">{text_line}</text>')
 
-    def draw_description(self):
+
+    def extract_text_desc(self):
         init_s = self.info_data[0][4]
+        #print(init_s)
+        try:
+            dict = json.loads(init_s)
+            if dict['smart'] != {}:
+                if dict['smart']['mol_lumiprobe_data'] != '{}':
+                    return str(json.loads(dict['smart']['mol_lumiprobe_data']))
+                else:
+                    return dict['smart']['common_description']
+            else:
+                return init_s
+        except:
+            return init_s
+
+    def draw_description(self):
+        #init_s = self.info_data[0][4]
+        init_s = self.extract_text_desc()
         curs, str_curs = 0, 0
         text = ''
-        pos_y = self.height * 2 // 3
+        pos_y = self.chart_height + 100
         drawed = False
         while True:
             space = init_s.find(' ', curs)
@@ -621,6 +843,7 @@ class infoPanel(api_db_interface):
         self.db_name = 'stock_oligolab_5.db'
         self.strftime_format = "%Y-%m-%d"
         self.time_format = "%H:%M:%S"
+        self.widget_db = 'gui_object_content_1.db'
 
         self.width = 1000
         self.height = 800
@@ -646,6 +869,9 @@ class infoPanel(api_db_interface):
         self.info_menu.items['show info'].on_click = self.on_show_info_menu_click
         self.info_menu.items['write-off'].on_click = self.on_write_off_stock
         self.info_menu.items['write-in'].on_click = self.on_write_in_stock
+        self.info_menu.items['edit-btn'].on_click = self.on_edit_reagent_event
+        self.info_menu.items['add-btn'].on_click = self.on_adjast_reagent_event
+        self.info_menu.items['add-widget-btn'].on_click = self.on_add_widgets_event
 
 
     def draw(self):
@@ -678,7 +904,7 @@ class infoPanel(api_db_interface):
 
         self.rawMat.pushed_obj = data[0]
         self.rawMat.label_obj.set_text(f"Info panel:  <<  {self.rawMat.pushed_obj[1]}  >>")
-        ui.notify(self.rawMat.pushed_obj)
+        ui.notify(self.rawMat.pushed_obj[1])
 
         self.rawMat.set_visible(False)
 
@@ -725,6 +951,132 @@ class infoPanel(api_db_interface):
                 self.rawMat.pushed_obj = {}
             else:
                 ui.notify('Выберете объект со склада')
+
+
+    def on_delete_wi_in_stock_event(self, data, meta):
+        wi_list = {}
+        for key in data.keys():
+            if key != 'widgets':
+                wi_list[key] = data[key]
+        #print(meta)
+        meta_list = [meta['#'], meta['object_id'], meta['date'], meta['date_format']]
+        self.update_widgets([meta_list], wi_list)
+        ui.run_javascript('location.reload();')
+
+    def on_delete_wi_in_stock(self, data):
+        del_dialog = delete_widget_dialog(data)
+        del_dialog.on_delete = self.on_delete_wi_in_stock_event
+        del_dialog.dialog.open()
+
+
+    def update_tab(self, rowData):
+        for row in rowData:
+            url = f"{self.api_db_url}/update_data/{self.db_name}/total_tab/{row['#']}"
+            ret = requests.put(url, json=json.dumps(
+                {
+                    'name_list': ['pos_name', 'unicode', 'units', 'description', 'lower_limit', 'actual'],
+                    'value_list': [
+                                            row['Name'], row['Unicode'],
+                                            row['units'], row['Description'],
+                                            row['low limit'], row['actual']
+                    ]
+                }
+            ), headers=self.headers())
+
+
+    def add_row(self, row):
+        url = f"{self.api_db_url}/insert_data/{self.db_name}/total_tab"
+        r = requests.post(url,
+                          json=json.dumps(
+                              [
+                                  row['Name'], row['Unicode'], row['units'], row['Description'], row['low limit'], True
+                              ]
+                          )
+                          , headers=self.headers())
+
+
+    def on_edit_reagent_data(self, data):
+        new_data = {}
+        new_data['#'] = self.rawMat.pushed_obj[0]
+        new_data['Name'] = data['smart']['name']
+        new_data['Unicode'] = self.rawMat.pushed_obj[2]
+        new_data['units'] = data['smart']['price_units']
+        new_data['low limit'] = data['smart']['low_limit']
+        new_data['Description'] = json.dumps(data)
+        new_data['actual'] = self.rawMat.pushed_obj[6]
+        #print(new_data)
+        self.update_tab([new_data])
+        ui.run_javascript('location.reload();')
+
+    def on_edit_reagent_event(self, e):
+        if self.rawMat.pushed_obj != {}:
+            #print(self.rawMat.pushed_obj)
+            ReagDialog = reagent_form_dialog(self.rawMat.pushed_obj)
+            ReagDialog.on_save_data = self.on_edit_reagent_data
+            ReagDialog.dialog.open()
+
+    def gen_unicode(self):
+        now = datetime.datetime.now()
+        datetime_str = now.isoformat()
+        hash_object = hashlib.sha256(datetime_str.encode('utf-8'))
+        hash_hex = hash_object.hexdigest()
+        return hash_hex
+
+    def on_adjast_reagent_data(self, data):
+        new_data = {}
+        new_data['Name'] = data['smart']['name']
+        new_data['Unicode'] = self.gen_unicode()
+        new_data['units'] = data['smart']['price_units']
+        new_data['low limit'] = data['smart']['low_limit']
+        new_data['Description'] = json.dumps(data)
+        new_data['actual'] = True
+        #print(new_data)
+        self.add_row(new_data)
+        ui.run_javascript('location.reload();')
+
+    def on_adjast_reagent_event(self, e):
+        ReagDialog = reagent_form_dialog(self.rawMat.pushed_obj, new=True)
+        ReagDialog.on_save_data = self.on_adjast_reagent_data
+        ReagDialog.dialog.open()
+
+    def load_widgets_content(self, object_id):
+        url = f"{self.api_db_url}/get_keys_data/{self.widget_db}/main_tab/object_id/{object_id}"
+        ret = requests.get(url, headers=self.headers())
+        if ret.status_code == 200:
+            return ret.json()
+        else:
+            return []
+
+    def update_widgets(self, wis_meta, wi_list):
+        row = {}
+        row['#'] = wis_meta[0][0]
+        row['object_id'] = wis_meta[0][1]
+        row['date'] = wis_meta[0][2]
+        row['date_format'] = wis_meta[0][3]
+        row['obj_json'] = json.dumps(wi_list)
+
+        #print(row)
+        #print(self.headers())
+        url = f"{self.api_db_url}/update_data/{self.widget_db}/main_tab/{row['#']}"
+        ret = requests.put(url, json=json.dumps(
+                {
+                    'name_list': ['object_id', 'date', 'date_format', 'obj_json'],
+                    'value_list': [
+                                    row['object_id'], row['date'], row['date_format'], row['obj_json']
+                    ]
+                }
+            ), headers=self.headers())
+
+    def on_addjas_new_widgets(self, data):
+        self.update_widgets(self.wis_data, data)
+        ui.run_javascript('location.reload();')
+
+
+    def on_add_widgets_event(self, e):
+        self.wis_data = self.load_widgets_content('raw_material_widgets')
+        add_wi_dialog = add_widgets_dialog(self.rawMat.selected_list, self.wis_data)
+        add_wi_dialog.on_addjas_new_widgets = self.on_addjas_new_widgets
+        add_wi_dialog.dialog.open()
 
 
     def mouse_handler(self, e: events.MouseEventArguments):
