@@ -234,6 +234,9 @@ class invoice_page_model(api_db_interface):
                 self.change_status_btn = ui.button('Change status', color='green',
                                                             on_click=self.on_change_status_event).classes(
                     'w-[200px]')
+                self.update_content_tab_btn = ui.button('Update tab', color='orange',
+                                                   on_click=self.on_update_content_tab_event).classes(
+                    'w-[200px]')
             with ui.column().classes('w-[2400px]'):
                 self.set_order_tab()
 
@@ -314,7 +317,9 @@ class invoice_page_model(api_db_interface):
             }
         ,
         theme='alpine-dark').classes('h-[1200px]') # alpine  material  quartz  balham
-        self.ag_grid.auto_size_columns = True
+        self.invoce_content_tab.auto_size_columns = True
+        self.invoce_content_tab_rowdata = invoce_content_df.to_dict('records')
+        self.invoce_content_tab.on("cellValueChanged", self.update_invoce_content_cell_data)
 
     def get_element_list(self, key):
         if key == 'button':
@@ -340,8 +345,14 @@ class invoice_page_model(api_db_interface):
 
     def update_invoce_cell_data(self, e):
         self.invoice_tab_rowdata[e.args["rowIndex"]] = e.args["data"]
-        #print(e)
         self.on_update_invoces_tab.run_method('click')
+
+    def update_invoce_content_cell_data(self, e):
+        #print(e.args["data"])
+        #self.invoce_content_tab_rowdata[e.args["rowIndex"]] = e.args["data"]
+        self.update_invoce_content_tab_in_base([e.args["data"]])
+        #self.update_content_tab_btn.run_method('click')
+        #print(self.invoce_content_tab_rowdata[e.args["rowIndex"]])
 
 
     def get_all_invoces(self):
@@ -544,6 +555,7 @@ class invoice_page_model(api_db_interface):
 
         self.invoce_content_tab.options['rowData'] = out
         self.invoce_content_tab.update()
+        self.invoce_content_tab_rowdata = self.invoce_content_tab.options['rowData']
 
         app.storage.user['invoce_content_tab_rowdata'] = self.invoce_content_tab.options['rowData']
 
@@ -630,6 +642,7 @@ class invoice_page_model(api_db_interface):
 
         self.invoce_content_tab.options['rowData'] = out
         self.invoce_content_tab.update()
+        self.invoce_content_tab_rowdata = self.invoce_content_tab.options['rowData']
 
         app.storage.user['invoce_content_tab_rowdata'] = self.invoce_content_tab.options['rowData']
 
@@ -664,6 +677,7 @@ class invoice_page_model(api_db_interface):
 
         self.invoce_content_tab.options['rowData'] = out
         self.invoce_content_tab.update()
+        self.invoce_content_tab_rowdata = self.invoce_content_tab.options['rowData']
         app.storage.user['invoce_content_tab_rowdata'] = self.invoce_content_tab.options['rowData']
 
 
@@ -687,11 +701,22 @@ class invoice_page_model(api_db_interface):
                 ret = requests.get(url, headers=self.headers())
                 out.extend(ret.json())
             return out
+
         out = []
         if status == 'in progress':
             out = get_in_progress(find_list = ['synthesis', 'purification', 'formulation'])
         elif status == 'total data':
             out = get_in_progress(find_list = ['in queue', 'synthesis', 'purification', 'formulation', 'finished'])
+        elif status == 'wasted in progress':
+            ret = get_in_progress(find_list = ['synthesis', 'purification', 'formulation'])
+            omaps = oligomaps_search(self.db_IP, self.db_port)
+            omaps.pincode = self.pincode
+            orders = omaps.get_wasted_in_progress()
+            df = pd.DataFrame(ret)
+            for order in orders:
+                l = df[df['#'] == order['Order id']].to_dict('records')
+                if len(l) > 0:
+                    out.append(l[0])
         else:
             url = f'{self.api_db_url}/get_orders_by_status/{self.db_name}/{status}'
             ret = requests.get(url, headers=self.headers())
@@ -704,6 +729,7 @@ class invoice_page_model(api_db_interface):
         out = self.get_orders_by_status(param.value)
         self.invoce_content_tab.options['rowData'] = out
         self.invoce_content_tab.update()
+        self.invoce_content_tab_rowdata = self.invoce_content_tab.options['rowData']
         app.storage.user['invoce_content_tab_rowdata'] = self.invoce_content_tab.options['rowData']
 
 
@@ -727,6 +753,34 @@ class invoice_page_model(api_db_interface):
         status_dialog.dialog.open()
 
 
+    def update_invoce_content_tab_in_base(self, rowData):
+        for row in rowData:
+            id = row['#']
+            status = row['status']
+            input_date = row['input date']
+            output_date = row['output date']
+            name = row['Name']
+            end5 = row["5'-end"]
+            end3 = row["3'-end"]
+            sequence = row["Sequence"]
+            amount = row['Amount, oe']
+            purification = row['Purification']
+
+            #print([id, input_date, output_date, status, name, sequence, end5, end3, amount, purification])
+
+            url = f"{self.api_db_url}/update_data/{self.db_name}/orders_tab/{id}"
+            r = requests.put(url,
+                             json=json.dumps({'name_list':['input_date', 'output_date', 'status', 'name',
+                                                           'sequence', 'end5', 'end3', 'amount', 'purification'],
+                                              'value_list':[input_date, output_date, status, name,
+                                                            sequence, end5, end3, amount, purification]}),
+                            headers=self.headers())
+
+
+    def on_update_content_tab_event(self):
+        self.on_show_invoces_content.run_method('click')
+
+
     def init_data(self):
         self.ag_grid.options['rowData'] = app.storage.user.get('ag_grid_rowdata')
         self.ag_grid.update()
@@ -734,6 +788,7 @@ class invoice_page_model(api_db_interface):
 
         self.invoce_content_tab.options['rowData'] = app.storage.user.get('invoce_content_tab_rowdata')
         self.invoce_content_tab.update()
+        self.invoce_content_tab_rowdata = self.invoce_content_tab.options['rowData']
 
         try:
             summary_dict = app.storage.user.get('actual_invoces_summary_dict')

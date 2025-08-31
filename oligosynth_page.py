@@ -9,6 +9,37 @@ from io import BytesIO
 
 import xwell_plate_unit as XWells
 
+
+class stat_dialog():
+    def __init__(self, text1, text2):
+        self.text1, self.text2 = text1, text2
+        with ui.dialog() as self.dialog:
+            with ui.card():
+                ui.label(text=self.text1).style('font-size: 20px;')
+                ui.label(text=self.text2).style('font-size: 20px;')
+                with ui.row():
+                    ui.button('Закрыть',  on_click=self.dialog.close).classes('w-[200px]')
+
+
+class confirm_dialog():
+    def __init__(self, text):
+        self.text = text
+        with ui.dialog() as self.dialog:
+            with ui.card():
+                ui.label(text=self.text).style('font-size: 20px;')
+                with ui.row():
+                    ui.button('Да', color='orange', on_click=self.do_confirm).classes('w-[200px]')
+                    ui.button('Нет',  on_click=self.dialog.close).classes('w-[200px]')
+
+
+    def on_confirm(self):
+        pass
+
+    def do_confirm(self):
+        self.on_confirm()
+        self.dialog.close()
+
+
 class set_param_dialog():
     def __init__(self, rowdata, selrowdata):
         self.selrowdata = selrowdata
@@ -163,6 +194,10 @@ class oligosynth_panel_page_model(api_db_interface):
                                                    on_click=self.on_show_oligomaps_event).classes('w-[200px]')
                 self.on_load_oligomap = ui.button('Load map', on_click=self.on_load_oligomap_event,
                                                   color="#00a100").classes('w-[200px]')
+                self.delete_oligomap_btn = ui.button('Delete map', on_click=self.on_delete_oligomap_event,
+                                                  color="red").classes('w-[200px]')
+                self.delete_oligomap_btn = ui.button('Show stat', on_click=self.on_show_stat_event,
+                                                     ).classes('w-[200px]')
             self.get_accord_tab()
 
         self.get_oligomap_grid()
@@ -455,6 +490,18 @@ class oligosynth_panel_page_model(api_db_interface):
         self.accord_tab.on("cellValueChanged", self.update_accordtab_cell_data)
 
 
+    def get_actual_stat_maps(self):
+        ret = {'wasted %': 0., 'total wells': 0}
+        oserch = oligomaps_search(self.db_IP, self.db_port)
+        oserch.pincode = self.pincode
+        tab = oserch.get_oligomaps()
+        orders = pd.DataFrame(self.get_orders_by_status('finished'))
+        if len(tab) > 0:
+            df = pd.DataFrame(tab)
+            ret['wasted %'] = f"Wasted %: {round(df['Wasted'].sum() * 100/ df['Total'].sum(), 0)}"
+            ret['total wells'] = f"Total wells: {df['Total'].sum()} / Total oligos: {orders.shape[0]}"
+        return ret
+
     def on_show_actual_oligomaps_event(self):
         self.pincode = app.storage.user.get('pincode')
         oserch = oligomaps_search(self.db_IP, self.db_port)
@@ -490,6 +537,28 @@ class oligosynth_panel_page_model(api_db_interface):
         app.storage.user['synth_name_label'] = self.synth_name_label.text
         app.storage.user['synth_number_label'] = self.synth_number_label.text
         app.storage.user['xwells_obj'] = self.xwells_obj.get_copy()
+
+    def delete_oligomap_event(self):
+        selRows = app.storage.user.get('delete_oligomap_rows')
+        oserch = oligomaps_search(self.db_IP, self.db_port)
+        oserch.pincode = self.pincode
+        oserch.delete_map_from_base(selRows)
+        self.on_show_actual_oligomaps_event()
+
+    async def on_delete_oligomap_event(self):
+        selRows = await self.oligomap_db_tab.get_selected_rows()
+        app.storage.user['delete_oligomap_rows'] = selRows
+        confirm = confirm_dialog(f'Удалить карту???')
+        confirm.on_confirm = self.delete_oligomap_event
+        confirm.dialog.open()
+
+
+    def on_show_stat_event(self):
+        stat_data = self.get_actual_stat_maps()
+        #ret['wasted %'] = f"Wasted %: {round(df['Wasted'].sum() * 100 / df['Total'].sum(), 0)}"
+        #ret['total wells']
+        stat = stat_dialog(stat_data['wasted %'], stat_data['total wells'])
+        stat.dialog.open()
 
 
     async def on_add_sel_oligo_to_plate_event(self):
@@ -624,6 +693,7 @@ class oligosynth_panel_page_model(api_db_interface):
         rowData = self.oligomap_ag_grid.options['rowData']
         accord_rowData = self.accord_tab.options['rowData']
         omap.insert_map_to_base(map_name, map_synt_num, rowData, accord_rowData)
+        self.on_show_actual_oligomaps_event()
 
 
     def on_update_oligomap_event(self):

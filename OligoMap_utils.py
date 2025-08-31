@@ -141,6 +141,26 @@ class oligomaps_search(api_db_interface):
             else:
                 return [], []
 
+    def delete_map_from_base(self, seldata):
+        if len(seldata) > 0:
+            self.oligo_map_id = -1
+            url = f"{self.api_db_url}/delete_data/{self.maps_db_name}/main_map/{seldata[0]['#']}"
+            ret = requests.delete(url, headers=self.headers())
+            return ret.status_code
+        else:
+            return 404
+
+    def get_wasted_in_progress(self):
+        actual_maps = self.get_actual_maps()
+        out = []
+        for map in actual_maps:
+            d = {}
+            map_data, accord_data, name, synth_num = self.load_oligomap([map])
+            df = pd.DataFrame(map_data)
+            d['Order id'] = df[df['Wasted'] == True]['Order id'].max()
+            out.append(d)
+        return out
+
     def get_oligomaps_data_tail(self, tail_len):
         url = f'{self.api_db_url}/get_all_tab_data_tail/{self.maps_db_name}/main_map/{tail_len}'
         ret = requests.get(url, headers=self.headers())
