@@ -9,10 +9,11 @@ from datetime import datetime
 from rdkit import Chem
 from rdkit.Chem import Draw
 from rdkit.Chem import Descriptors, rdMolDescriptors
+from rdkit.Chem.Draw import rdMolDraw2D
 import io
 import base64
 from pprint import pformat
-from rdkit.Chem.Draw import rdMolDraw2D
+
 
 class pubchem_interface():
     def __init__(self):
@@ -224,5 +225,5 @@ class chemicals_page_model(api_db_interface):
         else:
             self.pincode = ''
 
-        self.pubchem = pubchem_interface()
-        self.pc_props = phys_chem_props_interface()
+        #self.pubchem = pubchem_interface()
+        #self.pc_props = phys_chem_props_interface()

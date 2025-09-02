@@ -7,3 +7,4 @@ nicegui-tabulator
 openpyxl
 pubchempy
 rdkit
+pillow
