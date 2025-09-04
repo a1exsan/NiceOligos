@@ -6,6 +6,7 @@ from invoce_page import navigation_menu
 from oligosynth_page import oligosynth_panel_page_model
 from raw_material_page import rawmaterial_panel_page_model
 from chemicals_page import chemicals_page_model
+from input_order_page import input_order_page_model
 
 oligo_map_stack = oligos_data_stack()
 
@@ -18,6 +19,11 @@ app.add_static_files('/img', 'static_images')
 def index():
     navi_front = navigation_menu(IP_addr, '8012')
     ui.image('images/background_1.jpeg').style('max-width: 100%; height: auto;')
+
+@ui.page('/input_order_panel')
+def input_order_panel():
+    navi_front = navigation_menu(IP_addr, '8012')
+    order_page = input_order_page_model(IP_addr, '8012')
 
 @ui.page('/invoce_panel')
 def invoce_panel_page():

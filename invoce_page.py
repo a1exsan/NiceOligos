@@ -65,6 +65,7 @@ class navigation_menu(api_db_interface):
         navigation = ui.row()
         with navigation:
             ui.link('Home', '/').style('font-size: 24px;')
+            ui.link('Input order', '/input_order_panel').style('font-size: 24px;')
             ui.link('Invoces', '/invoce_panel').style('font-size: 24px;')
             ui.link('Oligo synthesis', '/oligosynth_panel').style('font-size: 24px;')
             ui.link('Raw materials', '/rawmaterials_panel').style('font-size: 24px;')
