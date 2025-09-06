@@ -667,6 +667,7 @@ class invoice_page_model(api_db_interface):
         oserch.map_list = pd.DataFrame(oserch.get_oligomaps_date_tail(date.strftime('%Y-%m-%d'), tail_len=30))
         for row in rowdata:
             d = row.copy()
+            #print(d)
             if row['#'] in sel_orders:
                 maps = oserch.find_amount_by_order_id(row['#'])
                 s = ""

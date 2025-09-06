@@ -589,6 +589,15 @@ class XWell_plate:
                 color = 'red'
         return color
 
+    def get_status_color_well(self, well):
+        color = 'lightgreen'
+        if 'init_row' in list(well.oligo_data.keys()):
+            if well.oligo_data['init_row']['Status'] != 'finished':
+                color = 'orange'
+            if well.oligo_data['init_row']['Wasted']:
+                color = 'red'
+        return color
+
     def get_purification_text(self, well):
         ret = 'RP-Cart'
         if 'init_row' in list(well.oligo_data.keys()):
@@ -609,7 +618,7 @@ class XWell_plate:
 
         for key, well in zip(self.wells.keys(), self.wells.values()):
             if 'init_row' in list(well.oligo_data.keys()):
-                color = self.get_purification_color(well)
+                color = self.get_status_color_well(well)
                 self.oligo_data_layer.content += (f'<circle cx="{well.x}" cy="{well.y}" r="32" fill="{color}" '
                                                   f'stroke="{color}" stroke-width="6" />')
                 self.oligo_data_layer.content += (f'<circle cx="{well.x}" cy="{well.y}" r="10" fill="{well.dye_color}" '

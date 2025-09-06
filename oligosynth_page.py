@@ -133,6 +133,9 @@ class oligosynth_panel_page_model(api_db_interface):
                 self.set_param_btn = ui.button("Set params", color='green',
                                                           on_click=self.on_set_param_btn_event).classes(
                     'w-[200px]')
+                self.export_asm2000_seq_btn = ui.button("export seq", color='orange',
+                                               on_click=self.on_export_seq_btn_event).classes(
+                    'w-[200px]')
             ui.label('Cell12')
             with ui.row():
                 self.on_new_oligomap_button = ui.button("New Map", on_click=self.on_new_oligomap_button_event,
@@ -706,7 +709,15 @@ class oligosynth_panel_page_model(api_db_interface):
         self.oligomap_ag_grid.update()
         rowData = self.oligomap_ag_grid.options['rowData']
         accord_rowData = self.accord_tab.options['rowData']
-        rowData = omap.update_oligomap_status(rowData, accord_rowData)
+
+        pos_list = self.xwells_obj.get_selected_pos_list()
+        rowData_df = pd.DataFrame(self.oligomap_ag_grid.options['rowData'])
+        sel_rowData_df = rowData_df[rowData_df['Position'].isin(pos_list)]
+
+        #rowData = omap.update_oligomap_status(rowData, accord_rowData)
+        rowData = omap.update_oligomap_order_status(rowData, accord_rowData, sel_rowData_df.to_dict('records'))
+
+
         self.oligomap_ag_grid.options['rowData'] = rowData
         self.oligomap_ag_grid.update()
         self.xwells_obj.load_selrows(rowData)
@@ -962,6 +973,16 @@ class oligosynth_panel_page_model(api_db_interface):
         param_dialog = set_param_dialog(self.oligomap_ag_grid.options['rowData'], self.xwells_obj.get_selected_rows())
         param_dialog.on_send_data = self.on_set_param_dialog_rowdata
         param_dialog.dialog.open()
+
+    def download_sequences_file(self):
+        seq_file = ''
+        for row in self.oligomap_rowdata:
+            seq_file += f"{row['Position']},{row['asm Sequence']},+\n"
+        return seq_file
+
+    def on_export_seq_btn_event(self):
+        ui.download.content(self.download_sequences_file(), f"{self.synth_name_label.text}.txt")
+
 
     def on_set_param_dialog_rowdata(self, data):
         self.oligomap_ag_grid.options['rowData'] = data

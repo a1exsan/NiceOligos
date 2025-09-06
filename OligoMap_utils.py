@@ -316,6 +316,42 @@ class oligomaps_search(api_db_interface):
             return rowData
 
 
+    def update_oligomap_order_status(self, rowData, accordrowdata, selrowdata):
+        if len(rowData) > 0:
+            if 'map #' in list(rowData[0].keys()):
+                for row in rowData:
+                    if row['map #'] != '':
+                        self.oligo_map_id = int(row['map #'])
+                        print(f'MAP ID: {self.oligo_map_id}')
+                        break
+        if self.oligo_map_id > -1:
+            out = []
+            for row in rowData:
+                out.append(row)
+                out[-1]['Date'] = datetime.now().date().strftime('%d.%m.%Y')
+                out[-1]['Status'] = self.get_order_status(row)
+                if out[-1]['Status'] == 'finished':
+                    out[-1]['DONE'] = True
+                else:
+                    out[-1]['DONE'] = False
+
+            url = f"{self.api_db_url}/update_oligomap/{self.maps_db_name}/{self.db_name}/main_map/{self.oligo_map_id}"
+            r = requests.put(url,
+                              json=json.dumps({
+                                  'name_list': ['map_tab', 'accord_tab', 'selected'],
+                                  'value_list': [
+                                      json.dumps(out),
+                                      json.dumps(accordrowdata),
+                                      json.dumps(selrowdata)
+                                  ]
+                              })
+                             , headers=self.headers())
+            print(f'update status {self.oligo_map_id}: {r.status_code}')
+            return out
+        else:
+            return rowData
+
+
     def update_order_status(self, rowData, selRowdata):
         df = pd.DataFrame(selRowdata)
         if len(rowData) > 0:

@@ -47,4 +47,4 @@ def chemicals_panel_page():
         chem_page = chemicals_page_model(IP_addr, 8012)
 
 
-ui.run(storage_secret='NiceGUI_oligo_app_1')
+ui.run(storage_secret='NiceGUI_oligo_app_1', title='NiceOligo', favicon="static_images/favicon.ico")
