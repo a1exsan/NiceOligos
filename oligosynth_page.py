@@ -523,11 +523,15 @@ class oligosynth_panel_page_model(api_db_interface):
         oserch.pincode = self.pincode
         rowData, accordData, synt_name, synt_number = oserch.load_oligomap(selRows)
 
+        app.storage.user['init_map_rowdata'] = rowData.copy()
+        app.storage.user['init_accordtab_rowdata'] = accordData.copy()
+
         self.oligomap_ag_grid.options['rowData'] = rowData
         self.oligomap_ag_grid.update()
         self.oligomap_rowdata = rowData
 
         self.accord_tab.options['rowData'] = accordData
+        self.accordtab_rowdata = accordData
         self.accord_tab.update()
 
         self.synth_name_label.text = str(synt_name)
@@ -717,6 +721,8 @@ class oligosynth_panel_page_model(api_db_interface):
         #rowData = omap.update_oligomap_status(rowData, accord_rowData)
         rowData = omap.update_oligomap_order_status(rowData, accord_rowData, sel_rowData_df.to_dict('records'))
 
+        app.storage.user['init_map_rowdata'] = rowData.copy()
+        app.storage.user['init_accordtab_rowdata'] = accord_rowData.copy()
 
         self.oligomap_ag_grid.options['rowData'] = rowData
         self.oligomap_ag_grid.update()

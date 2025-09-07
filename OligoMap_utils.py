@@ -2,6 +2,7 @@ import pandas as pd
 import requests
 import json
 from datetime import datetime
+from nicegui import app, ui
 
 class api_db_interface():
 
@@ -316,6 +317,22 @@ class oligomaps_search(api_db_interface):
             return rowData
 
 
+    def get_chenged_cells_list(self, old_rowdata, new_rowdata):
+        df_old = pd.DataFrame(old_rowdata)
+        df_old.fillna('none', inplace=True)
+        df_new = pd.DataFrame(new_rowdata)
+        df_new.fillna('none', inplace=True)
+
+        mask = df_old != df_new
+        changed_cells = [(idx, col) for idx, col in mask.stack()[lambda x: x].index]
+        out_cells = []
+        for cell in changed_cells:
+            if df_new.at[cell] != df_old.at[cell]:
+                out_cells.append(cell)
+        return out_cells
+
+
+
     def update_oligomap_order_status(self, rowData, accordrowdata, selrowdata):
         if len(rowData) > 0:
             if 'map #' in list(rowData[0].keys()):
@@ -335,14 +352,19 @@ class oligomaps_search(api_db_interface):
                 else:
                     out[-1]['DONE'] = False
 
+            map_cells = self.get_chenged_cells_list(app.storage.user['init_map_rowdata'], out)
+            accord_cells = self.get_chenged_cells_list(app.storage.user['init_accordtab_rowdata'], accordrowdata)
+
             url = f"{self.api_db_url}/update_oligomap/{self.maps_db_name}/{self.db_name}/main_map/{self.oligo_map_id}"
             r = requests.put(url,
                               json=json.dumps({
-                                  'name_list': ['map_tab', 'accord_tab', 'selected'],
+                                  'name_list': ['map_tab', 'accord_tab', 'selected', 'map_cells', 'accord_cells'],
                                   'value_list': [
                                       json.dumps(out),
                                       json.dumps(accordrowdata),
-                                      json.dumps(selrowdata)
+                                      json.dumps(selrowdata),
+                                      json.dumps(map_cells),
+                                      json.dumps(accord_cells)
                                   ]
                               })
                              , headers=self.headers())

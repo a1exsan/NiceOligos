@@ -10,8 +10,8 @@ from input_order_page import input_order_page_model
 
 oligo_map_stack = oligos_data_stack()
 
-#IP_addr = '127.0.0.1'
-IP_addr = '192.168.16.145'
+IP_addr = '127.0.0.1'
+#IP_addr = '192.168.16.145'
 
 app.add_static_files('/img', 'static_images')
 
