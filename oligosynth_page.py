@@ -39,6 +39,48 @@ class confirm_dialog():
         self.on_confirm()
         self.dialog.close()
 
+class set_oe_val_dialog():
+    def __init__(self, rowdata):
+        self.rowdata = rowdata
+
+        colDefs = [
+            {"field": "Position", 'editable': False},
+            {"field": "Dens, oe/ml", 'editable': True}
+        ]
+
+        with ui.dialog() as self.dialog:
+            with ui.card():
+                self.grid = ui.aggrid(
+                    {
+                        'columnDefs': colDefs,
+                        'rowData': self.rowdata,
+                        'rowSelection': 'multiple',
+                        "pagination": True,
+                        "enterNavigatesVertically": True,
+                        "enterNavigatesVerticallyAfterEdit": True,
+                        "singleClickEdit": True,
+                        # "enableRangeSelection": True,
+                    },
+                    theme='alpine-dark').classes('h-[1000px]')  # alpine  material  quartz  balham
+                self.grid.auto_size_columns = True
+                self.grid.on("cellValueChanged", self.update_grid_cell_data)
+
+                with ui.row():
+                    ui.button('Сохранить', on_click=self.on_save_settings)
+                    ui.button('Отмена', on_click=self.dialog.close)
+
+    def update_grid_cell_data(self, e):
+        self.rowdata[e.args["rowIndex"]] = e.args["data"]
+
+    def on_send_data(self, rowdata):
+        print(rowdata)
+
+    def on_save_settings(self):
+        self.on_send_data(self.rowdata)
+        self.dialog.close()
+
+
+
 
 class set_param_dialog():
     def __init__(self, rowdata, selrowdata):
@@ -109,8 +151,6 @@ class set_param_dialog():
 
 
 
-
-
 class oligosynth_panel_page_model(api_db_interface):
     def __init__(self, api_IP, db_port):
         super().__init__(api_IP, db_port)
@@ -132,7 +172,10 @@ class oligosynth_panel_page_model(api_db_interface):
                                                 on_click=self.on_selprint_excel_button_event).classes('w-[200px]')
                 self.set_param_btn = ui.button("Set params", color='green',
                                                           on_click=self.on_set_param_btn_event).classes(
-                    'w-[200px]')
+                    'w-[120px]')
+                self.set_oe_values_btn = ui.button("Set OE", color='green',
+                                               on_click=self.on_set_oe_btn_event).classes(
+                    'w-[80px]')
                 self.export_asm2000_seq_btn = ui.button("export seq", color='orange',
                                                on_click=self.on_export_seq_btn_event).classes(
                     'w-[200px]')
@@ -295,17 +338,19 @@ class oligosynth_panel_page_model(api_db_interface):
             {"field": "Wasted", 'editable': True, 'filter': 'agTextColumnFilter', 'floatingFilter': True},
             {"field": "Send", 'editable': True, 'filter': 'agTextColumnFilter', 'floatingFilter': True},
         ]
-
         # with ui.column():
+
         self.oligomap_ag_grid = ui.aggrid(
             {
                 'columnDefs': columnDefs,
                 'rowData': self.oligomap_rowdata,
                 'rowSelection': 'multiple',
                 "pagination": True,
+                "enterNavigatesVertically": True,
+                "enterNavigatesVerticallyAfterEdit": True,
+                "singleClickEdit": True,
                 # "enableRangeSelection": True,
-            }
-            ,
+            },
             theme='alpine-dark').classes('h-[800px]')  # alpine  material  quartz  balham
         self.oligomap_ag_grid.auto_size_columns = True
         self.oligomap_ag_grid.on("cellValueChanged", self.update_oligomap_cell_data)
@@ -481,9 +526,9 @@ class oligosynth_panel_page_model(api_db_interface):
                 'rowData': accord_tab.to_dict('records'),
                 'rowSelection': 'multiple',
                 "pagination": True,
-                # "enterNavigatesVertically": True,
-                # "enterNavigatesVerticallyAfterEdit": True,
-                # "singleClickEdit": True
+                "enterNavigatesVertically": True,
+                "enterNavigatesVerticallyAfterEdit": True,
+                "singleClickEdit": True
                 #':getRowStyle': '(params) => params.data.sufficiency < 0 ? { background: "red" } :'
                 #                ' { background: "green" }',
             }
@@ -979,6 +1024,17 @@ class oligosynth_panel_page_model(api_db_interface):
         param_dialog = set_param_dialog(self.oligomap_ag_grid.options['rowData'], self.xwells_obj.get_selected_rows())
         param_dialog.on_send_data = self.on_set_param_dialog_rowdata
         param_dialog.dialog.open()
+
+    def on_set_oe_dialog_rowdata(self, rowdata):
+        self.oligomap_rowdata = rowdata
+        self.oligomap_ag_grid.options['rowData'] = rowdata
+        self.oligomap_ag_grid.update()
+        self.on_update_oligomap.run_method('click')
+
+    def on_set_oe_btn_event(self):
+        oe_dialog = set_oe_val_dialog(self.oligomap_ag_grid.options['rowData'])
+        oe_dialog.on_send_data = self.on_set_oe_dialog_rowdata
+        oe_dialog.dialog.open()
 
     def download_sequences_file(self):
         seq_file = ''
