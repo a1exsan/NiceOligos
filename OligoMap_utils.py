@@ -342,6 +342,7 @@ class oligomaps_search(api_db_interface):
                         print(f'MAP ID: {self.oligo_map_id}')
                         break
         if self.oligo_map_id > -1:
+            #print('HELLO', self.oligo_map_id)
             out = []
             for row in rowData:
                 out.append(row)
@@ -354,6 +355,9 @@ class oligomaps_search(api_db_interface):
 
             map_cells = self.get_chenged_cells_list(app.storage.user['init_map_rowdata'], out)
             accord_cells = self.get_chenged_cells_list(app.storage.user['init_accordtab_rowdata'], accordrowdata)
+
+            #print('map_cells')
+            #print(map_cells)
 
             url = f"{self.api_db_url}/update_oligomap/{self.maps_db_name}/{self.db_name}/main_map/{self.oligo_map_id}"
             r = requests.put(url,

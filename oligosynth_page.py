@@ -744,7 +744,9 @@ class oligosynth_panel_page_model(api_db_interface):
         map_synt_num = self.oligomap_syn_number_input.value
         rowData = self.oligomap_ag_grid.options['rowData']
         accord_rowData = self.accord_tab.options['rowData']
-        omap.insert_map_to_base(map_name, map_synt_num, rowData, accord_rowData)
+        df = pd.DataFrame(rowData)
+        df['Synt number'] = [map_synt_num for i in range(df.shape[0])]
+        omap.insert_map_to_base(map_name, map_synt_num, df.to_dict('records'), accord_rowData)
         self.on_show_actual_oligomaps_event()
 
 
@@ -1051,7 +1053,6 @@ class oligosynth_panel_page_model(api_db_interface):
         self.oligomap_ag_grid.update()
         self.oligomap_rowdata = data
         self.on_update_oligomap.run_method('click')
-
 
 
     def init_data(self):
