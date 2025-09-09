@@ -760,7 +760,7 @@ class XWell_plate:
             #d['Position'] = row['Position']
             d['Name'] = row['Name'] + f"  ({row['Synt number']}_{row['Position']})"
             d['Sequence'] = nseq
-            d['Amount,_oe'] = int(round(row['Dens, oe/ml'] * row['Vol, ml'], 0))
+            d['Amount,_oe'] = int(round(float(row['Dens, oe/ml']) * float(row['Vol, ml']), 0))
             if o.getExtinction() > 0:
                 d['Amount,_nmol'] = int(round(d['Amount,_oe'] * 1e6 / o.getExtinction(), 0))
             else:
@@ -775,7 +775,7 @@ class XWell_plate:
             except:
                 d['Mass,_Da'] = 'unknown modiff'
             d['Extinction'] = o.getExtinction()
-
+            #print(d)
             out_tab.append(d)
         return pd.DataFrame(out_tab)
 

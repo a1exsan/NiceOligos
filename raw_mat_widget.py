@@ -7,6 +7,91 @@ import datetime
 from chemicals_page import phys_chem_props_interface
 import hashlib
 
+class show_stock_operations(api_db_interface):
+    def __init__(self, api_IP, db_port):
+        super().__init__(api_IP, db_port)
+        if 'pincode' in list(app.storage.user.keys()):
+            self.pincode = app.storage.user.get('pincode')
+        else:
+            self.pincode = ''
+
+        self.db_name = 'stock_oligolab_5.db'
+        self.strftime_format = "%Y-%m-%d"
+        self.time_format = "%H:%M:%S"
+
+        tab_df = pd.DataFrame({
+            '#': [],
+            'Name': [],
+            "Amount": [],
+            'Unicode': [],
+            "Date": [],
+            "Time": [],
+            'User': []
+        })
+
+        colDefs = [
+            {"field": "#", 'editable': False, 'filter': 'agTextColumnFilter', 'floatingFilter': True},
+            {"field": "Name", 'editable': False, 'filter': 'agTextColumnFilter', 'floatingFilter': True},
+            {"field": "Amount", 'editable': False, 'filter': 'agTextColumnFilter', 'floatingFilter': True},
+            {"field": "Unicode", 'editable': False, 'filter': 'agTextColumnFilter', 'floatingFilter': True},
+            {"field": "Date", 'editable': False, 'filter': 'agTextColumnFilter', 'floatingFilter': True},
+            {"field": "Time", 'editable': False, 'filter': 'agTextColumnFilter', 'floatingFilter': True},
+            {"field": "User", 'editable': False, 'filter': 'agTextColumnFilter', 'floatingFilter': True},
+        ]
+
+        with ui.dialog() as self.dialog:
+            with ui.card().style('width: auto; max-width: none;'):
+                self.ag_grid = ui.aggrid(
+                    {
+                        'columnDefs': colDefs,
+                        'rowData': tab_df.to_dict('records'),
+                        'rowSelection': 'multiple',
+                        "pagination": True,
+                        # "enableRangeSelection": True,
+                    }
+                    ,
+                    theme='alpine-dark').style('width: 1200px; height: 800px')  # alpine  material  quartz  balham
+                self.ag_grid.auto_size_columns = True
+
+                with ui.row():
+                    ui.button('Списания', on_click=self.on_write_off)
+                    ui.button('Поступления', on_click=self.on_write_in)
+
+
+    def set_ag_grid_tab(self, name):
+
+        users = self.get_all_data_in_tab(f'users')
+        ids = {}
+        for user in users:
+            ids[user[2]] = user[1]
+
+        data = self.get_all_data_in_tab(f'{name}')
+        df = pd.DataFrame(data)
+        tab_df = pd.DataFrame({
+            '#': df[0],
+            'Name': df[1],
+            "Amount": df[2],
+            'Unicode': df[3],
+            "Date": df[4],
+            "Time": df[5],
+            'User': df[6]
+        })
+        tab_df['User'] = [ids[i] for i in tab_df['User']]
+        self.ag_grid.options['rowData'] = tab_df.to_dict('records')
+        self.ag_grid.update()
+
+    def on_write_off(self):
+        self.set_ag_grid_tab('output_tab')
+
+    def on_write_in(self):
+        self.set_ag_grid_tab('input_tab')
+
+    def get_all_data_in_tab(self, tab_name):
+        url = f'{self.api_db_url}/get_all_tab_data/{self.db_name}/{tab_name}'
+        ret = requests.get(url, headers=self.headers())
+        return ret.json()
+
+
 class reagent_form_dialog():
     def __init__(self, data, new=False):
         self.data = data
@@ -1144,7 +1229,13 @@ class rawMatWidget(raw_mat_base_widget):
         fill_color = 'green'
         fill_const = 20
         fill_width_div = 1
-        if self.remain['exist'] <= self.info_data[0][5]:
+        try:
+            if self.remain['exist'] <= self.info_data[0][5]:
+                fill_color = 'red'
+                fill_width_div = 2
+                fill_const = 0
+        except:
+
             fill_color = 'red'
             fill_width_div = 2
             fill_const = 0

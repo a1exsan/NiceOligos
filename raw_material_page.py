@@ -2,6 +2,7 @@ from nicegui import app, ui
 from raw_mat_widget import rawMatWidget
 from raw_mat_widget import infoPanel
 from raw_mat_widget import event
+from raw_mat_widget import show_stock_operations
 from OligoMap_utils import api_db_interface
 import requests
 import json
@@ -191,20 +192,21 @@ class rawmaterial_panel_page_model(api_db_interface):
                         ui.label('Search by name:').style('font-size: 30px;')
                         self.search_text = ui.input(label='', placeholder='Search name',
                                                     on_change=self.info_panel.rawMat.search_by_name).style('font-size: 30px;').classes('w-[700px]')
+                    ui.button(f'show operations', color='green', on_click=self.on_show_write_of_in_operations)
                         #self.on_search = ui.button('Search', color="#00a100").classes('w-[200px]')
                     #self.search_text.on_value_change = self.info_panel.search_by_name
 
             for key in self.wi_key_list:
                 for data in self.wi_list[key]:
                     self.wi_list['widgets'][data[0]].on_mouse_click = self.info_panel.on_show_info_menu_widget_click
-            #for data in self.wi_list['Phosphoramidites:']:
-            #    self.wi_list['widgets'][data[0]].on_mouse_click = self.info_panel.on_show_info_menu_widget_click
-            #for data in self.wi_list['Azides:']:
-            #    self.wi_list['widgets'][data[0]].on_mouse_click = self.info_panel.on_show_info_menu_widget_click
 
     def init_data(self):
         if 'pincode' in list(app.storage.user.keys()):
             self.pincode = app.storage.user.get('pincode')
+
+    def on_show_write_of_in_operations(self):
+        stock_dialog = show_stock_operations(self.db_IP, self.db_port)
+        stock_dialog.dialog.open()
 
 
 

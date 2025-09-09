@@ -45,11 +45,12 @@ class set_oe_val_dialog():
 
         colDefs = [
             {"field": "Position", 'editable': False},
-            {"field": "Dens, oe/ml", 'editable': True}
+            {"field": "Dens, oe/ml", 'editable': True},
+            {"field": "Vol, ml", 'editable': True}
         ]
 
         with ui.dialog() as self.dialog:
-            with ui.card():
+            with ui.card().style('width: auto; max-width: none;'):
                 self.grid = ui.aggrid(
                     {
                         'columnDefs': colDefs,
@@ -76,7 +77,12 @@ class set_oe_val_dialog():
         print(rowdata)
 
     def on_save_settings(self):
-        self.on_send_data(self.rowdata)
+        df = pd.DataFrame(self.rowdata)
+        oe = df['Dens, oe/ml'].astype(float)
+        vol = df['Vol, ml'].astype(float)
+        df['Dens, oe/ml'] = oe
+        df['Vol, ml'] = vol
+        self.on_send_data(df.to_dict('records'))
         self.dialog.close()
 
 
@@ -131,7 +137,7 @@ class set_param_dialog():
             return result
 
     def on_set_volume_event(self):
-        self.rowdata = self.set_param('Vol, ml', self.volume.value)
+        self.rowdata = self.set_param('Vol, ml', float(self.volume.value))
 
     def on_set_syn_number_event(self):
         self.rowdata = self.set_param('Synt number', self.syn_number.value)
@@ -775,8 +781,8 @@ class oligosynth_panel_page_model(api_db_interface):
         self.oligomap_ag_grid.update()
         self.xwells_obj.load_selrows(rowData)
 
-        app.storage.user['oligomap_ag_grid_rowdata'] = self.oligomap_ag_grid.options['rowData']
-        app.storage.user['xwells_obj'] = self.xwells_obj.get_copy()
+        #app.storage.user['oligomap_ag_grid_rowdata'] = self.oligomap_ag_grid.options['rowData']
+        #app.storage.user['xwells_obj'] = self.xwells_obj.get_copy()
 
 
     def on_update_oligo_orders_event(self):

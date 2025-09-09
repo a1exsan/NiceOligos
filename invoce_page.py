@@ -548,7 +548,7 @@ class invoice_page_model(api_db_interface):
         for row in orders_tab:
             d = row.copy()
             maps = oserch.find_amount_by_order_id(row['#'])
-            df = maps['Dens, oe/ml'] * maps['Vol, ml']
+            df = maps['Dens, oe/ml'].astype(float) * maps['Vol, ml'].astype(float)
             d['Exist, oe'] = round(df.sum(), 0)
             limit = oserch.get_low_amount_limit(d['Amount, oe'])
             d['sufficiency'] = d['Exist, oe'] - limit
@@ -624,7 +624,7 @@ class invoice_page_model(api_db_interface):
             #print(maps[['Synt number', 'Position', 'Dens, oe/ml', 'Vol, ml']])
             tab = maps.to_dict('records')
             if len(tab) > 0:
-                df = maps['Dens, oe/ml'] * maps['Vol, ml']
+                df = maps['Dens, oe/ml'].astype(float) * maps['Vol, ml'].astype(float)
                 d['Exist, oe'] = round(df.sum(), 0)
                 limit = oserch.get_low_amount_limit(d['Amount, oe'])
                 d['sufficiency'] = d['Exist, oe'] - limit

@@ -348,6 +348,7 @@ class oligomaps_search(api_db_interface):
                 out.append(row)
                 out[-1]['Date'] = datetime.now().date().strftime('%d.%m.%Y')
                 out[-1]['Status'] = self.get_order_status(row)
+                #print(out[-1]['Status'], out[-1]['Position'])
                 if out[-1]['Status'] == 'finished':
                     out[-1]['DONE'] = True
                 else:
