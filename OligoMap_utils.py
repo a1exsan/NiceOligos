@@ -80,6 +80,8 @@ class oligomaps_search(api_db_interface):
     def get_oligomaps_data(self):
         url = f'{self.api_db_url}/get_all_tab_data/{self.maps_db_name}/main_map'
         ret = requests.get(url, headers=self.headers())
+        print(url, self.headers())
+        print(ret)
         if ret.status_code == 200:
             out = []
             for r in ret.json():
@@ -90,6 +92,7 @@ class oligomaps_search(api_db_interface):
                 d['Date'] = r[1]
                 d['in progress'] = self.map_in_progress(r[4])
                 d['map data'] = pd.DataFrame(json.loads(r[4]))
+                d['accord data'] = pd.DataFrame(json.loads(r[5]))
                 df = pd.DataFrame(d['map data'])
                 if 'Status' in list(df.keys()):
                     d['Finished'] = df[df['Status'] == 'finished'].shape[0]
@@ -323,14 +326,20 @@ class oligomaps_search(api_db_interface):
         df_new = pd.DataFrame(new_rowdata)
         df_new.fillna('none', inplace=True)
 
-        mask = df_old != df_new
-        changed_cells = [(idx, col) for idx, col in mask.stack()[lambda x: x].index]
-        out_cells = []
-        for cell in changed_cells:
-            if df_new.at[cell] != df_old.at[cell]:
-                out_cells.append(cell)
-        return out_cells
-
+        try:
+            mask = df_old != df_new
+            changed_cells = [(idx, col) for idx, col in mask.stack()[lambda x: x].index]
+            out_cells = []
+            for cell in changed_cells:
+                if df_new.at[cell] != df_old.at[cell]:
+                    out_cells.append(cell)
+            return out_cells
+        except:
+            out_cells = []
+            for i in range(df_new.shape[0]):
+                for col in df_new.keys():
+                    out_cells.append((i, col))
+            return out_cells
 
 
     def update_oligomap_order_status(self, rowData, accordrowdata, selrowdata):

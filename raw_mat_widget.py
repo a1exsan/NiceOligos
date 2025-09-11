@@ -1,5 +1,5 @@
 from nicegui import events, ui, app
-from OligoMap_utils import api_db_interface
+from OligoMap_utils import api_db_interface, oligomaps_search
 import requests
 import pandas as pd
 import json
@@ -420,6 +420,12 @@ class raw_mat_base_widget(api_db_interface):
         self.info_data = self.get_unicode_data_in_tab()
         self.remain = self.get_remaining_stock(self.unicode)
         self.output_data = self.get_unicode_output_data(self.unicode)
+        #omap = oligomaps_search(self.db_IP, self.db_port)
+        #map_data = omap.get_oligomaps_data()
+        #print(map_data)
+        #if len(map_data) > 0:
+        #    self.accord_data = pd.DataFrame(map_data)['accord data']
+        #    print(self.accord_data)
 
     def get_remaining_stock(self, unicode):
         url = f"{self.api_db_url}/get_remaining_stock/{self.db_name}/{unicode}"
@@ -1211,7 +1217,6 @@ class rawMatWidget(raw_mat_base_widget):
 
         self.draw()
         self.draw_info()
-
 
     def draw(self):
         self.base_layer.content = (f'<rect x=0 y=0 width={self.width} height={self.height} '

@@ -215,7 +215,6 @@ class phys_chem_props_interface():
         return mol.get_props()
 
 
-
 class chemicals_page_model(api_db_interface):
     def __init__(self, api_IP, db_port):
         super().__init__(api_IP, db_port)
@@ -227,3 +226,4 @@ class chemicals_page_model(api_db_interface):
 
         #self.pubchem = pubchem_interface()
         #self.pc_props = phys_chem_props_interface()
+
