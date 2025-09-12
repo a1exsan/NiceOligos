@@ -1,3 +1,6 @@
+import datetime
+import json
+
 from nicegui import ui, events
 from io import BytesIO
 from PIL import Image, ImageDraw
@@ -338,8 +341,16 @@ class chrom_plotter(diagram_base):
             self.draw_chrom_lines()
             self.draw_axis_points()
             self.chrom_is_done = True
+            self.draw_sel_line_layer()
         except:
             self.chrom_is_done = False
+
+    def clear(self):
+        self.init_data = {}
+        self.selected_space = {}
+        self.selection_range = {}
+        self.sel_line_layer.content = ""
+        self.line_chrom_layer.content = ""
 
 
     def interpolate_series(self):
@@ -540,7 +551,6 @@ class chrom_plotter(diagram_base):
         self.culc_selected_conc_b()
         self.draw_sel_line_layer()
 
-
     def get_data_to_base(self):
         export = {}
         export['chrom data'] = self.init_data.copy()
@@ -553,46 +563,96 @@ class chrom_dialog():
         self.rowdata = rowdata
         self.data_from_base = {}
 
-    #{'#': 19, "3'-end": 'BHQ2', "5'-end": 'Cy5', 'Amount, oe': '1-3', 'Lenght': '23', 'Name': 'IRF4-592-C',
-    # 'Purification': 'Хроматография', 'Sequence': '[Alk]TAAAAGAAGGCAAATTCCCCTGT[BHQ2]', 'client id': 'НЦГИ',
-    # 'input date': '09.10.2025', 'order id': 'НЦГИ/БЛМ/УТ1578', 'output date': '09.10.2025', 'status': 'in queue',
-    # 'Order id': 7593, 'f_sequence': '[Cy5]TAAAAGAAGGCAAATTCCCCTGT[BHQ2]', 'CPG, mg': '5 mg',
-    # 'Support type': 'bhq2_1000_hg', 'Do LCMS': True, 'Do synth': True, 'Do cart': False, 'Do hplc': True,
-    # 'Do paag': False, 'Do sed': False, 'Do click': True, 'Do subl': True, 'Done LCMS': False, 'Done synth': True,
-    # 'Done cart': False, 'Done hplc': False, 'Done paag': False, 'Done sed': False, 'Done click': False,
-    # 'Done subl': False, 'Dens, oe/ml': 413, 'Vol, ml': '0.05', 'Purity, %': 50, 'Position': 'C3',
-    # 'Purif type': 'Хроматография_Cy5', 'Date': '12.09.2025', 'Scale, OE': '1-3', 'Status': 'synthesis', 'DONE': False,
-    # 'Wasted': False, 'Send': False, 'asm Sequence': '[10]TAAAAGAAGGCAAATTCCCCTGT', 'Synt number': '9', 'map #': 313.0,
-    # 'Exist, oe': nan, 'sufficiency': nan, 'synt, positions': None}
-
-    def show_content(self):
-        print(self.data_from_base)
         with ui.dialog() as self.dialog:
             with ui.card().style('width: auto; max-width: none;'):
                 #ui.textarea(value=f'{self.rowdata[0]}').style('width: 1000px')
                 with ui.row():
-                    ui.input(label='Название', value=self.rowdata[0]['Name']).style('width: 200px')
-                    ui.input(label='ID', value=self.rowdata[0]['Order id']).style('width: 100px')
-                    self.map_id = ui.input(label='MAP', value=self.rowdata[0]['map #']).style('width: 100px')
-                    ui.input(label='Sequence', value=self.rowdata[0]['Sequence']).style('width: 400px')
-                    ui.input(label='Lenght', value=self.rowdata[0]['Lenght']).style('width: 100px')
-                    ui.input(label='Тип очистки', value=self.rowdata[0]['Purification']).style('width: 200px')
-                    ui.input(label='Заказ', value=self.rowdata[0]['order id']).style('width: 200px')
+                    self.name_input = ui.input(label='Название', value='').style('width: 200px')
+                    self.ID_input = ui.input(label='ID', value='').style('width: 100px')
+                    self.map_id = ui.input(label='MAP', value='').style('width: 100px')
+                    self.pos_input = ui.input(label='Position', value='').style('width: 100px')
+                    self.seq_input = ui.input(label='Sequence', value='').style('width: 400px')
+                    self.len_input = ui.input(label='Lenght', value='').style('width: 100px')
+                    self.purif_type_input = ui.input(label='Тип очистки', value='').style('width: 200px')
+                    self.invoce_input = ui.input(label='Заказ', value='').style('width: 200px')
                 with ui.row():
-                    self.file_input = ui.input(label='Название файла', value='').style('width: 500px')
                     self.column_input = ui.input(label='Объем колонки, мл', value='7',
                                                  on_change=self.on_column_volume_change,
                                                  ).style('width: 100px')
+                    self.resin_name_input = ui.input(label='Марка сорбента', value='Source RP').style('width: 200px')
+                    self.resin_producer_input = ui.input(label='Производитель', value='Cytiva').style('width: 200px')
+                    self.resin_size_input = ui.input(label='Размер зерна, мкм', value='15').style('width: 200px')
+
                 with ui.row():
+                    self.file_input = ui.input(label='Название файла', value='').style('width: 600px')
                     ui.upload(label='Загрузить хроматограмму',
                         on_upload=self.handle_upload).props("accept=.asc").classes("max-w-full")
+                    self.date_input = ui.input(label='Дата', value=datetime.datetime.now().date().strftime('%d.%m.%Y')
+                                               ).style('width: 100px')
 
                 chrom_data = asc_reader('')
                 self.chrom = chrom_plotter(chrom_data.get_series_by_contains(['UV', 'Conc']))
 
                 with ui.row():
-                    ui.button('Добавить', on_click=self.do_add_event)
-                    ui.button('Отмена', on_click=self.dialog.close)
+                    self.add_button = ui.button('Добавить', on_click=self.do_add_event)
+                    ui.button('Отмена', on_click=self.on_close)
+
+    def set_data_to_form_rowdata(self):
+        self.name_input.value = self.rowdata[0]['Name']
+        self.ID_input.value = self.rowdata[0]['Order id']
+        self.map_id.value = self.rowdata[0]['map #']
+        self.pos_input.value = self.rowdata[0]['Position']
+        self.seq_input.value = self.rowdata[0]['Sequence']
+        self.len_input.value = self.rowdata[0]['Lenght']
+        self.purif_type_input.value = self.rowdata[0]['Purif type']
+        self.invoce_input.value = self.rowdata[0]['order id']
+        self.add_button.text = 'Добавить'
+        self.file_input.value = ''
+        self.chrom.clear()
+        self.chrom.init_chrom({})
+
+
+    def set_data_to_form_base(self):
+        try:
+            self.name_input.value = self.rowdata[0]['Name']
+            self.ID_input.value = self.data_from_base['oligo_id']
+            self.map_id.value = self.data_from_base['map_id']
+            self.pos_input.value = self.data_from_base['position']
+            self.seq_input.value = self.rowdata[0]['Sequence']
+            self.len_input.value = self.rowdata[0]['Lenght']
+            self.purif_type_input.value = self.rowdata[0]['Purif type']
+            self.invoce_input.value = self.rowdata[0]['order id']
+            self.date_input.value = self.data_from_base['date']
+            self.add_button.text = 'Обновить'
+            data = json.loads(self.data_from_base['chrom_data'])
+
+            self.file_input.value = data['filename']
+            self.resin_name_input.value = data['resin_name']
+            self.resin_producer_input.value = data['resin_producer']
+            self.resin_size_input.value = data['resin_size']
+            self.column_input.value = data['column_volume']
+            self.chrom.init_data = data['init_data']
+            self.chrom.init_chrom(self.chrom.init_data)
+            self.chrom.selection_range = data['selection_range']
+            self.chrom.conc_b_selected = data['conc_b_selected']
+            self.chrom.selected_space = data['selected_space']
+            self.chrom.draw_sel_line_layer()
+        except Exception as err:
+            ui.notify(f'Ошибка загрузки данных: {err}')
+            self.set_data_to_form_rowdata()
+
+    def set_data_to_init(self):
+        self.name_input.value = ''
+        self.ID_input.value = ""
+        self.map_id.value = ""
+        self.pos_input.value = ""
+        self.seq_input.value = ""
+        self.len_input.value = ""
+        self.purif_type_input.value = ""
+        self.invoce_input.value = ""
+        self.file_input.value = ""
+        self.name_input.value = ""
+        self.chrom.init_chrom({})
 
     def on_column_volume_change(self, e):
         try:
@@ -604,18 +664,23 @@ class chrom_dialog():
             ui.notify('Нужно указать целочисленное значение объема колонки')
 
     def handle_upload(self, e: events.UploadEventArguments):
-        self.filename = e.name
-        self.file_input.value = self.filename
+        self.file_input.value = e.name
         text = e.content.readlines()
         data = []
         for row in text:
             data.append(str(row.decode()))
         chrom_data = asc_reader('')
         chrom_data.parse(data)
+        self.chrom.clear()
         self.chrom.init_chrom(chrom_data.get_series_by_contains(['UV', 'Conc']))
 
     def on_send_chrom_data(self, data):
         print(data)
+
+    def on_close(self):
+        self.data_from_base = {}
+        self.set_data_to_init()
+        self.dialog.close()
 
     def do_add_event(self):
         data, out = {}, {}
@@ -631,10 +696,15 @@ class chrom_dialog():
 
                 data['init_data'] = series
 
+                data['selected_space'] = self.chrom.selected_space
                 data['selection_range'] = self.chrom.selection_range
                 data['conc_b_selected'] = self.chrom.conc_b_selected
                 data['column_volume'] = self.chrom.column_volume
-                data['filename'] = self.filename
+                data['filename'] = self.file_input.value
+
+                data['resin_name'] = self.resin_name_input.value
+                data['resin_producer'] = self.resin_producer_input.value
+                data['resin_size'] = self.resin_size_input.value
 
                 out['oligo_id'] = int(self.rowdata[0]['Order id'])
                 if self.map_id.value == '':
@@ -642,11 +712,18 @@ class chrom_dialog():
                     return False
                 out['map_id'] = int(self.map_id.value)
                 out['position'] = self.rowdata[0]['Position']
+                if self.data_from_base != {}:
+                    out['ID'] = int(self.data_from_base['id'])
+                else:
+                    out['ID'] = -1
                 out['chrom_data'] = data
             else:
                 ui.notify('Нужно отметить диапазон элюции целевого продукта')
+
         self.on_send_chrom_data(out)
-        self.dialog.close()
+        self.data_from_base = {}
+        self.chrom.clear()
+        self.on_close()
         return True
 
 

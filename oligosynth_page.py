@@ -230,7 +230,7 @@ class oligosynth_panel_page_model(api_db_interface):
                 self.on_sel_do_btn.props['color'] = 'orange'
                 self.wells_layer_selector = ui.radio(
                     ['Base layer', 'Status layer', 'Purification layer', 'Support layer', 'Click layer',
-                            'Order layer'],
+                            'Order layer', 'Chrom layer'],
                     on_change=self.wells_layer_selector_event,
                     value='Base layer').props('inline')
 
@@ -588,6 +588,7 @@ class oligosynth_panel_page_model(api_db_interface):
         self.synth_name_label.text = str(synt_name)
         self.synth_number_label.text = str(synt_number)
 
+        self.xwells_obj.loaded_map_id = selRows[0]['#']
         self.xwells_obj.load_selrows(rowData)
 
         app.storage.user['oligomap_ag_grid_rowdata'] = self.oligomap_ag_grid.options['rowData']

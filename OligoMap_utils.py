@@ -46,6 +46,11 @@ class oligomaps_search(api_db_interface):
         except:
             return 100
 
+    def check_chrom_data_in_base(self, map_id):
+        url = f'{self.api_db_url}/check_chrom_data/{self.chrom_db}/{self.maps_db_name}/{map_id}'
+        r = requests.get(url, headers=self.headers())
+        return r
+
     def insert_chrom_data_to_base(self, data):
         if data != {}:
             url = f'{self.api_db_url}/insert_data/{self.chrom_db}/main_tab'
@@ -61,6 +66,21 @@ class oligomaps_search(api_db_interface):
                               ]), headers=self.headers())
             if r.status_code == 200:
                 ui.notify('Хроматограмма добавлена в базу')
+            return r.status_code == 200
+        else:
+            return False
+
+    def update_chrom_data_to_base(self, data):
+        if data != {}:
+            url = f'{self.api_db_url}/update_data/{self.chrom_db}/main_tab/{data["ID"]}'
+            chrom_data = json.dumps(data['chrom_data'])
+            r = requests.put(url,
+                              json=json.dumps({
+                                'name_list':['chrom_data'],
+                                'value_list':[chrom_data]
+                              }), headers=self.headers())
+            if r.status_code == 200:
+                ui.notify('Хроматограмма обновлена')
             return r.status_code == 200
         else:
             return False

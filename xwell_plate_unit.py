@@ -216,6 +216,7 @@ def random_color_hex(r_min=0, r_max=255, g_min=0, g_max=255, b_min=0, b_max=255)
 
 class XWell_plate:
     def __init__(self):
+        self.loaded_map_id = ''
         self.plate_bkg = 'plate_bkg_2.png'
         self.well_rad = 45
         self.mouse_down = False
@@ -263,8 +264,12 @@ class XWell_plate:
         #print(ip, port)
         omap = oligomaps_search(ip, port)
         omap.pincode = app.storage.user.get('pincode')
-        if not omap.insert_chrom_data_to_base(data):
-            ui.notify('Не удалось сохранить данные')
+        if data['ID'] == -1:
+            if not omap.insert_chrom_data_to_base(data):
+                ui.notify('Не удалось сохранить данные')
+        else:
+            if not omap.update_chrom_data_to_base(data):
+                ui.notify('Не удалось обновить данные')
 
     def on_edit_chrom(self):
         if self.chrom_editor.rowdata != []:
@@ -274,7 +279,12 @@ class XWell_plate:
             omap.pincode = app.storage.user.get('pincode')
             self.chrom_editor.data_from_base = omap.search_chrom_data(int(self.chrom_editor.rowdata[0]['Order id']),
                                    self.chrom_editor.rowdata[0]['Position'])
-            self.chrom_editor.show_content()
+
+            if self.chrom_editor.data_from_base == {}:
+                self.chrom_editor.set_data_to_form_rowdata()
+            else:
+                self.chrom_editor.set_data_to_form_base()
+
             self.chrom_editor.dialog.open()
 
     def on_edit(self):
@@ -324,6 +334,14 @@ class XWell_plate:
         self.draw_selected_wells()
         self.draw_layers(self.layer_selector)
 
+    def get_map_id(self):
+        map_id = ''
+        for key, well in zip(self.wells.keys(), self.wells.values()):
+            if 'init_row' in list(well.oligo_data.keys()):
+                map_id = well.oligo_data['init_row']['map #']
+                if map_id != '':
+                    break
+        return map_id
 
     def well_selection_by_position(self, rowData):
         df = pd.DataFrame(rowData)
@@ -368,6 +386,7 @@ class XWell_plate:
 
 
     def load_selrows(self, selRows):
+        #print(selRows)
         self.clear_wells()
         self.well_selection_by_position(selRows)
         #self.total_select()
@@ -411,7 +430,6 @@ class XWell_plate:
         self.draw_selected_wells()
         #self.draw_oligo_data_layer()
         self.draw_layers(self.layer_selector)
-
 
     def get_coord(self, x, y):
         out = {'well': ('', ''), 'key': (0, 0)}
@@ -462,6 +480,25 @@ class XWell_plate:
             self.draw_click_layer()
         elif selector == 'Order layer':
             self.draw_order_layer()
+        elif selector == 'Chrom layer':
+            self.draw_chrom_data_layer()
+
+
+    def draw_chrom_data_layer(self):
+        self.oligo_data_layer.content = ""
+        ip = app.storage.general.get('db_IP')
+        port = app.storage.general.get('db_port')
+        omap = oligomaps_search(ip, port)
+        omap.pincode = app.storage.user.get('pincode')
+        ret = omap.check_chrom_data_in_base(self.loaded_map_id)
+        data = ret.json()
+        if ret.status_code == 200:
+            for key, well in zip(self.wells.keys(), self.wells.values()):
+                if 'init_row' in list(well.oligo_data.keys()):
+                    if (well.oligo_data['init_row']['Order id'] in data['id'] and
+                            well.oligo_data['init_row']['Position'] in data['pos']):
+                        self.oligo_data_layer.content += (f'<circle cx="{well.x}" cy="{well.y}" r="32" fill="{well.color}" '
+                                                      f'stroke="blue" stroke-width="6" />')
 
 
     def draw_oligo_data_layer(self):
