@@ -1,9 +1,8 @@
-from nicegui import ui
+from nicegui import ui, events
 from io import BytesIO
 from PIL import Image, ImageDraw
 import base64
 import pandas as pd
-from xwell_plate_unit import random_color_hex
 from invoce_chart import PolylineSVG
 from scipy.interpolate import interp1d
 import numpy as np
@@ -182,39 +181,49 @@ class diagram_base(plot_gui_base):
 class asc_reader():
     def __init__(self, filename):
         self.filename = filename
-        self.read_file(filename)
+        if filename != '':
+            self.read_file(filename)
+        else:
+            self.series = {}
+            self.series_index = {}
+            self.series_units = {}
+            self.series_data = {}
 
-    def read_file(self, filename):
+    def parse(self, data):
         self.series = {}
         self.series_index = {}
         self.series_units = {}
         self.series_data = {}
-        with open(filename, 'r') as file:
-            data = file.readlines()
-            for i, row in enumerate(data):
-                if i == 1:
-                    k_key = 'none'
-                    for j, key in enumerate(row.split('\t')):
-                            if key not in ['']:
-                                k_key = key
-                                self.series_index[key] = [j]
-                            else:
-                                self.series_index[k_key].append(j)
-                if i == 2:
-                    for j, key in enumerate(row.split('\t')):
-                        self.series_units[j] = key
-                        self.series_data[j] = []
-                if i > 2:
-                    for j, key in enumerate(row.split('\t')):
-                        if key not in ['', '\n']:
-                            self.series_data[j].append(key)
+        for i, row in enumerate(data):
+            if i == 1:
+                k_key = 'none'
+                for j, key in enumerate(row.split('\t')):
+                        if key not in ['']:
+                            k_key = key
+                            self.series_index[key] = [j]
+                        else:
+                            self.series_index[k_key].append(j)
+            if i == 2:
+                for j, key in enumerate(row.split('\t')):
+                    self.series_units[j] = key
+                    self.series_data[j] = []
+            if i > 2:
+                for j, key in enumerate(row.split('\t')):
+                    if key not in ['', '\n', '\r\n']:
+                        self.series_data[j].append(key)
         for key in self.series_index.keys():
-            if key not in ['\n']:
+            if key not in ['\n', '\r\n']:
                 i1 = self.series_index[key][0]
                 i2 = self.series_index[key][1]
                 self.series[key] = {}
                 self.series[key][self.series_units[i1]] = self.series_data[i1]
                 self.series[key][self.series_units[i2]] = self.series_data[i2]
+
+
+    def read_file(self, filename):
+        with open(filename, 'r') as file:
+            data = file.readlines()
+            self.parse(data)
 
     def get_series_by_contains(self, contains_list):
         out_series = {}
@@ -295,6 +304,9 @@ class interpolate_crom_line():
 class chrom_plotter(diagram_base):
     def __init__(self, series, width=1800, height=800):
         super().__init__(width, height)
+        self.selection_range = {}
+        self.chrom_is_done = False
+        self.column_volume = 7
         self.points_font_size = '14'
         self.selected_line = 'UV 1_260'
         self.inter_points_number = 240
@@ -312,6 +324,22 @@ class chrom_plotter(diagram_base):
         self.type_font_size = 20
         self.draw_type_chrom_layer()
         self.convert_series_data()
+        if series != {}:
+            self.draw_chrom_lines()
+            self.draw_axis_points()
+
+    def init_chrom(self, series):
+        try:
+            self.init_data = series
+            self.interpolate_series()
+            self.set_type_chrom_colors()
+            self.draw_type_chrom_layer()
+            self.convert_series_data()
+            self.draw_chrom_lines()
+            self.draw_axis_points()
+            self.chrom_is_done = True
+        except:
+            self.chrom_is_done = False
 
 
     def interpolate_series(self):
@@ -432,12 +460,23 @@ class chrom_plotter(diagram_base):
         return [(i, j) for i, j in zip(xx, yy)]
 
     def draw_sel_line_layer(self):
-        self.sel_line_layer.content = ''
-        points = self.get_series_selected_points(self.selected_line)
-        polyline = PolylineSVG(points)
-        polyline.color = 'green'
-        polyline.fill_color = 'orange'
-        self.sel_line_layer.content += polyline.svg_string()
+        try:
+            self.sel_line_layer.content = ''
+            points = self.get_series_selected_points(self.selected_line)
+            polyline = PolylineSVG(points)
+            polyline.color = 'green'
+            polyline.fill_color = 'yellow'
+            self.sel_line_layer.content += polyline.svg_string()
+            x, y = self.conc_b_selected['draw_point'][0], self.conc_b_selected['draw_point'][1]
+            text = f'buff B: {self.conc_b_selected["conc_b"]}% '
+            text += f'CV: {self.conc_b_selected["CV"]}'
+            #print(x, y, text)
+            self.sel_line_layer.content += (f'<text x="{x}" '
+                                        f'y="{y}" '
+                                        f'fill="{"white"}" '
+                                        f'font-size="{self.type_font_size}">{text}</text>')
+        except:
+            pass
 
 
     def get_range_by_rect(self):
@@ -461,6 +500,27 @@ class chrom_plotter(diagram_base):
         self.selection_range['x2'] = xx_2
         return xx_1, xx_2
 
+    def culc_selected_conc_b(self):
+        try:
+            conc_b = self.init_data['Conc B']
+            x1, x2 = self.selection_range['x1'], self.selection_range['x2']
+            k_keys = list(conc_b.keys())
+            conc_b = pd.DataFrame(conc_b)
+            conc_b = conc_b[(conc_b[k_keys[0]] >= x1)&(conc_b[k_keys[0]] <= x2)]
+            self.conc_b_selected = {}
+            self.conc_b_selected['conc_b'] = float(round(conc_b[k_keys[1]].mean(), 1))
+            self.conc_b_selected['CV'] = float(round(sum([x1, x2])/(self.column_volume * 2), 1))
+            self.conc_b_selected['ml'] = float(round(sum([x1, x2])/2, 1))
+
+            xx, yy = set_draw_points(np.array([self.conc_b_selected['ml']]), np.array([self.conc_b_selected['conc_b']]),
+                                 np.array(self.init_data['Conc B'][k_keys[0]]),
+                                 np.array(self.init_data['Conc B'][k_keys[1]]),
+                                 self.draw_space)
+            self.conc_b_selected['draw_point'] = (int(round(xx[0], 0)), int(round(yy[0], 0)))
+        except:
+            ui.notify('Необходимо добавить к хроматографии данные концентрации Б')
+
+
     def on_mouse_down(self, e):
         self.x_down_point = e.image_x
         self.y_down_point = e.image_y
@@ -477,8 +537,9 @@ class chrom_plotter(diagram_base):
         self.x_up_point = e.image_x
         self.y_up_point = e.image_y
         self.get_range_by_rect()
+        self.culc_selected_conc_b()
         self.draw_sel_line_layer()
-        #print(self.get_data_to_base())
+
 
     def get_data_to_base(self):
         export = {}
@@ -487,21 +548,118 @@ class chrom_plotter(diagram_base):
         return export
 
 
+class chrom_dialog():
+    def __init__(self, rowdata):
+        self.rowdata = rowdata
+        self.data_from_base = {}
+
+    #{'#': 19, "3'-end": 'BHQ2', "5'-end": 'Cy5', 'Amount, oe': '1-3', 'Lenght': '23', 'Name': 'IRF4-592-C',
+    # 'Purification': 'Хроматография', 'Sequence': '[Alk]TAAAAGAAGGCAAATTCCCCTGT[BHQ2]', 'client id': 'НЦГИ',
+    # 'input date': '09.10.2025', 'order id': 'НЦГИ/БЛМ/УТ1578', 'output date': '09.10.2025', 'status': 'in queue',
+    # 'Order id': 7593, 'f_sequence': '[Cy5]TAAAAGAAGGCAAATTCCCCTGT[BHQ2]', 'CPG, mg': '5 mg',
+    # 'Support type': 'bhq2_1000_hg', 'Do LCMS': True, 'Do synth': True, 'Do cart': False, 'Do hplc': True,
+    # 'Do paag': False, 'Do sed': False, 'Do click': True, 'Do subl': True, 'Done LCMS': False, 'Done synth': True,
+    # 'Done cart': False, 'Done hplc': False, 'Done paag': False, 'Done sed': False, 'Done click': False,
+    # 'Done subl': False, 'Dens, oe/ml': 413, 'Vol, ml': '0.05', 'Purity, %': 50, 'Position': 'C3',
+    # 'Purif type': 'Хроматография_Cy5', 'Date': '12.09.2025', 'Scale, OE': '1-3', 'Status': 'synthesis', 'DONE': False,
+    # 'Wasted': False, 'Send': False, 'asm Sequence': '[10]TAAAAGAAGGCAAATTCCCCTGT', 'Synt number': '9', 'map #': 313.0,
+    # 'Exist, oe': nan, 'sufficiency': nan, 'synt, positions': None}
+
+    def show_content(self):
+        print(self.data_from_base)
+        with ui.dialog() as self.dialog:
+            with ui.card().style('width: auto; max-width: none;'):
+                #ui.textarea(value=f'{self.rowdata[0]}').style('width: 1000px')
+                with ui.row():
+                    ui.input(label='Название', value=self.rowdata[0]['Name']).style('width: 200px')
+                    ui.input(label='ID', value=self.rowdata[0]['Order id']).style('width: 100px')
+                    self.map_id = ui.input(label='MAP', value=self.rowdata[0]['map #']).style('width: 100px')
+                    ui.input(label='Sequence', value=self.rowdata[0]['Sequence']).style('width: 400px')
+                    ui.input(label='Lenght', value=self.rowdata[0]['Lenght']).style('width: 100px')
+                    ui.input(label='Тип очистки', value=self.rowdata[0]['Purification']).style('width: 200px')
+                    ui.input(label='Заказ', value=self.rowdata[0]['order id']).style('width: 200px')
+                with ui.row():
+                    self.file_input = ui.input(label='Название файла', value='').style('width: 500px')
+                    self.column_input = ui.input(label='Объем колонки, мл', value='7',
+                                                 on_change=self.on_column_volume_change,
+                                                 ).style('width: 100px')
+                with ui.row():
+                    ui.upload(label='Загрузить хроматограмму',
+                        on_upload=self.handle_upload).props("accept=.asc").classes("max-w-full")
+
+                chrom_data = asc_reader('')
+                self.chrom = chrom_plotter(chrom_data.get_series_by_contains(['UV', 'Conc']))
+
+                with ui.row():
+                    ui.button('Добавить', on_click=self.do_add_event)
+                    ui.button('Отмена', on_click=self.dialog.close)
+
+    def on_column_volume_change(self, e):
+        try:
+            if e.value != '':
+                self.chrom.column_volume = int(e.value)
+            else:
+                self.chrom.column_volume = 7
+        except:
+            ui.notify('Нужно указать целочисленное значение объема колонки')
+
+    def handle_upload(self, e: events.UploadEventArguments):
+        self.filename = e.name
+        self.file_input.value = self.filename
+        text = e.content.readlines()
+        data = []
+        for row in text:
+            data.append(str(row.decode()))
+        chrom_data = asc_reader('')
+        chrom_data.parse(data)
+        self.chrom.init_chrom(chrom_data.get_series_by_contains(['UV', 'Conc']))
+
+    def on_send_chrom_data(self, data):
+        print(data)
+
+    def do_add_event(self):
+        data, out = {}, {}
+        if self.chrom.chrom_is_done:
+            if self.chrom.selection_range != {}:
+                data['init_data'] = self.chrom.init_data.copy()
+
+                series = {}
+                for key in data['init_data'].keys():
+                    series[key] = {}
+                    for k in data['init_data'][key].keys():
+                        series[key][k] = list(data['init_data'][key][k])
+
+                data['init_data'] = series
+
+                data['selection_range'] = self.chrom.selection_range
+                data['conc_b_selected'] = self.chrom.conc_b_selected
+                data['column_volume'] = self.chrom.column_volume
+                data['filename'] = self.filename
+
+                out['oligo_id'] = int(self.rowdata[0]['Order id'])
+                if self.map_id.value == '':
+                    ui.notify('MAP должен быть целым числом')
+                    return False
+                out['map_id'] = int(self.map_id.value)
+                out['position'] = self.rowdata[0]['Position']
+                out['chrom_data'] = data
+            else:
+                ui.notify('Нужно отметить диапазон элюции целевого продукта')
+        self.on_send_chrom_data(out)
+        self.dialog.close()
+        return True
 
 
-plot = diagram_base(1500, 500)
-plot.hiding_rect_after_up = True
-plot.draw_axis()
+if __name__ in {"__main__", "__mp_main__"}:
+    plot = diagram_base(1500, 500)
+    plot.hiding_rect_after_up = True
+    plot.draw_axis()
 
-#chrom_data = asc_reader('/home/alex/Documents/OligoSynt/Exports/RP_5ml_method_30_30_fractionation_1mll_alkine_new_050924 2_H5 050925 001.asc')
-chrom_data = asc_reader('/home/alex/Documents/OligoSynt/Exports/RP_5ml_method_30_30_fractionation_1mll_alkine_new_050924 10_B2_020925 001.asc')
+    #chrom_data = asc_reader('/home/alex/Documents/OligoSynt/Exports/RP_5ml_method_30_30_fractionation_1mll_alkine_new_050924 2_H5 050925 001.asc')
+    chrom_data = asc_reader('/home/alex/Documents/OligoSynt/Exports/RP_5ml_method_30_30_fractionation_1mll_alkine_new_050924 10_B2_020925 001.asc')
 
-chrom = chrom_plotter(chrom_data.get_series_by_contains(['UV', 'Conc']))
-chrom.draw_chrom_lines()
-chrom.draw_axis_points()
-
+    chrom = chrom_plotter(chrom_data.get_series_by_contains(['UV', 'Conc']))
 
 
-
-ui.run(port=8082)
+    ui.run(port=8082)
 

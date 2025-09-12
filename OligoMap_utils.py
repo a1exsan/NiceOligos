@@ -36,6 +36,7 @@ class oligomaps_search(api_db_interface):
         self.maps_db_name = 'asm2000_map_1.db'
         self.strftime_format = "%Y-%m-%d"
         self.db_name = 'scheduler_oligolab_2.db'
+        self.chrom_db = 'chrom_data_1.db'
 
     def map_in_progress(self, mapdata):
         map = json.loads(mapdata)
@@ -44,6 +45,41 @@ class oligomaps_search(api_db_interface):
             return round(df[df['Status'] == 'finished'].shape[0] * 100/df.shape[0], 0)
         except:
             return 100
+
+    def insert_chrom_data_to_base(self, data):
+        if data != {}:
+            url = f'{self.api_db_url}/insert_data/{self.chrom_db}/main_tab'
+            oligo_id = data['oligo_id']
+            map_id = data['map_id']
+            position = data['position']
+            date = datetime.now().date().strftime('%d.%m.%Y')
+            format_d = '%d.%m.%Y'
+            chrom_data = json.dumps(data['chrom_data'])
+            r = requests.post(url,
+                              json=json.dumps([
+                                  oligo_id, map_id, position, date, format_d, chrom_data
+                              ]), headers=self.headers())
+            if r.status_code == 200:
+                ui.notify('Хроматограмма добавлена в базу')
+            return r.status_code == 200
+        else:
+            return False
+
+    def search_chrom_data(self, oligo_id, position):
+        url = f'{self.api_db_url}/get_keys_data/{self.chrom_db}/main_tab/oligo_id/{oligo_id}'
+        ret = requests.get(url, headers=self.headers())
+        d = {}
+        for row in ret.json():
+            if row[3] == position:
+                d['id'] = row[0]
+                d['oligo_id'] = row[1]
+                d['map_id'] = row[2]
+                d['position'] = row[3]
+                d['date'] = row[4]
+                d['format'] = row[5]
+                d['chrom_data'] = row[6]
+                break
+        return d
 
     def get_oligomaps(self):
         self.all_not_fin_oligos = []
@@ -80,8 +116,6 @@ class oligomaps_search(api_db_interface):
     def get_oligomaps_data(self):
         url = f'{self.api_db_url}/get_all_tab_data/{self.maps_db_name}/main_map'
         ret = requests.get(url, headers=self.headers())
-        print(url, self.headers())
-        print(ret)
         if ret.status_code == 200:
             out = []
             for r in ret.json():
@@ -286,7 +320,7 @@ class oligomaps_search(api_db_interface):
 
     def update_oligomap_status(self, rowData, accordrowdata):
         if len(rowData) > 0:
-            print(rowData[0])
+            #print(rowData[0])
             if 'map #' in list(rowData[0].keys()):
                 for row in rowData:
                     if row['map #'] != '':

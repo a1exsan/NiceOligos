@@ -4,6 +4,8 @@ from oligoMass import molmassOligo as mmo
 from datetime import datetime
 import random
 from collections import Counter
+from lcms_chrom_data import chrom_dialog
+from OligoMap_utils import oligomaps_search
 
 
 class click_azide():
@@ -58,7 +60,11 @@ class Well:
 
     def load_init_row(self, row):
         self.oligo_data['init_row'] = row.copy()
-        self.color = self.get_support_color(self.oligo_data['init_row']['Sequence'])
+        self.color = self.get_support_color(self.oligo_data['init_row']['Sequence'],
+                                            self.oligo_data['init_row']['Support type'])
+
+        #print()
+
         self.dye_color = self.get_dye_color(self.oligo_data['init_row']['Sequence'] +
                                             self.oligo_data['init_row']['Purif type'])
 
@@ -143,7 +149,7 @@ class Well:
             return 'biocomma_3000'
 
 
-    def get_support_color(self, sequence):
+    def get_support_color(self, sequence, support_type='_500'):
         if sequence.find('BHQ1') > -1:
             return '#f100a1'
         elif sequence.find('BHQ2') > -1:
@@ -152,7 +158,7 @@ class Well:
             return '#0000f1'
         else:
         #    return '#f1f1f1'
-            stype = self.get_support_type(sequence)
+            stype = support_type
             if stype.find('_500') > -1:
                 return '#afafaf'
             if stype.find('_1000') > -1:
@@ -224,10 +230,58 @@ class XWell_plate:
 
         self.image = ui.interactive_image(f'/img/{self.plate_bkg}', on_mouse=self.mouse_handler,  # cross='red',
                                      events=['mousedown', 'mousemove', 'mouseup'])
+
+        with ui.context_menu() as self.context_menu:
+            ui.menu_item('Редактировать хроматограмму', on_click=self.on_edit_chrom)
+            ui.menu_item('Edit', on_click=self.on_edit)
+            ui.menu_item('Delete', on_click=self.on_delete)
+
+        #self.image.on('contextmenu.prevent', self.open_menu)
+
         self.highlight_well_select = self.image.add_layer()
         self.oligo_data_layer = self.image.add_layer()
         self.highlight_well = self.image.add_layer()
         self.draw_wells()
+        self.coord_context = self.get_coord(0, 0)
+        self.chrom_editor = chrom_dialog([{}])
+        self.chrom_editor.on_send_chrom_data = self.on_save_chrom_data_to_base
+
+    def open_menu(self, e):
+        coord = self.get_coord(e.image_x, e.image_y)
+        if coord['key'] != (0, 0):
+            if 'init_row' in list(self.wells[coord['key']].oligo_data.keys()):
+                self.chrom_editor.rowdata = [self.wells[coord['key']].oligo_data['init_row']]
+            else:
+                self.chrom_editor.rowdata = []
+        else:
+            self.chrom_editor.rowdata = []
+        self.context_menu.open()
+
+    def on_save_chrom_data_to_base(self, data):
+        ip = app.storage.general.get('db_IP')
+        port = app.storage.general.get('db_port')
+        #print(ip, port)
+        omap = oligomaps_search(ip, port)
+        omap.pincode = app.storage.user.get('pincode')
+        if not omap.insert_chrom_data_to_base(data):
+            ui.notify('Не удалось сохранить данные')
+
+    def on_edit_chrom(self):
+        if self.chrom_editor.rowdata != []:
+            ip = app.storage.general.get('db_IP')
+            port = app.storage.general.get('db_port')
+            omap = oligomaps_search(ip, port)
+            omap.pincode = app.storage.user.get('pincode')
+            self.chrom_editor.data_from_base = omap.search_chrom_data(int(self.chrom_editor.rowdata[0]['Order id']),
+                                   self.chrom_editor.rowdata[0]['Position'])
+            self.chrom_editor.show_content()
+            self.chrom_editor.dialog.open()
+
+    def on_edit(self):
+        ui.notify('Edit selected')
+
+    def on_delete(self):
+        ui.notify('Delete selected')
 
 
     def clear_wells(self):
@@ -781,10 +835,17 @@ class XWell_plate:
 
 
     def mouse_handler(self, e: events.MouseEventArguments):
+        if e.button == 0:
+            self.mouse_handler_0(e)
+        elif e.button == 2:
+            self.open_menu(e)
+
+    def mouse_handler_0(self, e: events.MouseEventArguments):
 
         ip = app.storage.user.get('client_ip')
 
         coord = self.get_coord(e.image_x, e.image_y)
+
         self.ctrl_pushed = e.ctrl
 
         if e.type == 'mousedown':
