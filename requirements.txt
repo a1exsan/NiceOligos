@@ -9,3 +9,4 @@ pubchempy
 rdkit
 pillow
 scipy
+requests

@@ -77,10 +77,17 @@ class input_order_page_model(api_db_interface):
     def __init__(self, api_IP, db_port):
         super().__init__(api_IP, db_port)
         self.init_pincode()
-
         self.db_name = 'scheduler_oligolab_2.db'
-
         self.page_content()
+        self.add_context_menu()
+
+    def add_context_menu(self):
+        with ui.context_menu() as self.context_menu:
+            self.paste_clip = ui.menu_item('Вставить из буфера')
+
+        self.paste_clip.on('click', js_handler='''
+                                async () => emitEvent("clipboard", await navigator.clipboard.readText())
+                                ''')
 
 
     def page_content(self):
@@ -186,11 +193,16 @@ class input_order_page_model(api_db_interface):
         self.input_tab.update()
 
 
+    def on_paste_clipboard(self):
+        pass
+
+
     def init_pincode(self):
         if 'pincode' in list(app.storage.user.keys()):
             self.pincode = app.storage.user.get('pincode')
         else:
             self.pincode = ''
+
 
 
     def process_data(self):
