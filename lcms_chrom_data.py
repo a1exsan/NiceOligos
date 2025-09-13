@@ -579,14 +579,14 @@ class chrom_dialog():
                     self.column_input = ui.input(label='Объем колонки, мл', value='7',
                                                  on_change=self.on_column_volume_change,
                                                  ).style('width: 100px')
-                    self.resin_name_input = ui.input(label='Марка сорбента', value='Source RP').style('width: 200px')
-                    self.resin_producer_input = ui.input(label='Производитель', value='Cytiva').style('width: 200px')
+                    self.resin_name_input = ui.input(label='Марка сорбента', value='PolyRP').style('width: 200px')
+                    self.resin_producer_input = ui.input(label='Производитель', value='China (Alamed)').style('width: 200px')
                     self.resin_size_input = ui.input(label='Размер зерна, мкм', value='15').style('width: 200px')
 
                 with ui.row():
-                    self.file_input = ui.input(label='Название файла', value='').style('width: 600px')
                     ui.upload(label='Загрузить хроматограмму',
-                        on_upload=self.handle_upload).props("accept=.asc").classes("max-w-full")
+                              on_upload=self.handle_upload).props("accept=.asc").classes("max-w-full")
+                    self.file_input = ui.input(label='Название файла', value='').style('width: 600px')
                     self.date_input = ui.input(label='Дата', value=datetime.datetime.now().date().strftime('%d.%m.%Y')
                                                ).style('width: 100px')
 

@@ -245,7 +245,7 @@ class XWell_plate:
         self.draw_wells()
         self.coord_context = self.get_coord(0, 0)
         self.chrom_editor = chrom_dialog([{}])
-        self.chrom_editor.on_send_chrom_data = self.on_save_chrom_data_to_base
+        #self.chrom_editor.on_send_chrom_data = self.on_save_chrom_data_to_base
 
     def open_menu(self, e):
         coord = self.get_coord(e.image_x, e.image_y)
@@ -257,19 +257,6 @@ class XWell_plate:
         else:
             self.chrom_editor.rowdata = []
         self.context_menu.open()
-
-    def on_save_chrom_data_to_base(self, data):
-        ip = app.storage.general.get('db_IP')
-        port = app.storage.general.get('db_port')
-        #print(ip, port)
-        omap = oligomaps_search(ip, port)
-        omap.pincode = app.storage.user.get('pincode')
-        if data['ID'] == -1:
-            if not omap.insert_chrom_data_to_base(data):
-                ui.notify('Не удалось сохранить данные')
-        else:
-            if not omap.update_chrom_data_to_base(data):
-                ui.notify('Не удалось обновить данные')
 
     def on_edit_chrom(self):
         if self.chrom_editor.rowdata != []:
@@ -491,8 +478,8 @@ class XWell_plate:
         omap = oligomaps_search(ip, port)
         omap.pincode = app.storage.user.get('pincode')
         ret = omap.check_chrom_data_in_base(self.loaded_map_id)
-        data = ret.json()
         if ret.status_code == 200:
+            data = ret.json()
             for key, well in zip(self.wells.keys(), self.wells.values()):
                 if 'init_row' in list(well.oligo_data.keys()):
                     if (well.oligo_data['init_row']['Order id'] in data['id'] and

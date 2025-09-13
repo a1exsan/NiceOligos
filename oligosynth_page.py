@@ -202,6 +202,7 @@ class oligosynth_panel_page_model(api_db_interface):
                 self.progressbar_1.visible = False
 
             self.xwells_obj = XWells.XWell_plate()
+            self.xwells_obj.chrom_editor.on_send_chrom_data = self.on_save_chrom_data_to_base
 
             with ui.column().classes("w-full"):
                 self.number_of_copies_oligo = ui.input('', value=1)
@@ -254,6 +255,20 @@ class oligosynth_panel_page_model(api_db_interface):
 
         self.get_oligomap_grid()
         self.init_data()
+
+    def on_save_chrom_data_to_base(self, data):
+        ip = app.storage.general.get('db_IP')
+        port = app.storage.general.get('db_port')
+        #print(ip, port)
+        omap = oligomaps_search(ip, port)
+        omap.pincode = app.storage.user.get('pincode')
+        if data['ID'] == -1:
+            if not omap.insert_chrom_data_to_base(data):
+                ui.notify('Не удалось сохранить данные')
+        else:
+            if not omap.update_chrom_data_to_base(data):
+                ui.notify('Не удалось обновить данные')
+        self.on_load_oligomap.run_method('click')
 
     def get_oligomap_grid(self):
         map_tab = pd.DataFrame(
