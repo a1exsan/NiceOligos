@@ -412,7 +412,6 @@ class writeOff_dialog(api_db_interface):
 
     def substruct_from_stock(self, tab_name, rowdata):
         for row in rowdata:
-            print(row)
             if row['name'].find('_sol_') > -1 and self.write_off:
                 self.substruct_solution(row['unicode'], row['amount'], tab_name)
             else:
