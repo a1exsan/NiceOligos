@@ -99,8 +99,11 @@ class phys_chem_props_interface():
                 with ui.row():
                     self.compound_name = ui.input(label='Название материала:').classes('w-[400px]').style('font-size: 20px;')
                     self.compound_limit = ui.input(label='Нижняя граница:').classes('w-[400px]').style('font-size: 20px;')
-                self.producer = ui.input(label='Производитель:').classes('w-[400px]').style('font-size: 20px;')
-                self.supplyer = ui.input(label='Поставщик:').classes('w-[400px]').style('font-size: 20px;')
+                with ui.row():
+                    self.producer = ui.input(label='Производитель:').classes('w-[400px]').style('font-size: 20px;')
+                    self.supplyer = ui.input(label='Поставщик:').classes('w-[400px]').style('font-size: 20px;')
+                with ui.row():
+                    self.unicode = ui.input(label='ID:').classes('w-[400px]').style('font-size: 20px;')
                 with ui.row():
                     self.price = ui.input(label='Цена за единицу:').classes('w-[400px]').style('font-size: 20px;')
                     self.units = ui.input(label='Единица измерения:').classes('w-[400px]').style('font-size: 20px;')

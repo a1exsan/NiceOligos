@@ -78,16 +78,38 @@ class input_order_page_model(api_db_interface):
         super().__init__(api_IP, db_port)
         self.init_pincode()
         self.db_name = 'scheduler_oligolab_2.db'
+
+        self.clip_js = '''
+            (event) => {
+                event.preventDefault();
+                const text = event.clipboardData.getData('text');
+                emitEvent('clipboard', text);
+            }
+        '''
+
         self.page_content()
-        self.add_context_menu()
+        #self.add_context_menu()
+
+        self.paste_area = ui.element('div').style('width: 1000px; height: 100px; border: 1px solid black;'
+                                                  ).on('paste', js_handler=self.clip_js)
+
+        #self.paste_area = ui.element('div').style('width: 1000px; height: 100px; border: 1px solid black;'
+        #                                          ).on('paste', js_handler='''
+        #    (event) => {
+        #        event.preventDefault();
+        #        const text = event.clipboardData.getData('text');
+        #        emitEvent('clipboard', text);
+        #    }
+        #''')
+
 
     def add_context_menu(self):
         with ui.context_menu() as self.context_menu:
             self.paste_clip = ui.menu_item('Вставить из буфера')
 
-        self.paste_clip.on('click', js_handler='''
-                                async () => emitEvent("clipboard", await navigator.clipboard.readText())
-                                ''')
+        self.paste_clip.on('click', js_handler=self.clip_js)
+
+
 
 
     def page_content(self):
@@ -153,9 +175,10 @@ class input_order_page_model(api_db_interface):
         self.scale_selected.on_value_change(self.price_grid.on_change_scale)
 
         self.rowdata = self.input_tab.options['rowData']
-        self.input_tab.on('keydown.ctrl.v', js_handler='''
-                                async () => emitEvent("clipboard", await navigator.clipboard.readText())
-                                ''')
+        self.input_tab.on('paste', js_handler=self.clip_js)
+        #self.input_tab.on('keydown.ctrl.v', js_handler='''
+        #                        async () => emitEvent("clipboard", await navigator.clipboard.readText())
+        #                        ''')
         self.input_tab.auto_size_columns = True
         self.input_tab.on("cellValueChanged", self.update_cell_data)
 
@@ -166,6 +189,31 @@ class input_order_page_model(api_db_interface):
         self.input_tab.options['rowData'] = self.rowdata
         self.input_tab.update()
         #print(self.input_tab.options['rowData'][0].keys())
+
+    def handle_clipboard(self, e):
+        print(e)
+        cname = {}
+        cname['0'] = 'Name'
+        cname['1'] = "5'-end"
+        cname['2'] = 'Sequence'
+        cname['3'] = "3'-end"
+        cname['4'] = 'Amount_OE'
+        cname['5'] = 'Purification'
+        rowdata = []
+        for row in e.args.split('\n'):
+            insert_row = {}
+            for i, col in enumerate(row.split('\t')):
+                if col == '':
+                    insert_row[cname[str(i)]] = 'none'
+                else:
+                    insert_row[cname[str(i)]] = col
+            rowdata.append(insert_row)
+        df = pd.DataFrame(rowdata)
+        df.dropna(inplace=True)
+
+        self.input_tab.options['rowData'] = df.to_dict('records')
+        self.rowdata = self.input_tab.options['rowData']
+        self.input_tab.update()
 
 
     def on_clipboard_event(self, e):

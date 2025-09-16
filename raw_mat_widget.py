@@ -7,6 +7,8 @@ import datetime
 from chemicals_page import phys_chem_props_interface
 import hashlib
 
+
+
 class show_stock_operations(api_db_interface):
     def __init__(self, api_IP, db_port):
         super().__init__(api_IP, db_port)
@@ -132,6 +134,8 @@ class reagent_form_dialog():
         with ui.dialog() as self.dialog:
             with ui.card().style('width: auto; max-width: none;'):
                 self.phyChemForm = phys_chem_props_interface()
+                if len(self.data) > 1:
+                    self.phyChemForm.unicode.value = self.data[2]
                 if self.data_obj['smart'] == {}:
                     self.phyChemForm.description.value = self.data_obj['simple']['common_description']
                     self.phyChemForm.compound_name.value = self.data_obj['simple']['name']
@@ -150,8 +154,8 @@ class reagent_form_dialog():
                     if self.data_obj['smart']['mol_inchi'] != '':
                         self.phyChemForm.draw_structure()
                     if self.data_obj['smart']['mol_lumiprobe_data'] != '':
-                        mol_desc = json.loads(self.data_obj['smart']['mol_lumiprobe_data'])
-                        self.phyChemForm.mol_description.value = str(mol_desc)
+                        self.mol_desc = json.loads(self.data_obj['smart']['mol_lumiprobe_data'])
+                        self.phyChemForm.mol_description.value = str(self.mol_desc)
                         self.phyChemForm.mol_lumiprobe_dict = json.loads(self.data_obj['smart']['mol_lumiprobe_data'])
                     self.phyChemForm.structure_adduct.value = self.data_obj['smart']['adduct_inchi']
         self.phyChemForm.on_save = self.do_save
@@ -379,21 +383,52 @@ class writeOff_dialog(api_db_interface):
         self.dialog.close()
         ui.run_javascript('location.reload();')
 
+    def get_all_data_in_tab_key(self, tab_name, key, value):
+        url = f'{self.api_db_url}/get_keys_data/{self.db_name}/{tab_name}/{key}/{value}'
+        ret = requests.get(url, headers=self.headers())
+        return ret.json()
+
+    def substruct_solution(self, unicode, amount, tab_name):
+        ret = self.get_all_data_in_tab_key('total_tab', 'unicode', unicode)
+        data = json.loads(ret[0][4])
+        if 'smart' in list(data.keys()):
+            if data['smart']['mol_lumiprobe_data'] not in ['', '{}']:
+                d_dict = json.loads(data['smart']['mol_lumiprobe_data'])
+                for key in d_dict.keys():
+                    amount_key = float(d_dict[key]) * float(amount)
+                    r_ret = self.get_all_data_in_tab_key('total_tab', 'unicode', key)
+                    url = f"{self.api_db_url}/insert_data/{self.db_name}/{tab_name}"
+                    r = requests.post(url,
+                                      json=json.dumps(
+                                          [
+                                              r_ret[0][1], key, amount_key,
+                                              datetime.datetime.now().date().strftime(self.strftime_format),
+                                              datetime.datetime.now().time().strftime(self.time_format),
+                                              self.get_user_id()
+                                          ]
+                                      )
+                                      , headers=self.headers())
+
+
     def substruct_from_stock(self, tab_name, rowdata):
         for row in rowdata:
-            if float(row['amount']) > 0:
-                url = f"{self.api_db_url}/insert_data/{self.db_name}/{tab_name}"
-                r = requests.post(url,
-                json=json.dumps(
-                        [
-                        row['name'], row['unicode'], row['amount'],
-                        datetime.datetime.now().date().strftime(self.strftime_format),
-                        datetime.datetime.now().time().strftime(self.time_format),
-                        #user_id
-                        self.get_user_id()
-                        ]
-                    )
-                , headers=self.headers())
+            print(row)
+            if row['name'].find('_sol_') > -1 and self.write_off:
+                self.substruct_solution(row['unicode'], row['amount'], tab_name)
+            else:
+                if float(row['amount']) > 0:
+                    url = f"{self.api_db_url}/insert_data/{self.db_name}/{tab_name}"
+                    r = requests.post(url,
+                    json=json.dumps(
+                            [
+                            row['name'], row['unicode'], row['amount'],
+                            datetime.datetime.now().date().strftime(self.strftime_format),
+                            datetime.datetime.now().time().strftime(self.time_format),
+                            #user_id
+                            self.get_user_id()
+                            ]
+                        )
+                    , headers=self.headers())
 
     def get_user_id(self):
         url = f"{self.api_db_url}/get_keys_data/{self.db_name}/users/pin/{self.pincode}"
