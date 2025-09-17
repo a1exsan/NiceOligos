@@ -18,6 +18,7 @@ class show_stock_operations(api_db_interface):
             self.pincode = ''
 
         self.db_name = 'stock_oligolab_5.db'
+        self.db_users = 'users_1.db'
         self.strftime_format = "%Y-%m-%d"
         self.time_format = "%H:%M:%S"
 
@@ -62,18 +63,23 @@ class show_stock_operations(api_db_interface):
 
     def set_ag_grid_tab(self, name):
 
-        users = self.get_all_data_in_tab(f'users')
+        users = self.get_all_data_in_tab_users(f'users')
+        users2 = self.get_all_data_in_tab(f'users')
         ids = {}
         for user in users:
+            ids[user[1]] = user[1]
+        for user in users2:
             ids[user[2]] = user[1]
+
+        #print(ids)
 
         data = self.get_all_data_in_tab(f'{name}')
         df = pd.DataFrame(data)
         tab_df = pd.DataFrame({
             '#': df[0],
             'Name': df[1],
-            "Amount": df[2],
-            'Unicode': df[3],
+            "Amount": df[3],
+            'Unicode': df[2],
             "Date": df[4],
             "Time": df[5],
             'User': df[6]
@@ -90,6 +96,11 @@ class show_stock_operations(api_db_interface):
 
     def get_all_data_in_tab(self, tab_name):
         url = f'{self.api_db_url}/get_all_tab_data/{self.db_name}/{tab_name}'
+        ret = requests.get(url, headers=self.headers())
+        return ret.json()
+
+    def get_all_data_in_tab_users(self, tab_name):
+        url = f'{self.api_db_url}/get_all_tab_data/{self.db_users}/{tab_name}'
         ret = requests.get(url, headers=self.headers())
         return ret.json()
 
@@ -304,6 +315,7 @@ class writeOff_dialog(api_db_interface):
 
         self.write_off = write_off
         self.db_name = 'stock_oligolab_5.db'
+        self.db_users = 'users_1.db'
         self.strftime_format = "%Y-%m-%d"
         self.time_format = "%H:%M:%S"
 
@@ -415,7 +427,11 @@ class writeOff_dialog(api_db_interface):
             if row['name'].find('_sol_') > -1 and self.write_off:
                 self.substruct_solution(row['unicode'], row['amount'], tab_name)
             else:
-                if float(row['amount']) > 0:
+                try:
+                    f_amount = float(row['amount'])
+                except:
+                    f_amount = 0
+                if float(f_amount) > 0:
                     url = f"{self.api_db_url}/insert_data/{self.db_name}/{tab_name}"
                     r = requests.post(url,
                     json=json.dumps(
@@ -430,9 +446,9 @@ class writeOff_dialog(api_db_interface):
                     , headers=self.headers())
 
     def get_user_id(self):
-        url = f"{self.api_db_url}/get_keys_data/{self.db_name}/users/pin/{self.pincode}"
+        url = f"{self.api_db_url}/get_keys_data/{self.db_users}/users/pass/{self.pincode}"
         r = requests.get(url, headers=self.headers())
-        return r.json()[0][2]
+        return r.json()[0][1]
 
 
 class raw_mat_base_widget(api_db_interface):

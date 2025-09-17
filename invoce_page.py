@@ -57,23 +57,29 @@ class change_status_dialog(api_db_interface):
 class navigation_menu(api_db_interface):
     def __init__(self, api_IP, db_port):
         super().__init__(api_IP, db_port)
-
-        dark = ui.dark_mode(True)
-
         self.pincode = ''
 
+        ui.dark_mode(True)
+        user_status = app.storage.user.get('user_status')
         navigation = ui.row()
         with navigation:
             ui.link('Home', '/').style('font-size: 24px;')
-            ui.link('Input order', '/input_order_panel').style('font-size: 24px;')
-            ui.link('Invoces', '/invoce_panel').style('font-size: 24px;')
-            ui.link('Oligo synthesis', '/oligosynth_panel').style('font-size: 24px;')
-            ui.link('Raw materials', '/rawmaterials_panel').style('font-size: 24px;')
-            ui.link('Chemicals', '/chemicals_panel').style('font-size: 24px;')
+            if user_status in ['own', 'owner', 'synth_master']:
+                ui.link('Input order', '/input_order_panel').style('font-size: 24px;')
+            if user_status in ['own', 'lab_master', 'owner', 'synth_master']:
+                ui.link('Invoces', '/invoce_panel').style('font-size: 24px;')
+                ui.link('Oligo synthesis', '/oligosynth_panel').style('font-size: 24px;')
+                ui.link('Raw materials', '/rawmaterials_panel').style('font-size: 24px;')
+            if user_status in ['own', 'owner']:
+                ui.link('Chemicals', '/chemicals_panel').style('font-size: 24px;')
+            if user_status in ['own', 'owner', 'stock_viewer']:
+                ui.link('Stock data', '/stock_data').style('font-size: 24px;')
+
+        ui.label(f'Пользователь: {app.storage.user.get("email")}')
 
 
-        self.on_pincode_change = ui.input(label='pincode', placeholder='enter pincode',
-                                          on_change=self.on_pincode_change_event)
+        #self.on_pincode_change = ui.input(label='pincode', placeholder='enter pincode',
+        #                                  on_change=self.on_pincode_change_event)
 
         self.init_data()
         #ui.button('Show pincode', on_click=lambda: ui.notify(app.storage.user.get('pincode').value))
@@ -88,12 +94,12 @@ class navigation_menu(api_db_interface):
         self.pincode = ''
         if 'pincode' in list(app.storage.user.keys()):
             self.pincode = app.storage.user.get('pincode')
-            self.on_pincode_change.value = self.pincode
+            #self.on_pincode_change.value = self.pincode
             if self.check_pincode().status_code == 200:
                 ui.notify('pincode verified')
             else:
                 ui.notify('Please, Enter pincode')
-                self.on_pincode_change.value = ''
+                #self.on_pincode_change.value = ''
 
 
 class invoice_page_model(api_db_interface):
@@ -494,7 +500,7 @@ class invoice_page_model(api_db_interface):
     def load_history_ivoces(self):
         if 'pincode' in list(app.storage.user.keys()):
             self.pincode = app.storage.user.get('pincode')
-        if len(self.pincode) == 4:
+        if len(self.pincode) >= 4:
             url = f'{self.api_db_url}/get_all_tab_data/{self.status_hist_db}/main_tab'
             ret = requests.get(url, headers=self.headers())
 

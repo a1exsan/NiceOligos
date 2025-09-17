@@ -13,6 +13,7 @@ class api_db_interface():
         self.pincode = ''
         self.client = {}
         self.client_frontend = {}
+        self.db_name = 'scheduler_oligolab_2.db'
 
     def headers(self):
         return {'Authorization': f'Pincode {self.pincode}'}
@@ -22,9 +23,94 @@ class api_db_interface():
         ret = requests.get(url, headers=self.headers())
         return ret
 
+    def get_user_data(self):
+        url = f'{self.api_db_url}/auth'
+        ret = requests.get(url, headers=self.headers())
+        return ret
+
+
 class oligos_data_stack():
     def __init__(self):
         self.input_selected_rows = {}
+
+
+class stock_db_data(api_db_interface):
+    def __init__(self):
+        IP = app.storage.general.get('db_IP')
+        port = app.storage.general.get('db_port')
+        super().__init__(IP, port)
+        self.pincode = app.storage.user.get('pincode')
+
+        self.db_name = 'stock_oligolab_5.db'
+        self.db_users = 'users_1.db'
+        self.strftime_format = "%Y-%m-%d"
+        self.time_format = "%H:%M:%S"
+
+    def get_all_data_in_tab(self, tab_name):
+        url = f'{self.api_db_url}/get_all_tab_data/{self.db_name}/{tab_name}'
+        ret = requests.get(url, headers=self.headers())
+        if ret.status_code == 200:
+            return ret.json()
+        else:
+            return []
+
+
+    def get_all_users(self):
+        url = f'{self.api_db_url}/get_all_tab_data/{self.db_users}/users'
+        ret = requests.get(url, headers=self.headers())
+        return ret.json()
+
+    def get_total_tab_data(self):
+        ret = self.get_all_data_in_tab('total_tab')
+        if len(ret) > 0:
+            rowdata = []
+            for row in ret:
+                d = {}
+                d['#'] = row[0]
+                d['Name'] = row[1]
+                d['Unicode'] = row[2]
+                try:
+                    data_obj = json.loads(row[4])
+                    d['Name'] = data_obj['simple']['name']
+                    d['low limit'] = data_obj['smart']['low_limit']
+                    d['units'] = data_obj['smart']['price_units']
+                    d['producer'] = data_obj['smart']['producer']
+                    d['supplyer'] = data_obj['smart']['supplyer']
+                    d['price'] = float(data_obj['smart']['price'])
+                except:
+                    d['low limit'] = row[5]
+                    d['units'] = row[3]
+                    d['producer'] = ''
+                    d['supplyer'] = ''
+                    d['price'] = 0.
+                rowdata.append(d)
+            return rowdata
+        else:
+            return []
+
+    def get_in_out_tab(self, name):
+        users = self.get_all_users()
+        users2 = self.get_all_data_in_tab(f'users')
+        ids = {}
+        for user in users:
+            ids[user[1]] = user[1]
+        for user in users2:
+            ids[user[2]] = user[1]
+        data = self.get_all_data_in_tab(f'{name}')
+        df = pd.DataFrame(data)
+        tab_df = pd.DataFrame({
+            '#': df[0],
+            'Name': df[1],
+            "Amount": df[3],
+            'Unicode': df[2],
+            "Date": df[4],
+            "Time": df[5],
+            'User': df[6]
+        })
+        tab_df['User'] = [ids[i] for i in tab_df['User']]
+        return tab_df.to_dict('records')
+
+
 
 
 class oligomaps_search(api_db_interface):

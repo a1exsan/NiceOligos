@@ -314,8 +314,6 @@ class invoceChart():
         self.draw_stat_data(self.stat_data)
 
     def mouse_handler(self, e: events.MouseEventArguments):
-
         x, y = e.image_x, e.image_y
-
         if e.type == 'click':
             self.push_radio_btn(x, y, self.r_rad)
