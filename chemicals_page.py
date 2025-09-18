@@ -104,6 +104,7 @@ class phys_chem_props_interface():
                     self.supplyer = ui.input(label='Поставщик:').classes('w-[400px]').style('font-size: 20px;')
                 with ui.row():
                     self.unicode = ui.input(label='ID:').classes('w-[400px]').style('font-size: 20px;')
+                    self.articul = ui.input(label='Артикул:').classes('w-[400px]').style('font-size: 20px;')
                 with ui.row():
                     self.price = ui.input(label='Цена за единицу:').classes('w-[400px]').style('font-size: 20px;')
                     self.units = ui.input(label='Единица измерения:').classes('w-[400px]').style('font-size: 20px;')
@@ -151,6 +152,7 @@ class phys_chem_props_interface():
         desc['low_limit'] = self.compound_limit.value
         desc['producer'] = self.producer.value
         desc['supplyer'] = self.supplyer.value
+        desc['articul'] = self.articul.value
         desc['price'] = self.price.value
         desc['price_units'] = self.units.value
         desc['price_date'] = datetime.now().date().strftime('%d.%m.%Y')

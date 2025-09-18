@@ -116,6 +116,7 @@ class rawmaterial_panel_page_model(api_db_interface):
     def widgets_stack(self):
         self.wi_key_list = list(self.wi_list.keys())
         self.wi_list['widgets'] = {}
+        app.storage.user['unicodes_for_sol'] = {}
         for key in self.wi_key_list:
             with ui.row().classes("w-full"):
                 ui.label(key).style('font-size: 30px;')

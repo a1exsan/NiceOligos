@@ -21,6 +21,7 @@ class show_stock_operations(api_db_interface):
         self.db_users = 'users_1.db'
         self.strftime_format = "%Y-%m-%d"
         self.time_format = "%H:%M:%S"
+        self.tab_name = ''
 
         tab_df = pd.DataFrame({
             '#': [],
@@ -59,10 +60,22 @@ class show_stock_operations(api_db_interface):
                 with ui.row():
                     ui.button('Списания', on_click=self.on_write_off)
                     ui.button('Поступления', on_click=self.on_write_in)
+                    if app.storage.user.get('user_status') in ['own', 'owner']:
+                        ui.button('Удалить строку', color='orange', on_click=self.on_delete_row)
+
+    async def on_delete_row(self):
+        selrow = await self.ag_grid.get_selected_rows()
+        if len(selrow) > 0 and self.tab_name != '':
+            id = selrow[0]['#']
+            url = f'{self.api_db_url}/delete_data/{self.db_name}/{self.tab_name}/{id}'
+            ret = requests.delete(url, headers=self.headers())
+            if ret.status_code == 200:
+                ui.notify('Строка успешно удалена')
+        else:
+            ui.notify('Выбирете строку')
 
 
     def set_ag_grid_tab(self, name):
-
         users = self.get_all_data_in_tab_users(f'users')
         users2 = self.get_all_data_in_tab(f'users')
         ids = {}
@@ -89,9 +102,11 @@ class show_stock_operations(api_db_interface):
         self.ag_grid.update()
 
     def on_write_off(self):
+        self.tab_name = 'output_tab'
         self.set_ag_grid_tab('output_tab')
 
     def on_write_in(self):
+        self.tab_name = 'input_tab'
         self.set_ag_grid_tab('input_tab')
 
     def get_all_data_in_tab(self, tab_name):
@@ -116,6 +131,7 @@ class reagent_form_dialog():
             desc['low_limit'] = ''
             desc['producer'] = ''
             desc['supplyer'] = ''
+            desc['articul'] = ''
             desc['price'] = ''
             desc['price_units'] = ''
             desc['price_date'] = datetime.datetime.now().date().strftime('%d.%m.%Y')
@@ -153,11 +169,19 @@ class reagent_form_dialog():
                     self.phyChemForm.units.value = self.data_obj['simple']['price_units']
                     self.phyChemForm.compound_limit.value = self.data_obj['simple']['low_limit']
                 else:
-                    self.phyChemForm.description.value = self.data_obj['smart']['common_description']
+                    desc = self.get_description_value()
+                    if desc != '':
+                        self.phyChemForm.description.value = desc
+                    else:
+                        self.phyChemForm.description.value = self.data_obj['smart']['common_description']
                     self.phyChemForm.compound_name.value = self.data_obj['smart']['name']
                     self.phyChemForm.units.value = self.data_obj['smart']['price_units']
                     self.phyChemForm.compound_limit.value = self.data_obj['smart']['low_limit']
                     self.phyChemForm.producer.value = self.data_obj['smart']['producer']
+                    if 'articul' in list(self.data_obj['smart'].keys()):
+                        self.phyChemForm.articul.value = self.data_obj['smart']['articul']
+                    else:
+                        self.phyChemForm.articul.value = ''
                     self.phyChemForm.supplyer.value = self.data_obj['smart']['supplyer']
                     self.phyChemForm.price.value = self.data_obj['smart']['price']
                     self.phyChemForm.units.value = self.data_obj['smart']['price_units']
@@ -168,9 +192,28 @@ class reagent_form_dialog():
                         self.mol_desc = json.loads(self.data_obj['smart']['mol_lumiprobe_data'])
                         self.phyChemForm.mol_description.value = str(self.mol_desc)
                         self.phyChemForm.mol_lumiprobe_dict = json.loads(self.data_obj['smart']['mol_lumiprobe_data'])
+                    else:
+                        self.phyChemForm.mol_description.value = self.get_unicodes_value()
+
                     self.phyChemForm.structure_adduct.value = self.data_obj['smart']['adduct_inchi']
         self.phyChemForm.on_save = self.do_save
         self.phyChemForm.on_cencel = self.do_cencel
+
+    def get_unicodes_value(self):
+        d = app.storage.user.get('unicodes_for_sol')
+        text = ''
+        for key, value in zip(d.keys(), d.values()):
+            if value != 'False':
+                text += f'{key}:\n'
+        return text
+
+    def get_description_value(self):
+        d = app.storage.user.get('unicodes_for_sol')
+        text = ''
+        for key, value in zip(d.keys(), d.values()):
+            if value != 'False':
+                text += f'{value}  {key}:\n'
+        return text
 
     def on_save_data(self, data):
         pass
@@ -367,6 +410,9 @@ class writeOff_dialog(api_db_interface):
                                 'rowData': rowData.to_dict('records'),
                                 'rowSelection': 'multiple',
                                 "pagination": True,
+                                "enterNavigatesVertically": True,
+                                "enterNavigatesVerticallyAfterEdit": True,
+                                "singleClickEdit": True,
                                 # "enableRangeSelection": True,
                             }
                             ,
@@ -875,7 +921,10 @@ class descriptionPanel(raw_mat_base_widget):
         self.summ_cons = round(sum(self.y_remain[-number:]), 2)
         max_y = 190
 
-        y_list = [int(round(i * max_y / max_y_list, 0)) for i in self.y_remain[-number:]]
+        try:
+            y_list = [int(round(i * max_y / max_y_list, 0)) for i in self.y_remain[-number:]]
+        except:
+            y_list = [0 for i in self.y_remain[-number:]]
 
         coord_x, x_width = 40, self.width // (number * 2)
         for x, y, data in zip(self.x_data[-number:], y_list, self.y_remain[-number:]):
@@ -1253,9 +1302,11 @@ class rawMatWidget(raw_mat_base_widget):
         self.width = 119
         self.height = 49
         self.title_height = 20
+        self.wi_selected = False
 
         self.title_color = 'orange'
         self.border_color = 'orange'
+        self.selected_color = 'lightblue'
 
         self.image = ui.interactive_image(f'/img/{self.widget_bkg}', on_mouse=self.mouse_handler,  # cross='red',
                                           events=['mousedown', 'mousemove', 'mouseup', 'click'])
@@ -1269,9 +1320,13 @@ class rawMatWidget(raw_mat_base_widget):
         self.draw_info()
 
     def draw(self):
+        if not self.wi_selected:
+            color = self.border_color
+        else:
+            color = self.selected_color
         self.base_layer.content = (f'<rect x=0 y=0 width={self.width} height={self.height} '
                                    f' rx=15 ry=15 fill="none" '
-                                   f'stroke="{self.border_color}" stroke-width="2"/>')
+                                   f'stroke="{color}" stroke-width="2"/>')
         #self.base_layer.content += (f'<rect x=6 y=6 width={self.width - 12} height={self.title_height} rx=10 ry=10 '
         #                            f'fill="none" '
         #                           f'stroke="{self.title_color}" stroke-width="2"/>')
@@ -1308,10 +1363,34 @@ class rawMatWidget(raw_mat_base_widget):
     def on_mouse_click(self, unicode):
         pass#print('click')
 
+    def add_to_staorage(self):
+        d = app.storage.user.get('unicodes_for_sol')
+        try:
+            d[self.info_data[0][2]] = self.info_data[0][1]
+            app.storage.user['unicodes_for_sol'] = d
+        except:
+            pass
+
+    def del_from_storage(self):
+        d = app.storage.user.get('unicodes_for_sol')
+        try:
+            d[self.info_data[0][2]] = 'False'
+            app.storage.user['unicodes_for_sol'] = d
+        except:
+            pass
 
     def mouse_handler(self, e: events.MouseEventArguments):
         x, y = e.image_x, e.image_y
-
         if e.type == 'click':
+            if e.ctrl:
+                self.wi_selected = True
+                self.draw()
+                self.add_to_staorage()
+            else:
+                self.wi_selected = False
+                self.draw()
+                self.del_from_storage()
+
             self.get_info_from_base()
             self.on_mouse_click(self.info_data)
+

@@ -54,6 +54,10 @@ class stock_data_page_model(api_db_interface):
                 with self.end_date.add_slot('append'):
                     ui.icon('edit_calendar').on('click', menu.open).classes('cursor-pointer')
 
+        if 'stock_data_period' in list(app.storage.user.keys()):
+            self.start_date.value = app.storage.user['stock_data_period']['start date']
+            self.end_date.value = app.storage.user['stock_data_period']['end date']
+
     def get_finished_orders(self):
         url = f'{self.api_db_url}/get_orders_by_status/{self.db_name}/finished'
         ret = requests.get(url, headers=self.headers())
@@ -69,6 +73,11 @@ class stock_data_page_model(api_db_interface):
         start_date = datetime.strptime(self.start_date.value, "%Y-%m-%d")
         end_date = datetime.strptime(self.end_date.value, "%Y-%m-%d")
 
+        app.storage.user['stock_data_period'] = {
+            'start date': self.start_date.value,
+            'end date': self.end_date.value
+                                                 }
+
         df = pd.DataFrame(data)
         df['Date'] = pd.to_datetime(df['input date'], format='%m.%d.%Y')
         conditions = (df['Date'] >= start_date) & (df['Date'] <= end_date)
@@ -78,6 +87,8 @@ class stock_data_page_model(api_db_interface):
 
         self.invoce_content_tab.options['rowData'] = df.to_dict('records')
         self.invoce_content_tab.update()
+
+        app.storage.user['stock_data_invoce_content_rowdata'] = self.invoce_content_tab.options['rowData']
 
 
     def on_show_write_off(self):
@@ -91,6 +102,11 @@ class stock_data_page_model(api_db_interface):
         df_out = df_out[(df_out['date'] >= start_date)&(df_out['date'] <= end_date)]
         df_out = df_out[['Name', 'Amount', 'Unicode', 'Date', 'Time', 'User', '#']]
 
+        app.storage.user['stock_data_period'] = {
+            'start date': self.start_date.value,
+            'end date': self.end_date.value
+        }
+
         g_out_df = df_out.groupby('Unicode').agg({
             'Name': 'first',
             'Amount': 'sum',
@@ -99,14 +115,14 @@ class stock_data_page_model(api_db_interface):
         g_out_df.reset_index(inplace=True)
 
         m_df = pd.merge(g_out_df, df_tab, how='inner', on='Unicode')
-        df = m_df[['Name_y', 'Amount', 'units', 'producer', 'supplyer', 'price', 'Unicode']]
+        df = m_df[['Name_y', 'Amount', 'units', 'producer', 'supplyer', 'price', 'Unicode', 'articul']]
         df['sum'] = df['Amount'] * df['price']
         self.total_cost.value = str(df['sum'].sum())
 
-        print(m_df.keys())
-
         self.ag_grid.options['rowData'] = df.to_dict('records')
         self.ag_grid.update()
+
+        app.storage.user['stock_data_ag_grid_rowdata'] = self.ag_grid.options['rowData']
 
 
     def set_order_tab(self, width=1200, height=1000):
@@ -169,6 +185,10 @@ class stock_data_page_model(api_db_interface):
         theme='alpine-dark').style(f'width: {width}px; height: {height}px;')
         self.invoce_content_tab.auto_size_columns = True
 
+        if 'stock_data_invoce_content_rowdata' in list(app.storage.user.keys()):
+            self.invoce_content_tab.options['rowData'] = app.storage.user.get('stock_data_invoce_content_rowdata')
+            self.invoce_content_tab.update()
+
 
     def set_stock_tab(self, width=120, height=1000):
         tab_df = pd.DataFrame({
@@ -184,6 +204,8 @@ class stock_data_page_model(api_db_interface):
         colDefs = [
             #{"field": "#", 'editable': False, 'filter': 'agTextColumnFilter', 'floatingFilter': True},
             {"field": "Name_y", "headerName": "Наименование",
+             'editable': False, 'filter': 'agTextColumnFilter', 'floatingFilter': True},
+            {"field": "articul", "headerName": "Артикул",
              'editable': False, 'filter': 'agTextColumnFilter', 'floatingFilter': True},
             {"field": "Amount", "headerName": "Количество",
              'editable': False, 'filter': 'agTextColumnFilter', 'floatingFilter': True},
@@ -215,6 +237,10 @@ class stock_data_page_model(api_db_interface):
                     ,
                     theme='alpine-dark').style(f'width: {width}px; height: {height}px')  # alpine  material  quartz  balham
         self.ag_grid.auto_size_columns = True
+
+        if 'stock_data_ag_grid_rowdata' in list(app.storage.user.keys()):
+            self.ag_grid.options['rowData'] = app.storage.user.get('stock_data_ag_grid_rowdata')
+            self.ag_grid.update()
 
     def save_excel(self, filename, data):
         buffer = BytesIO()

@@ -76,6 +76,10 @@ class stock_db_data(api_db_interface):
                     d['units'] = data_obj['smart']['price_units']
                     d['producer'] = data_obj['smart']['producer']
                     d['supplyer'] = data_obj['smart']['supplyer']
+                    if 'articul' in list(data_obj['smart'].keys()):
+                        d['articul'] = data_obj['smart']['articul']
+                    else:
+                        d['articul'] = 'None'
                     d['price'] = float(data_obj['smart']['price'])
                 except:
                     d['low limit'] = row[5]
@@ -298,11 +302,10 @@ class oligomaps_search(api_db_interface):
         actual_maps = self.get_actual_maps()
         out = []
         for map in actual_maps:
-            d = {}
             map_data, accord_data, name, synth_num = self.load_oligomap([map])
             df = pd.DataFrame(map_data)
-            d['Order id'] = df[df['Wasted'] == True]['Order id'].max()
-            out.append(d)
+            d = [{'Order id': i} for i in df[df['Wasted'] == True]['Order id']]
+            out.extend(d)
         return out
 
     def get_oligomaps_data_tail(self, tail_len):
