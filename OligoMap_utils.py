@@ -71,7 +71,7 @@ class stock_db_data(api_db_interface):
                 d['Unicode'] = row[2]
                 try:
                     data_obj = json.loads(row[4])
-                    d['Name'] = data_obj['simple']['name']
+                    d['Name'] = data_obj['smart']['name']
                     d['low limit'] = data_obj['smart']['low_limit']
                     d['units'] = data_obj['smart']['price_units']
                     d['producer'] = data_obj['smart']['producer']
@@ -81,12 +81,14 @@ class stock_db_data(api_db_interface):
                     else:
                         d['articul'] = 'None'
                     d['price'] = float(data_obj['smart']['price'])
-                except:
+                except Exception as err:
                     d['low limit'] = row[5]
                     d['units'] = row[3]
                     d['producer'] = ''
                     d['supplyer'] = ''
                     d['price'] = 0.
+                    #print(row[1], row[2])
+                    #print(err)
                 rowdata.append(d)
             return rowdata
         else:

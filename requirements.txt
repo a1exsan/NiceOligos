@@ -10,3 +10,5 @@ rdkit
 pillow
 scipy
 requests
+tqdm
+plotly
