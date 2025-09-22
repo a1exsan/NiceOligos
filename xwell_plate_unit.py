@@ -6,6 +6,7 @@ import random
 from collections import Counter
 from lcms_chrom_data import chrom_dialog
 from OligoMap_utils import oligomaps_search
+from lcms_dialog_model import lcms_dialog
 
 
 class click_azide():
@@ -234,8 +235,9 @@ class XWell_plate:
 
         with ui.context_menu() as self.context_menu:
             ui.menu_item('Редактировать хроматограмму', on_click=self.on_edit_chrom)
+            ui.menu_item('Редактировать LCMS', on_click=self.on_edit_lcms)
             ui.menu_item('Edit', on_click=self.on_edit)
-            ui.menu_item('Delete', on_click=self.on_delete)
+            #ui.menu_item('Delete', on_click=self.on_delete)
 
         #self.image.on('contextmenu.prevent', self.open_menu)
 
@@ -245,6 +247,7 @@ class XWell_plate:
         self.draw_wells()
         self.coord_context = self.get_coord(0, 0)
         self.chrom_editor = chrom_dialog([{}])
+        self.lcms_editor = lcms_dialog()
         #self.chrom_editor.on_send_chrom_data = self.on_save_chrom_data_to_base
 
     def open_menu(self, e):
@@ -252,10 +255,13 @@ class XWell_plate:
         if coord['key'] != (0, 0):
             if 'init_row' in list(self.wells[coord['key']].oligo_data.keys()):
                 self.chrom_editor.rowdata = [self.wells[coord['key']].oligo_data['init_row']]
+                self.lcms_editor.rowdata = [self.wells[coord['key']].oligo_data['init_row']]
             else:
                 self.chrom_editor.rowdata = []
+                self.lcms_editor.rowdata = []
         else:
             self.chrom_editor.rowdata = []
+            self.lcms_editor.rowdata = []
         self.context_menu.open()
 
     def on_edit_chrom(self):
@@ -273,6 +279,11 @@ class XWell_plate:
                 self.chrom_editor.set_data_to_form_base()
 
             self.chrom_editor.dialog.open()
+
+    def on_edit_lcms(self):
+        if self.lcms_editor.rowdata != []:
+            self.lcms_editor.set_rowdata()
+            self.lcms_editor.dialog.open()
 
     def on_edit(self):
         ui.notify('Edit selected')
@@ -469,6 +480,8 @@ class XWell_plate:
             self.draw_order_layer()
         elif selector == 'Chrom layer':
             self.draw_chrom_data_layer()
+        elif selector == 'LCMS layer':
+            self.draw_lcms_data_layer()
 
 
     def draw_chrom_data_layer(self):
@@ -484,6 +497,24 @@ class XWell_plate:
                 if 'init_row' in list(well.oligo_data.keys()):
                     if (well.oligo_data['init_row']['Order id'] in data['id'] and
                             well.oligo_data['init_row']['Position'] in data['pos']):
+                        self.oligo_data_layer.content += (f'<circle cx="{well.x}" cy="{well.y}" r="32" fill="{well.color}" '
+                                                      f'stroke="blue" stroke-width="6" />')
+
+
+    def draw_lcms_data_layer(self):
+        self.oligo_data_layer.content = ""
+        ip = app.storage.general.get('db_IP')
+        port = app.storage.general.get('db_port')
+        omap = oligomaps_search(ip, port)
+        omap.pincode = app.storage.user.get('pincode')
+        if self.loaded_map_id != '':
+            pos_list = omap.check_lcms_data_in_base(int(self.loaded_map_id))
+        else:
+            pos_list = []
+        if len(pos_list) > 0:
+            for key, well in zip(self.wells.keys(), self.wells.values()):
+                if 'init_row' in list(well.oligo_data.keys()):
+                    if well.oligo_data['init_row']['Position'] in pos_list:
                         self.oligo_data_layer.content += (f'<circle cx="{well.x}" cy="{well.y}" r="32" fill="{well.color}" '
                                                       f'stroke="blue" stroke-width="6" />')
 

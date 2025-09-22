@@ -9,10 +9,34 @@ import base64
 import plotly.graph_objects as go
 import asyncio
 import sys
-
 from OligoMap_utils import oligomaps_search
-
 from oligoMass import molmassOligo as mmo
+
+
+class lcms_dialog():
+    def __init__(self):
+        self.rowdata = []
+        with ui.dialog() as self.dialog:
+            with ui.card().style('width: auto; max-width: none;'):
+                self.lcms = lcms_analyser()
+                self.lcms.pincode = app.storage.user.get('pincode')
+                ui.button('Закрыть редактор', on_click=self.on_close)
+
+    def on_close(self):
+        self.lcms.clear()
+        self.dialog.close()
+
+    def set_rowdata(self):
+        for row in self.rowdata:
+            self.lcms.map_id.value = row['map #']
+            self.lcms.sequence_id.value = row['Order id']
+            self.lcms.seq_name.value = row['Name']
+            self.lcms.sequence.value = row['Sequence']
+            self.lcms.position.value = row['Position']
+            self.lcms.purification.value = row['Purif type']
+
+            self.lcms.on_load_data_from_base()
+
 
 
 class lcms_analyser(api_db_interface):
@@ -415,6 +439,21 @@ class lcms_analyser(api_db_interface):
         self.oligo_mass.value = self.total_data['oligo_mass']
         self.oligo_extinction.value = self.total_data['oligo_extinction']
 
+    def clear(self):
+        self.zip_data = {}
+        self.zip_polish = {}
+        self.zip_deconv = {}
+
+        self.init_chrom_line = {'rt': [], 'tic': []}
+        self.polish_chrom_line = {'rt': [], 'tic': []}
+        self.deconv_chrom_line = {'rt': [], 'tic': []}
+
+        self.init_mz_zip = ([], [])
+        self.polish_mz_zip = ([], [])
+        self.deconv_mz_zip = ([], [])
+
+        self.on_plot_init_data()
+
     def on_load_data_from_base(self):
         if self.map_id.value != '':
             if self.position.value != '':
@@ -422,41 +461,45 @@ class lcms_analyser(api_db_interface):
                 omaps.pincode = self.pincode
                 data = omaps.load_lcms_data_from_base(self.map_id.value, self.position.value)
 
-                self.zip_lcms = zip_oligo_mzdata('')
+                if data != {}:
 
-                self.total_data = {}
-                for key in data.keys():
-                    self.total_data[key] = data[key]
+                    self.zip_lcms = zip_oligo_mzdata('')
 
-                self.seq_name.value = self.total_data['oligo_name']
-                self.sequence_id.value = self.total_data['oligo_ID']
-                self.map_id.value = self.total_data['map_ID']
-                self.sequence.value = self.total_data['sequence']
-                self.position.value = self.total_data['position']
-                self.purification.value = self.total_data['purif_type']
+                    self.total_data = {}
+                    for key in data.keys():
+                        self.total_data[key] = data[key]
 
-                self.on_culc_oligo_props()
+                    self.seq_name.value = self.total_data['oligo_name']
+                    self.sequence_id.value = self.total_data['oligo_ID']
+                    self.map_id.value = self.total_data['map_ID']
+                    self.sequence.value = self.total_data['sequence']
+                    self.position.value = self.total_data['position']
+                    self.purification.value = self.total_data['purif_type']
 
-                self.init_lc_area.value = self.total_data['init_lc_area']
-                self.init_lcms_area.value = self.total_data['init_lcms_area']
-                self.polish_lc_area.value = self.total_data['polish_lc_area']
-                self.polish_lcms_area.value = self.total_data['polish_lcms_area']
-                self.deconv_lc_area.value = self.total_data['deconv_lc_area']
-                self.deconv_lcms_area.value = self.total_data['deconv_lcms_area']
+                    self.on_culc_oligo_props()
 
-                self.zip_data = self.zip_lcms.json_loads_tuple_keys(self.total_data['init_zip'])
-                self.zip_polish = self.zip_lcms.json_loads_tuple_keys(self.total_data['polish_zip'])
-                self.zip_deconv = self.zip_lcms.json_loads_tuple_keys(self.total_data['deconv_zip'])
+                    self.init_lc_area.value = self.total_data['init_lc_area']
+                    self.init_lcms_area.value = self.total_data['init_lcms_area']
+                    self.polish_lc_area.value = self.total_data['polish_lc_area']
+                    self.polish_lcms_area.value = self.total_data['polish_lcms_area']
+                    self.deconv_lc_area.value = self.total_data['deconv_lc_area']
+                    self.deconv_lcms_area.value = self.total_data['deconv_lcms_area']
 
-                self.init_chrom_line = json.loads(self.total_data['init_chrom_line'])
-                self.polish_chrom_line = json.loads(self.total_data['polish_chrom_line'])
-                self.deconv_chrom_line = json.loads(self.total_data['deconv_chrom_line'])
+                    self.zip_data = self.zip_lcms.json_loads_tuple_keys(self.total_data['init_zip'])
+                    self.zip_polish = self.zip_lcms.json_loads_tuple_keys(self.total_data['polish_zip'])
+                    self.zip_deconv = self.zip_lcms.json_loads_tuple_keys(self.total_data['deconv_zip'])
 
-                self.init_mz_zip = self.zip_lcms.get_mz_zip_data(self.zip_data)
-                self.polish_mz_zip = self.zip_lcms.get_mz_zip_data(self.zip_polish)
-                self.deconv_mz_zip = self.zip_lcms.get_mz_zip_data(self.zip_deconv)
+                    self.init_chrom_line = json.loads(self.total_data['init_chrom_line'])
+                    self.polish_chrom_line = json.loads(self.total_data['polish_chrom_line'])
+                    self.deconv_chrom_line = json.loads(self.total_data['deconv_chrom_line'])
 
-                self.on_plot_init_data()
+                    self.init_mz_zip = self.zip_lcms.get_mz_zip_data(self.zip_data)
+                    self.polish_mz_zip = self.zip_lcms.get_mz_zip_data(self.zip_polish)
+                    self.deconv_mz_zip = self.zip_lcms.get_mz_zip_data(self.zip_deconv)
+
+                    self.on_plot_init_data()
+                else:
+                    ui.notify('данных LCMS нет в базе')
 
 
 

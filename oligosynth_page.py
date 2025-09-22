@@ -6,17 +6,21 @@ from OligoMap_utils import oligomaps_search
 import requests
 from collections import Counter
 from io import BytesIO
+from datetime import datetime
 
 import xwell_plate_unit as XWells
 
 
 class stat_dialog():
-    def __init__(self, text1, text2):
+    def __init__(self, text1, text2, text3, text4):
         self.text1, self.text2 = text1, text2
+        self.text3, self.text4 = text3, text4
         with ui.dialog() as self.dialog:
             with ui.card():
                 ui.label(text=self.text1).style('font-size: 20px;')
                 ui.label(text=self.text2).style('font-size: 20px;')
+                ui.label(text=self.text3).style('font-size: 20px;')
+                ui.label(text=self.text4).style('font-size: 20px;')
                 with ui.row():
                     ui.button('Закрыть',  on_click=self.dialog.close).classes('w-[200px]')
 
@@ -231,7 +235,7 @@ class oligosynth_panel_page_model(api_db_interface):
                 self.on_sel_do_btn.props['color'] = 'orange'
                 self.wells_layer_selector = ui.radio(
                     ['Base layer', 'Status layer', 'Purification layer', 'Support layer', 'Click layer',
-                            'Order layer', 'Chrom layer'],
+                            'Order layer', 'Chrom layer', 'LCMS layer'],
                     on_change=self.wells_layer_selector_event,
                     value='Base layer').props('inline')
 
@@ -567,8 +571,22 @@ class oligosynth_panel_page_model(api_db_interface):
         orders = pd.DataFrame(self.get_orders_by_status('finished'))
         if len(tab) > 0:
             df = pd.DataFrame(tab)
+
+            df['date'] = pd.to_datetime(df['Date'], format='%Y-%m-%d')
+            start_date = datetime.strptime(f'{datetime.now().year}-01-01', '%Y-%m-%d')
+            end_date = datetime.strptime(f'{datetime.now().year}-12-31', '%Y-%m-%d')
+            df_y = df[(df['date'] >= start_date)&(df['date'] <= end_date)]
+
+            orders['Date'] = pd.to_datetime(orders['input date'], format='%m.%d.%Y')
+            start_date = datetime.strptime(f'01.01.{datetime.now().year}', '%m.%d.%Y')
+            end_date = datetime.strptime(f'12.31.{datetime.now().year}', '%m.%d.%Y')
+            orders_y = orders[(orders['Date'] >= start_date) & (orders['Date'] <= end_date)]
+
+
             ret['wasted %'] = f"Wasted %: {round(df['Wasted'].sum() * 100/ df['Total'].sum(), 0)}"
+            ret['wasted % year'] = f"Wasted last year %: {round(df_y['Wasted'].sum() * 100/ df_y['Total'].sum(), 0)}"
             ret['total wells'] = f"Total wells: {df['Total'].sum()} / Total oligos: {orders.shape[0]}"
+            ret['total wells year'] = f"Total wells last year: {df_y['Total'].sum()} / Total oligos: {orders_y.shape[0]}"
         return ret
 
     def on_show_actual_oligomaps_event(self):
@@ -631,7 +649,9 @@ class oligosynth_panel_page_model(api_db_interface):
         stat_data = self.get_actual_stat_maps()
         #ret['wasted %'] = f"Wasted %: {round(df['Wasted'].sum() * 100 / df['Total'].sum(), 0)}"
         #ret['total wells']
-        stat = stat_dialog(stat_data['wasted %'], stat_data['total wells'])
+        stat = stat_dialog(stat_data['wasted %'], stat_data['total wells'],
+                           stat_data['wasted % year'], stat_data['total wells year'],
+                           )
         stat.dialog.open()
 
 

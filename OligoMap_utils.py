@@ -144,6 +144,15 @@ class oligomaps_search(api_db_interface):
         r = requests.get(url, headers=self.headers())
         return r
 
+    def check_lcms_data_in_base(self, map_id):
+        pos_list = []
+        url = f"{self.api_db_url}/get_keys_data/{self.lcms_db_name}/tab/map_id/{map_id}"
+        ret = requests.get(url, headers=self.headers())
+        if ret.status_code == 200:
+            for row in ret.json():
+                pos_list.append(row[2])
+        return pos_list
+
     def insert_chrom_data_to_base(self, data):
         if data != {}:
             url = f'{self.api_db_url}/insert_data/{self.chrom_db}/main_tab'
@@ -165,8 +174,8 @@ class oligomaps_search(api_db_interface):
 
     def insert_lcms_data_to_base(self, data):
         if data != {}:
-            oligo_id = data['oligo_ID']
-            map_id = data['map_ID']
+            oligo_id = int(data['oligo_ID'])
+            map_id = int(data['map_ID'])
             position = data['position']
             ID, data_ = self.get_lcms_data_id(map_id, position)
             date = datetime.now().date().strftime('%d.%m.%Y')
@@ -211,7 +220,8 @@ class oligomaps_search(api_db_interface):
         return ID, data
 
     def load_lcms_data_from_base(self, map_id, position):
-        ID, data = self.get_lcms_data_id(map_id, position)
+        #print(map_id, position)
+        ID, data = self.get_lcms_data_id(int(map_id), position)
         if ID > -1:
             return data
         else:
