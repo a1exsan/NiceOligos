@@ -1,18 +1,39 @@
+import json
+
+import pandas as pd
 from nicegui import app, ui, events
 from OligoMap_utils import api_db_interface
 from lcms_zip import zip_oligo_mzdata
+from lcms_zip import interpolate_crom_line
 import base64
-import mzdatapy
 import plotly.graph_objects as go
+import asyncio
+import sys
+
+from OligoMap_utils import oligomaps_search
+
+from oligoMass import molmassOligo as mmo
 
 
-class lcms_analyser():
+class lcms_analyser(api_db_interface):
     def __init__(self):
-        #IP = app.storage.general.get('db_IP')
-        #port = app.storage.general.get('db_port')
-        #super().__init__(IP, port)
+        IP = app.storage.general.get('db_IP')
+        port = app.storage.general.get('db_port')
+        super().__init__(IP, port)
         #self.pincode = app.storage.user.get('pincode')
+        self.pincode = '2b9a0a40a6fe36590b9105c0bb46619afef4c4c50dc7c12c1aef61e5d490405b'
 
+        self.selection_rect = {}
+        self.draw_mode = 'init'
+        self.plot_chrom = None
+        self.plot_mz = None
+        self.zip_data = None
+        self.zip_lcms = None
+        self.fig = None
+        self.plot = None
+        self.file_input = None
+        self.total_data = {}
+        self.chrom_line_points = 160
         self.init_ui()
 
     def init_ui(self):
@@ -20,52 +41,433 @@ class lcms_analyser():
             self.file_input = ui.input(label='filename')
             ui.upload(label='Загрузить хроматограмму',
                   on_upload=self.handle_upload).props("accept=.mzdata.xml").classes("max-w-full")
-            ui.button('show file', on_click=self.on_compress)
+            with ui.column():
+                ui.button('perform data', on_click=self.on_perform_data)
+                self.progress = ui.linear_progress()
+                self.selection_switch = ui.switch('selection rect', on_change=self.on_switch_selection)
             ui.button('plot init data', on_click=self.on_plot_init_data)
+            ui.button('plot polish data', on_click=self.on_plot_polish_data)
+            ui.button('plot deconv data', on_click=self.on_deconvolute)
+            ui.button('save data', color='orange',
+                      on_click=self.on_save_data)
+            ui.button('load data', color='green',
+                      on_click=self.on_load_data_from_base)
+
+        self.init_plots()
+        with ui.row():
+            self.plot = ui.plotly(self.fig).style('width: 1500px; height: 800px;')
+            self.plot.on('plotly_selected', self.on_select_points)
+            self.plot_mz = ui.plotly(self.fig_mz).style('width: 400px; height: 800px;')
+            with ui.column():
+                with ui.row():
+                    self.map_id = ui.input(label='map ID:').style('width: 200px; font-size: 16px')
+                    self.sequence_id = ui.input(label='Sequence ID:').style('width: 200px; font-size: 16px')
+                    self.seq_name = ui.input(label='Name:').style('width: 200px; font-size: 16px')
+                with ui.row():
+                    self.sequence = ui.textarea(label='Sequence:').style('width: 300px; font-size: 16px')
+                    self.position = ui.input(label='Position:').style('width: 100px; font-size: 16px')
+                    self.purification = ui.input(label='Purif type:').style('width: 200px; font-size: 16px')
+                with ui.row():
+                    self.oligo_mass = ui.input(label='Mass, Da:').style('width: 200px; font-size: 16px')
+                    self.oligo_extinction = ui.input(label='Extinction, OE/ml:').style('width: 200px; font-size: 16px')
+                    self.culc_prop = ui.button('Oligo properties', color='orange',
+                                               on_click=self.on_culc_oligo_props)
+        with ui.row():
+            self.plot_chrom = ui.plotly(self.fig_chrom).style('width: 1500px; height: 400px;')
+            with ui.column():
+                with ui.row():
+                    ui.label('Init area:').style('width: 100px; font-size: 18px;')
+                    self.init_lc_area = ui.input(label='LC area', value=0).style('width: 100px;')
+                    self.init_lcms_area = ui.input(label='LCMS area', value=0).style('width: 100px;')
+                    ui.button('add', on_click=self.on_culc_init_area)
+                with ui.row():
+                    ui.label('Polish area:').style('width: 100px; font-size: 18px;')
+                    self.polish_lc_area = ui.input(label='LC area', value=0).style('width: 100px;')
+                    self.polish_lcms_area = ui.input(label='LCMS area', value=0).style('width: 100px;')
+                    ui.button('add', on_click=self.on_culc_polish_area)
+                with ui.row():
+                    ui.label('Deconv area:').style('width: 100px; font-size: 18px;')
+                    self.deconv_lc_area = ui.input(label='LC area', value=0).style('width: 100px;')
+                    self.deconv_lcms_area = ui.input(label='LCMS area', value=0).style('width: 100px;')
+                    ui.button('add', on_click=self.on_culc_deconv_area)
+
+
+    def init_plots(self):
         self.fig = go.Figure()
         self.fig.update_layout(
             template='plotly_dark',  # темная тема от Plotly
             plot_bgcolor='rgba(0,0,0,0)',  # прозрачный фон графика
             paper_bgcolor='black',  # фон всего графика
-            font=dict(color='white')  # белый цвет текста и осей
+            font=dict(color='white'),
+            xaxis=dict(showgrid=False),
+            yaxis=dict(showgrid=False)
         )
-        self.fig.update_layout(margin=dict(l=0, r=0, t=0, b=0))
-        self.plot = ui.plotly(self.fig).style('width: 1200px; height: 800px;')
+        self.fig.update_layout(
+            modebar=dict(remove=[], add=['select', 'lasso2d']),
+        )
 
-    def on_plot_init_data(self):
-        self.draw_lcms_zip_data(self.zip_data)
+        self.fig_chrom = go.Figure()
+        self.fig_chrom.update_layout(
+            template='plotly_dark',  # темная тема от Plotly
+            plot_bgcolor='rgba(0,0,0,0)',  # прозрачный фон графика
+            paper_bgcolor='black',  # фон всего графика
+            font=dict(color='white'),
+            xaxis=dict(showgrid=False),
+            yaxis=dict(showgrid=False)
+        )
+        # self.fig.update_layout(margin=dict(l=0, r=0, t=0, b=0))
+        self.fig_chrom.update_layout(
+            modebar=dict(remove=[], add=['select', 'lasso2d']),
+        )
+
+        self.fig_mz = go.Figure()
+        self.fig_mz.update_layout(
+            template='plotly_dark',  # темная тема от Plotly
+            plot_bgcolor='rgba(0,0,0,0)',  # прозрачный фон графика
+            paper_bgcolor='black',  # фон всего графика
+            font=dict(color='white'),
+            xaxis=dict(showgrid=False),
+            yaxis=dict(showgrid=False)
+        )
+        # self.fig.update_layout(margin=dict(l=0, r=0, t=0, b=0))
+        self.fig_mz.update_layout(
+            modebar=dict(remove=[], add=['select', 'lasso2d']),
+        )
 
     def draw_lcms_zip_data(self, data):
-        #for key, value in zip(data.keys(), data.values()):
-        #    plt.plot([key[0] * 5, key[1] * 5], [key[2]/5, key[2]/5], '-', c='blue')
-        for key, value in zip(data.keys(), data.values()):
+        x_vals = []
+        y_vals = []
+        for key in data.keys():
             x0, x1 = key[0] / self.zip_lcms.rt_mul, key[1] / self.zip_lcms.rt_mul
             y0, y1 = key[2] / self.zip_lcms.mz_mul, key[2] / self.zip_lcms.mz_mul
-            self.fig.add_trace(go.Scatter(
-                x=[x0, x1],
-                y=[y0, y1],
-                mode='lines',
-                line=dict(width=2, color='cyan  '),
-                showlegend=False
-            ))
+            x_vals.extend([x0, x1, None])  # None чтобы отделить линии
+            y_vals.extend([y0, y1, None])
+
+        self.fig.data = []  # Очистить все трейсы
+        self.fig.add_trace(go.Scattergl(
+            x=x_vals,
+            y=y_vals,
+            mode='lines',
+            line=dict(width=2, color='cyan'),
+            showlegend=False
+        ))
         self.plot.update()
 
+    def draw_mz_zip_data(self, data):
+        x_vals = data[0]
+        y_vals = data[1]
+        self.fig_mz.data = []  # Очистить все трейсы
+        self.fig_mz.add_trace(go.Scattergl(
+            x=x_vals,
+            y=y_vals,
+            mode='lines',
+            line=dict(width=2, color='red'),
+            showlegend=False
+        ))
+        if self.selection_rect != {}:
+            new_x_vals, new_y_vals = [], []
+            for x, y in zip(x_vals, y_vals):
+                if y is None:
+                    new_x_vals.append(None)
+                    new_y_vals.append(None)
+                elif (y>=self.selection_rect['y0']) and (y<=self.selection_rect['y1']):
+                    new_x_vals.append(x)
+                    new_y_vals.append(y)
+            self.fig_mz.add_trace(go.Scattergl(
+                x=new_x_vals,
+                y=new_y_vals,
+                mode='lines',
+                line=dict(width=2, color='yellow'),
+                showlegend=False
+            ))
+        self.plot_mz.update()
+
+    def draw_chrom_line(self, chrom):
+        self.fig_chrom.data = []
+        self.fig_chrom.add_trace(go.Scatter(
+            x=chrom['rt'],
+            y=chrom['tic'],
+            mode='lines',
+            line=dict(width=2, color='#ff0000'),
+            fill='tozeroy',
+            fillcolor='rgba(255, 0, 0, 0.3)',
+            name='Chromatogram'
+        ))
+        if self.selection_rect != {}:
+            df = pd.DataFrame(chrom)
+            df = df[(df['rt'] >= self.selection_rect['x0'])&(df['rt'] <= self.selection_rect['x1'])]
+            #print(df)
+            self.fig_chrom.add_trace(go.Scatter(
+                x=list(df['rt']),
+                y=list(df['tic']),
+                mode='lines',
+                line=dict(width=2, color='#ffff00'),
+                fill='tozeroy',
+                fillcolor='rgba(255, 0, 0, 0.3)',
+                name='Select'
+            ))
+        self.plot_chrom.update()
+
+
+    async def on_perform_data(self):
+        self.selection_rect = {}
+        self.progress.value = 0.1
+        await asyncio.sleep(1)
+        self.zip_lcms = zip_oligo_mzdata('')
+        self.zip_lcms.from_string(self.b64_string)
+
+        self.progress.value = 0.3
+        await asyncio.sleep(1)
+
+        self.zip_data = self.zip_lcms.compress_2(self.zip_lcms.init_data)
+
+        self.progress.value = 0.6
+        await asyncio.sleep(1)
+
+        self.deconv_data = self.zip_lcms.deconvolution()
+        self.progress.value = 0.77
+        await asyncio.sleep(1)
+
+        self.zip_deconv = self.zip_lcms.compress_2(self.deconv_data[['rt', 'mass', 'intens']].values)
+        self.progress.value = 0.85
+        await asyncio.sleep(1)
+
+        self.draw_lcms_zip_data(self.zip_data)
+        self.progress.value = 0.94
+        await asyncio.sleep(1)
+
+        self.init_data_df = self.zip_lcms.init_data_to_df(self.zip_lcms.init_data)
+        self.polish_data_df = self.zip_lcms.init_data_to_df(self.zip_lcms.data)
+        self.init_chrom_line = self.zip_lcms.get_chrom_data(self.init_data_df, point_numbers=self.chrom_line_points)
+        self.polish_chrom_line = self.zip_lcms.get_chrom_data(self.polish_data_df, point_numbers=self.chrom_line_points)
+        self.deconv_chrom_line = self.zip_lcms.get_chrom_data(self.deconv_data, point_numbers=self.chrom_line_points)
+        self.draw_chrom_line(self.init_chrom_line)
+
+        self.zip_polish = self.zip_lcms.compress_2(self.zip_lcms.data)
+        self.progress.value = 0.97
+        await asyncio.sleep(1)
+
+        self.init_mz_zip = self.zip_lcms.get_mz_zip_data(self.zip_data)
+        self.polish_mz_zip = self.zip_lcms.get_mz_zip_data(self.zip_polish)
+        self.deconv_mz_zip = self.zip_lcms.get_mz_zip_data(self.zip_deconv)
+        self.draw_mz_zip_data(self.init_mz_zip)
+
+        self.progress.value = 100
+        await asyncio.sleep(1)
 
 
     def handle_upload(self, e: events.UploadEventArguments):
-        self.file_input.value = e.name
         data = e.content.read()
-        b64_string = base64.b64encode(data).decode()
-        self.zip_lcms = zip_oligo_mzdata('')
-        self.zip_lcms.from_string(b64_string)
+        self.b64_string = base64.b64encode(data).decode()
+        self.file_input.value = e.name
 
-    def on_compress(self):
-        self.zip_data = self.zip_lcms.compress_2()
-        print(self.zip_data)
+    def on_deconvolute(self):
+        self.draw_mode = 'deconv'
+        self.draw_lcms_zip_data(self.zip_deconv)
+        self.draw_chrom_line(self.deconv_chrom_line)
+        self.draw_mz_zip_data(self.deconv_mz_zip)
+
+    def on_plot_init_data(self):
+        self.draw_mode = 'init'
+        self.draw_lcms_zip_data(self.zip_data)
+        self.draw_chrom_line(self.init_chrom_line)
+        self.draw_mz_zip_data(self.init_mz_zip)
+
+    def on_plot_polish_data(self):
+        self.draw_mode = 'polish'
+        self.draw_lcms_zip_data(self.zip_polish)
+        self.draw_chrom_line(self.polish_chrom_line)
+        self.draw_mz_zip_data(self.polish_mz_zip)
+
+    def insert_data_to_base(self):
+        if self.total_data != {}:
+            if self.total_data['map_ID'] != '':
+                if self.total_data['position'] != '':
+                    omaps = oligomaps_search(self.db_IP, self.db_port)
+                    omaps.pincode = self.pincode
+                    omaps.insert_lcms_data_to_base(self.total_data)
+
+    def on_save_data(self):
+        self.total_data['name'] = self.file_input.value
+        self.total_data['init_zip'] = self.zip_lcms.json_dumps_tuple_keys(self.zip_data)
+        self.total_data['polish_zip'] = self.zip_lcms.json_dumps_tuple_keys(self.zip_polish)
+        self.total_data['deconv_zip'] = self.zip_lcms.json_dumps_tuple_keys(self.zip_deconv)
+
+        self.total_data['init_chrom_line'] = json.dumps(self.init_chrom_line)
+        self.total_data['polish_chrom_line'] = json.dumps(self.polish_chrom_line)
+        self.total_data['deconv_chrom_line'] = json.dumps(self.deconv_chrom_line)
+
+        self.total_data['oligo_name'] = self.seq_name.value
+        self.total_data['oligo_ID'] = self.sequence_id.value
+        self.total_data['map_ID'] = self.map_id.value
+        self.total_data['sequence'] = self.sequence.value
+        self.total_data['position'] = self.position.value
+        self.total_data['purif_type'] = self.purification.value
+
+        self.insert_data_to_base()
+
+        #out_j = json.dumps(self.total_data)
+        #with open('test_json.txt', 'w') as file:
+        #    file.write(out_j)
+
+    def on_switch_selection(self):
+        if self.selection_switch.value:
+            self.fig.update_layout(dragmode='select')
+        else:
+            self.fig.update_layout(dragmode='zoom')
+        self.plot.update()
+
+    def on_select_points(self, event):
+        self.selection_rect = {}
+        if len(event.args['selections']) > 0:
+            self.selection_rect['x0'] = min([event.args['selections'][0]['x0'], event.args['selections'][0]['x1']])
+            self.selection_rect['x1'] = max([event.args['selections'][0]['x0'], event.args['selections'][0]['x1']])
+            self.selection_rect['y0'] = min([event.args['selections'][0]['y0'], event.args['selections'][0]['y1']])
+            self.selection_rect['y1'] = max([event.args['selections'][0]['y0'], event.args['selections'][0]['y1']])
+        else:
+            self.selection_rect = {}
+        #print(self.selection_rect)
+        if self.draw_mode == 'init':
+            self.draw_chrom_line(self.init_chrom_line)
+            self.draw_mz_zip_data(self.init_mz_zip)
+        elif self.draw_mode == 'polish':
+            self.draw_chrom_line(self.polish_chrom_line)
+            self.draw_mz_zip_data(self.polish_mz_zip)
+        elif self.draw_mode == 'deconv':
+            self.draw_chrom_line(self.deconv_chrom_line)
+            self.draw_mz_zip_data(self.deconv_mz_zip)
+
+    def get_integral(self, x, y):
+        inter = interpolate_crom_line(x, y, len(x))
+        if self.selection_rect != {}:
+            #print(min(x), max(x))
+            #print(self.selection_rect['x0'], self.selection_rect['x1'])
+            try:
+                target, e1 = inter.integral(self.selection_rect['x0'], self.selection_rect['x1'])
+                total, e2 = inter.integral(min(x), max(x))
+            except:
+                ui.notify('уменьшите область интегрирования')
+            if total > 0:
+                return round(target * 100 / total, 1)
+            else:
+                return 0
+        else:
+            return 0
+
+    def get_mz_integral(self, data):
+        if self.selection_rect != {}:
+            target, total = self.zip_lcms.integrate_mz_data(data, self.selection_rect['y0'], self.selection_rect['y1'])
+            if total > 0:
+                return round(target * 100 / total, 1)
+            else:
+                return 0
+        else:
+            return 0
+
+    def on_culc_init_area(self):
+        x, y = self.init_chrom_line['rt'], self.init_chrom_line['tic']
+        target = self.get_integral(x, y)
+        self.init_lc_area.value = f'{target}'
+        mz_target = self.get_mz_integral(self.zip_data)
+        self.init_lcms_area.value = f'{round(target * mz_target / 100, 1)}'
+        self.total_data['init_lc_area'] = target
+        self.total_data['init_lcms_area'] = round(target * mz_target / 100, 1)
+        self.total_data['init_rect'] = self.selection_rect
+
+    def on_culc_polish_area(self):
+        x, y = self.polish_chrom_line['rt'], self.polish_chrom_line['tic']
+        target = self.get_integral(x, y)
+        self.polish_lc_area.value = f'{target}'
+        mz_target = self.get_mz_integral(self.zip_polish)
+        self.polish_lcms_area.value = f'{round(target * mz_target / 100, 1)}'
+        self.total_data['polish_lc_area'] = target
+        self.total_data['polish_lcms_area'] = round(target * mz_target / 100, 1)
+        self.total_data['polish_rect'] = self.selection_rect
+
+    def on_culc_deconv_area(self):
+        x, y = self.deconv_chrom_line['rt'], self.deconv_chrom_line['tic']
+        target = self.get_integral(x, y)
+        self.deconv_lc_area.value = f'{target}'
+        mz_target = self.get_mz_integral(self.zip_deconv)
+        self.deconv_lcms_area.value = f'{round(target * mz_target / 100, 1)}'
+        self.total_data['deconv_lc_area'] = target
+        self.total_data['deconv_lcms_area'] = round(target * mz_target / 100, 1)
+        self.total_data['deconv_rect'] = self.selection_rect
+
+    def on_culc_oligo_props(self):
+        self.total_data['oligo_name'] = self.seq_name.value
+        self.total_data['oligo_ID'] = self.sequence_id.value
+        self.total_data['map_ID'] = self.map_id.value
+        self.total_data['sequence'] = self.sequence.value
+        self.total_data['position'] = self.position.value
+        self.total_data['purif_type'] = self.purification.value
+
+        oligo = mmo.oligoNASequence(self.sequence.value)
+        try:
+            self.total_data['oligo_mass'] = round(oligo.getAvgMass(), 2)
+        except:
+            self.total_data['oligo_mass'] = 0
+        try:
+            self.total_data['oligo_extinction'] = oligo.getExtinction()
+        except:
+            self.total_data['oligo_extinction'] = 0
+
+        self.oligo_mass.value = self.total_data['oligo_mass']
+        self.oligo_extinction.value = self.total_data['oligo_extinction']
+
+    def on_load_data_from_base(self):
+        if self.map_id.value != '':
+            if self.position.value != '':
+                omaps = oligomaps_search(self.db_IP, self.db_port)
+                omaps.pincode = self.pincode
+                data = omaps.load_lcms_data_from_base(self.map_id.value, self.position.value)
+
+                self.zip_lcms = zip_oligo_mzdata('')
+
+                self.total_data = {}
+                for key in data.keys():
+                    self.total_data[key] = data[key]
+
+                self.seq_name.value = self.total_data['oligo_name']
+                self.sequence_id.value = self.total_data['oligo_ID']
+                self.map_id.value = self.total_data['map_ID']
+                self.sequence.value = self.total_data['sequence']
+                self.position.value = self.total_data['position']
+                self.purification.value = self.total_data['purif_type']
+
+                self.on_culc_oligo_props()
+
+                self.init_lc_area.value = self.total_data['init_lc_area']
+                self.init_lcms_area.value = self.total_data['init_lcms_area']
+                self.polish_lc_area.value = self.total_data['polish_lc_area']
+                self.polish_lcms_area.value = self.total_data['polish_lcms_area']
+                self.deconv_lc_area.value = self.total_data['deconv_lc_area']
+                self.deconv_lcms_area.value = self.total_data['deconv_lcms_area']
+
+                self.zip_data = self.zip_lcms.json_loads_tuple_keys(self.total_data['init_zip'])
+                self.zip_polish = self.zip_lcms.json_loads_tuple_keys(self.total_data['polish_zip'])
+                self.zip_deconv = self.zip_lcms.json_loads_tuple_keys(self.total_data['deconv_zip'])
+
+                self.init_chrom_line = json.loads(self.total_data['init_chrom_line'])
+                self.polish_chrom_line = json.loads(self.total_data['polish_chrom_line'])
+                self.deconv_chrom_line = json.loads(self.total_data['deconv_chrom_line'])
+
+                self.init_mz_zip = self.zip_lcms.get_mz_zip_data(self.zip_data)
+                self.polish_mz_zip = self.zip_lcms.get_mz_zip_data(self.zip_polish)
+                self.deconv_mz_zip = self.zip_lcms.get_mz_zip_data(self.zip_deconv)
+
+                self.on_plot_init_data()
+
+
+
+
 
 
 if __name__ in {"__main__", "__mp_main__"}:
     ui.dark_mode(True)
+
+    app.storage.general['db_IP'] = '127.0.0.1'
+    app.storage.general['db_port'] = '8012'
 
     lcms = lcms_analyser()
 

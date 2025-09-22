@@ -8,6 +8,7 @@ import base64
 import pandas as pd
 from invoce_chart import PolylineSVG
 from scipy.interpolate import interp1d
+from scipy.integrate import quad
 import numpy as np
 
 
@@ -302,6 +303,11 @@ class interpolate_crom_line():
         self.new_X = np.linspace(min(self.X), max(self.X), self.points_number)
         self.new_Y = linear_interp(self.new_X)
         return self.new_X, self.new_Y
+
+    def integral(self, a, b):
+        linear_interp = interp1d(self.X, self.Y, kind='linear')
+        integral_value, error = quad(linear_interp, a, b)
+        return integral_value, error
 
 
 class chrom_plotter(diagram_base):

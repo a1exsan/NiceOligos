@@ -14,6 +14,7 @@ class api_db_interface():
         self.client = {}
         self.client_frontend = {}
         self.db_name = 'scheduler_oligolab_2.db'
+        self.lcms_db_name = 'lcms_data_1.db'
 
     def headers(self):
         return {'Authorization': f'Pincode {self.pincode}'}
@@ -161,6 +162,61 @@ class oligomaps_search(api_db_interface):
             return r.status_code == 200
         else:
             return False
+
+    def insert_lcms_data_to_base(self, data):
+        if data != {}:
+            oligo_id = data['oligo_ID']
+            map_id = data['map_ID']
+            position = data['position']
+            ID, data_ = self.get_lcms_data_id(map_id, position)
+            date = datetime.now().date().strftime('%d.%m.%Y')
+            format_d = '%d.%m.%Y'
+            lcms_data = json.dumps(data)
+            if ID == -1:
+                url = f'{self.api_db_url}/insert_data/{self.lcms_db_name}/tab'
+                r = requests.post(url,
+                              json=json.dumps([
+                                  map_id, position, oligo_id, date, format_d, lcms_data
+                              ]), headers=self.headers())
+                if r.status_code == 200:
+                    ui.notify('данные добавлены в базу')
+            else:
+                url = f'{self.api_db_url}/update_data/{self.lcms_db_name}/tab/{ID}'
+                print(lcms_data)
+                r = requests.put(url,
+                                 json=json.dumps({
+                                     'name_list': ['data_json', 'date'],
+                                     'value_list': [lcms_data, date]
+                                 }), headers=self.headers())
+                if r.status_code == 200:
+                    ui.notify('данные обновлены')
+
+            return r.status_code == 200
+        else:
+            return False
+
+    def get_lcms_data_id(self, map_id, position):
+        ID = -1
+        data = {}
+        url = f"{self.api_db_url}/get_keys_data/{self.lcms_db_name}/tab/map_id/{map_id}"
+        ret = requests.get(url, headers=self.headers())
+        if ret.status_code == 200:
+            for row in ret.json():
+                if row[2] == position:
+                    ID = row[0]
+                    data = json.loads(row[6])
+                    return ID, data
+        else:
+            ui.notify(f'не удается загрузить карту: {map_id}')
+        return ID, data
+
+    def load_lcms_data_from_base(self, map_id, position):
+        ID, data = self.get_lcms_data_id(map_id, position)
+        if ID > -1:
+            return data
+        else:
+            return {}
+
 
     def update_chrom_data_to_base(self, data):
         if data != {}:
