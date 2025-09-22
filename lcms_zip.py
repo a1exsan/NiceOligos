@@ -231,6 +231,44 @@ class zip_oligo_mzdata():
                                                    rt_left=self.rt_interval[0])
         self.compresed_data = self.compress_2(self.init_data)
 
+    def from_base_file(self, filename):
+        with open(filename, 'r') as file:
+            data = file.read()
+        self.base_data = json.loads(data)
+        self.init_data = pd.DataFrame(self.base_data['init_data'])
+        self.init_data = self.init_data.values
+
+
+    def get_bkg(self, data):
+        bkg = {}
+        for i in range(int(round(self.max_mz, 0))):
+            bkg[i] = 0
+        for row in data:
+            mz = int(round(row[1], 0))
+            bkg[mz] += 1
+        return list(bkg.values())
+
+
+    def pipeline(self):
+        out_dict = {}
+        self.bkg = self.get_bkg(self.init_data)
+        deconv_data = self.deconvolution()
+
+        out_dict['init_zip'] = self.json_dumps_tuple_keys(self.compress_2(self.init_data))
+        out_dict['deconv_zip'] = self.json_dumps_tuple_keys(self.compress_2(deconv_data[['rt', 'mass', 'intens']].values))
+        out_dict['polish_zip'] = self.json_dumps_tuple_keys(self.compress_2(self.data))
+
+        out_dict['init_chrom_line'] = json.dumps(self.get_chrom_data(self.init_data_to_df(self.init_data)))
+        out_dict['polish_chrom_line'] = json.dumps(self.get_chrom_data(self.init_data_to_df(self.data)))
+        out_dict['deconv_chrom_line'] = json.dumps(self.get_chrom_data(deconv_data))
+
+        out_dict['oligo_ID'] = self.base_data['Order id']
+        out_dict['map_ID'] = self.base_data['map id']
+        out_dict['position'] = self.base_data['Position']
+
+        return out_dict
+
+
     def json_dumps_tuple_keys(self, mapping):
         string_keys = {json.dumps(k): v for k, v in mapping.items()}
         return json.dumps(string_keys)
@@ -332,7 +370,8 @@ class zip_oligo_mzdata():
         min_value = min(chrom_line['tic'])
         chrom_line['tic'] = [i - min_value for i in chrom_line['tic']]
         model = interpolate_crom_line(chrom_line['rt'], chrom_line['tic'], point_numbers=point_numbers)()
-        return {'rt': list(model[0]), 'tic': list(model[1])}
+        return {'rt': [round(float(i),2) for i in model[0]],
+                'tic': [round(float(i),2) for i in model[1]]}
 
     def get_mz_zip_data(self, data):
         x_vals = []

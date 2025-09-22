@@ -469,21 +469,48 @@ class lcms_analyser(api_db_interface):
                     for key in data.keys():
                         self.total_data[key] = data[key]
 
-                    self.seq_name.value = self.total_data['oligo_name']
+                    try:
+                        self.seq_name.value = self.total_data['oligo_name']
+                    except:
+                        pass
                     self.sequence_id.value = self.total_data['oligo_ID']
                     self.map_id.value = self.total_data['map_ID']
-                    self.sequence.value = self.total_data['sequence']
+                    try:
+                        self.sequence.value = self.total_data['sequence']
+                    except:
+                        pass
                     self.position.value = self.total_data['position']
-                    self.purification.value = self.total_data['purif_type']
+                    try:
+                        self.purification.value = self.total_data['purif_type']
+                    except:
+                        pass
 
                     self.on_culc_oligo_props()
 
-                    self.init_lc_area.value = self.total_data['init_lc_area']
-                    self.init_lcms_area.value = self.total_data['init_lcms_area']
-                    self.polish_lc_area.value = self.total_data['polish_lc_area']
-                    self.polish_lcms_area.value = self.total_data['polish_lcms_area']
-                    self.deconv_lc_area.value = self.total_data['deconv_lc_area']
-                    self.deconv_lcms_area.value = self.total_data['deconv_lcms_area']
+                    try:
+                        self.init_lc_area.value = self.total_data['init_lc_area']
+                    except:
+                        pass
+                    try:
+                        self.init_lcms_area.value = self.total_data['init_lcms_area']
+                    except:
+                        pass
+                    try:
+                        self.polish_lc_area.value = self.total_data['polish_lc_area']
+                    except:
+                        pass
+                    try:
+                        self.polish_lcms_area.value = self.total_data['polish_lcms_area']
+                    except:
+                        pass
+                    try:
+                        self.deconv_lc_area.value = self.total_data['deconv_lc_area']
+                    except:
+                        pass
+                    try:
+                        self.deconv_lcms_area.value = self.total_data['deconv_lcms_area']
+                    except:
+                        pass
 
                     self.zip_data = self.zip_lcms.json_loads_tuple_keys(self.total_data['init_zip'])
                     self.zip_polish = self.zip_lcms.json_loads_tuple_keys(self.total_data['polish_zip'])
@@ -507,11 +534,50 @@ class lcms_analyser(api_db_interface):
 
 
 if __name__ in {"__main__", "__mp_main__"}:
-    ui.dark_mode(True)
+    #ui.dark_mode(True)
 
-    app.storage.general['db_IP'] = '127.0.0.1'
-    app.storage.general['db_port'] = '8012'
+    #app.storage.general['db_IP'] = '127.0.0.1'
+    #app.storage.general['db_port'] = '8012'
 
-    lcms = lcms_analyser()
+    #lcms = lcms_analyser()
 
-    ui.run(port=8081)
+    #ui.run(port=8081)
+
+    from pathlib import Path
+
+    def list_all_files_(directory):
+        path = Path(directory)
+        return [str(file) for file in path.rglob('*') if file.is_file()]
+
+    def perform_file(filename):
+        lcms = zip_oligo_mzdata(filename)
+        lcms.from_base_file(filename)
+        data = lcms.pipeline()
+        print(data)
+
+        omaps = oligomaps_search('127.0.0.1', '8012')
+        omaps.pincode = '2b9a0a40a6fe36590b9105c0bb46619afef4c4c50dc7c12c1aef61e5d490405b'
+        omaps.insert_lcms_data_to_base(data)
+
+    filepath = '/home/alex/PycharmProjects/OLIGO_BASE_APP_1.0/database/lcms_files/313_7567_G4'
+    dir = '/home/alex/PycharmProjects/OLIGO_BASE_APP_1.0/database/lcms_files/'
+
+    file_list = list_all_files_(dir)
+
+
+    for file in file_list:
+        try:
+            perform_file(file)
+            print('ADD: ', file)
+        except:
+            print('NO ADD: ', file)
+
+
+
+
+
+
+
+
+
+
