@@ -1,3 +1,5 @@
+from scipy.cluster.hierarchy import average
+
 import mzdatapy
 import numpy as np
 import json
@@ -276,6 +278,16 @@ class zip_oligo_mzdata():
     def json_loads_tuple_keys(self, string):
         mapping = json.loads(string)
         return {tuple(json.loads(k)): v for k, v in mapping.items()}
+
+    def extract_zip_data_by_rect(self, data, rect):
+        ret_dict = {}
+        for key, value in data.items():
+            rt1, rt2, mz = round(key[0] / self.rt_mul, 0), round(key[1] / self.rt_mul, 0), round(key[2] / self.mz_mul, 0)
+            rt = (rt1 + rt2) / 2
+            if (rt >= rect['x0']) and (rt <= rect['x1']):
+                if (mz >= rect['y0']) and (mz <= rect['y1']):
+                    ret_dict[key] = value
+        return ret_dict
 
     def compress_2(self, init_data):
         int_max = np.max(init_data[:, 2])

@@ -41,6 +41,8 @@ class lcms_dialog():
 
 class lcms_analyser(api_db_interface):
     def __init__(self):
+        self.x_init_ledder = []
+        self.y_init_ledder = []
         IP = app.storage.general.get('db_IP')
         port = app.storage.general.get('db_port')
         super().__init__(IP, port)
@@ -96,6 +98,8 @@ class lcms_analyser(api_db_interface):
                     self.oligo_extinction = ui.input(label='Extinction, OE/ml:').style('width: 200px; font-size: 16px')
                     self.culc_prop = ui.button('Oligo properties', color='orange',
                                                on_click=self.on_culc_oligo_props)
+                with ui.row():
+                    self.mz_fitting = ui.checkbox('MZ fitting', on_change=self.on_mz_fitting_init)
         with ui.row():
             self.plot_chrom = ui.plotly(self.fig_chrom).style('width: 1500px; height: 400px;')
             with ui.column():
@@ -175,6 +179,14 @@ class lcms_analyser(api_db_interface):
             line=dict(width=2, color='cyan'),
             showlegend=False
         ))
+        if len(self.x_init_ledder) > 0 and len(self.y_init_ledder) > 0 and self.draw_mode != 'deconv':
+            self.fig.add_trace(go.Scattergl(
+                x=self.x_init_ledder,
+                y=self.y_init_ledder,
+                mode='lines',
+                line=dict(width=4, color='yellow'),
+                showlegend=False
+            ))
         self.plot.update()
 
     def draw_mz_zip_data(self, data):
@@ -528,21 +540,40 @@ class lcms_analyser(api_db_interface):
                 else:
                     ui.notify('данных LCMS нет в базе')
 
+    def gen_mz_ledder(self, rect, seq):
+        ledder = {}
+        x_vals, y_vals = [], []
+        delta = rect['x1'] - rect['x0']
+        x0 = rect['x0'] + 0.2 * delta
+        x1 = rect['x1'] - 0.2 * delta
+        if seq != '':
+            oligo = mmo.oligoNASequence(seq)
+            mass = oligo.getMonoMass()
+            for z in range(1, 100):
+                for iso in range(1, 5):
+                    mz = (mass + iso - z) / z
+                    if (mz >= rect['y0']) and (mz <= rect['y1']):
+                        ledder[z] = mz
+                        x_vals.extend([x0, x1, None])
+                        y_vals.extend([mz, mz, None])
+        return ledder, x_vals, y_vals
+
+
+    def on_mz_fitting_init(self, e):
+        self.x_init_ledder, self.y_init_ledder = [], []
+        if self.selection_rect != {} and self.zip_data != {}:
+            rect_data = self.zip_lcms.extract_zip_data_by_rect(self.zip_data, self.selection_rect)
+            if self.sequence.value != '' and e.value:
+                ledder, self.x_init_ledder, self.y_init_ledder = self.gen_mz_ledder(self.selection_rect,
+                                                                                    self.sequence.value)
+            else:
+                self.x_init_ledder, self.y_init_ledder = [], []
+        self.draw_lcms_zip_data(self.zip_data)
 
 
 
 
-
-if __name__ in {"__main__", "__mp_main__"}:
-    #ui.dark_mode(True)
-
-    #app.storage.general['db_IP'] = '127.0.0.1'
-    #app.storage.general['db_port'] = '8012'
-
-    #lcms = lcms_analyser()
-
-    #ui.run(port=8081)
-
+def dump_lcms_files():
     from pathlib import Path
 
     def list_all_files_(directory):
@@ -564,13 +595,29 @@ if __name__ in {"__main__", "__mp_main__"}:
 
     file_list = list_all_files_(dir)
 
-
     for file in file_list:
         try:
             perform_file(file)
             print('ADD: ', file)
         except:
             print('NO ADD: ', file)
+
+
+def run_dialog():
+    ui.dark_mode(True)
+
+    app.storage.general['db_IP'] = '127.0.0.1'
+    app.storage.general['db_port'] = '8012'
+
+    lcms = lcms_analyser()
+
+    ui.run(port=8081)
+
+
+if __name__ in {"__main__", "__mp_main__"}:
+
+    run_dialog()
+
 
 
 
