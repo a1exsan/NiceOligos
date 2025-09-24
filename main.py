@@ -11,6 +11,7 @@ from chemicals_page import chemicals_page_model
 from input_order_page import input_order_page_model
 from invoce_page import api_db_interface
 from stock_data_page import stock_data_page_model
+from server import IP
 
 import hashlib
 
@@ -18,9 +19,10 @@ oligo_map_stack = oligos_data_stack()
 
 users = {'test': hashlib.sha256('12345'.encode('utf-8')).hexdigest()}
 
-IP_addr = '127.0.0.1'
+#IP_addr = '127.0.0.1'
 #IP_addr = '192.168.16.145'
 #IP_addr = '84.252.133.233'
+IP_addr = IP
 
 app.add_static_files('/img', 'static_images')
 app.storage.general['db_IP'] = IP_addr
