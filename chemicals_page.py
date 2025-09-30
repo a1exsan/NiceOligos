@@ -74,8 +74,8 @@ class moleculeInfo():
 
     def get_props(self):
         return {
-            'Mol weight, Da ': round(Descriptors.MolWt(self.mol), 2),
-            'Brutto ': rdMolDescriptors.CalcMolFormula(self.mol),
+            'Mol weight, Da': round(Descriptors.MolWt(self.mol), 2),
+            'Brutto': rdMolDescriptors.CalcMolFormula(self.mol),
             # 'ЛогP (октанол/вода)': Descriptors.MolLogP(mol),
             # 'Доноры водородных связей': rdMolDescriptors.CalcNumHBD(mol),
             # 'Акцепторы водородных связей': rdMolDescriptors.CalcNumHBA(mol),

@@ -11,6 +11,8 @@ import asyncio
 import sys
 from OligoMap_utils import oligomaps_search
 from oligoMass import molmassOligo as mmo
+import threading
+import time
 
 
 class lcms_dialog():
@@ -244,33 +246,32 @@ class lcms_analyser(api_db_interface):
             ))
         self.plot_chrom.update()
 
-
-    async def on_perform_data(self):
+    def pipeline_task(self):
         self.selection_rect = {}
         self.progress.value = 0.1
-        await asyncio.sleep(1)
+        time.sleep(1)
         self.zip_lcms = zip_oligo_mzdata('')
         self.zip_lcms.from_string(self.b64_string)
 
         self.progress.value = 0.3
-        await asyncio.sleep(1)
+        time.sleep(1)
 
         self.zip_data = self.zip_lcms.compress_2(self.zip_lcms.init_data)
 
         self.progress.value = 0.6
-        await asyncio.sleep(1)
+        time.sleep(1)
 
         self.deconv_data = self.zip_lcms.deconvolution()
         self.progress.value = 0.77
-        await asyncio.sleep(1)
+        time.sleep(1)
 
         self.zip_deconv = self.zip_lcms.compress_2(self.deconv_data[['rt', 'mass', 'intens']].values)
         self.progress.value = 0.85
-        await asyncio.sleep(1)
+        time.sleep(1)
 
         self.draw_lcms_zip_data(self.zip_data)
         self.progress.value = 0.94
-        await asyncio.sleep(1)
+        time.sleep(1)
 
         self.init_data_df = self.zip_lcms.init_data_to_df(self.zip_lcms.init_data)
         self.polish_data_df = self.zip_lcms.init_data_to_df(self.zip_lcms.data)
@@ -281,7 +282,7 @@ class lcms_analyser(api_db_interface):
 
         self.zip_polish = self.zip_lcms.compress_2(self.zip_lcms.data)
         self.progress.value = 0.97
-        await asyncio.sleep(1)
+        time.sleep(1)
 
         self.init_mz_zip = self.zip_lcms.get_mz_zip_data(self.zip_data)
         self.polish_mz_zip = self.zip_lcms.get_mz_zip_data(self.zip_polish)
@@ -289,7 +290,15 @@ class lcms_analyser(api_db_interface):
         self.draw_mz_zip_data(self.init_mz_zip)
 
         self.progress.value = 100
-        await asyncio.sleep(1)
+        time.sleep(1)
+        self.on_save_data()
+
+
+    def on_perform_data(self):
+        self.progress.value = 0
+        background_thread = threading.Thread(target=self.pipeline_task)
+        background_thread.daemon = True
+        background_thread.start()
 
 
     def handle_upload(self, e: events.UploadEventArguments):
