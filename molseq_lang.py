@@ -10,6 +10,7 @@ from rdkit import Chem
 from rdkit.Chem import AllChem, DataStructs, Draw
 from rdkit.Chem import rdChemReactions
 from rdkit.Chem.Draw import rdMolDraw2D
+import pandas as pd
 
 
 class modification():
@@ -240,12 +241,17 @@ class single_nucleic_acid_chain_assembler(single_nucleic_acid_chain):
         super().__init__(seq)
         self.rnx_base = rnx_base
         base = {}
+        rowdata = []
         for val in mod_base.values():
             base[val.symbol] = val
+            rowdata.append(val.to_dict())
         self.mod_base = base
         self.structure = ''
         self.desupport_id = 0
         self.border_color = 'gray'
+        self.mod_base_df = pd.DataFrame(rowdata)
+        df = self.mod_base_df[self.mod_base_df['symbol'].str.contains('_class')]
+        self.mod_classes = df.to_dict('records')
 
     def draw_structure(self, context, width, height):
         context.content = ''
@@ -323,12 +329,26 @@ class single_nucleic_acid_chain_assembler(single_nucleic_acid_chain):
         self.desupport_id = 0
         for token in reverse_chain:
             if token in self.mod_base:
-                #print(self.mod_base[token].to_dict())
+                #print(token, self.get_structure_class(self.mod_base[token].smiles))
                 self.do_auto_reactions(self.mod_base[token])
             else:
                 print(f'{token} not in base')
         self.do_desupport_structure()
         self.do_final_detrit_structure(DMT_on=DMT_on)
+
+
+    def get_structure_class(self, smiles):
+        result = ''
+        if smiles != '':
+            molecule = Chem.MolFromSmiles(smiles)
+            for row in self.mod_classes:
+                substructure = Chem.MolFromSmiles(row['smiles'])
+                if molecule.HasSubstructMatch(substructure):
+                    data = json.loads(row['data_json'])
+                    if 'class' in data:
+                        result = data['class']
+                        break
+        return result
 
 
 
@@ -568,10 +588,15 @@ class modification_page_model():
     def on_save_mod_json(self, data):
         if self.obj_base.mod_sel_id > 0:
             mod_dict = self.obj_base.modification_base[self.obj_base.mod_sel_id].to_dict()
+            oligo = single_nucleic_acid_chain_assembler('ACGT',
+                                                        self.obj_base.reaction_base,
+                                                        self.obj_base.modification_base)
+            data_json = json.loads(data['json'])
+            data_json['class'] = oligo.get_structure_class(mod_dict['smiles'])
             d = {'symbol': mod_dict['symbol'],
                  'unicode': mod_dict['unicode'],
                  'smiles': mod_dict['smiles'],
-                 'data_json': data['json']}
+                 'data_json': json.dumps(data_json)}
             mod = modification.from_dict(d)
             self.obj_base.update_modification(self.obj_base.mod_sel_id, mod)
             self.init_reaction_rowdata()
