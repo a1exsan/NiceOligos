@@ -244,58 +244,91 @@ class single_nucleic_acid_chain_assembler(single_nucleic_acid_chain):
             base[val.symbol] = val
         self.mod_base = base
         self.structure = ''
+        self.desupport_id = 0
+        self.border_color = 'gray'
+
+    def draw_structure(self, context, width, height):
+        context.content = ''
+        context.content += (f'<rect x={0} y={0} '
+                            f'width={width} height={height} '
+                            f' rx=10 ry=10 fill="{None}" fill-opacity="{0.6}"'
+                            f'stroke="{self.border_color}" stroke-width="4"/>')
+        mol = moleculeInfo(self.structure)
+        svg = mol.draw_svg(width-20, height-20)
+        context.content += f'<g transform="translate(10, 10)">{svg}</g>'
+
 
     def do_auto_reactions(self, modification):
         if self.structure == '':
             self.structure = modification.smiles
-
-        print(modification.symbol)
-        print(self.structure)
-
         adduct = modification.smiles
-        rnx_id_list = json.loads(modification.data_json)['rnx_id_list']
-
-        for i, id in enumerate(rnx_id_list):
-            print(i ,id)
-            if i == 0:
-                rxn = rdChemReactions.ReactionFromSmarts(self.rnx_base[id].smarts)
+        mod_data = json.loads(modification.data_json)
+        if 'DESUPPORT' in mod_data:
+            self.desupport_id = mod_data['DESUPPORT'][0]
+        if 'DETRIT' in mod_data:
+            rnx_smarts = self.rnx_base[mod_data['DETRIT'][0]].smarts
+            rxn = rdChemReactions.ReactionFromSmarts(rnx_smarts)
+            react = Chem.MolFromSmiles(self.structure)
+            products = rxn.RunReactants([react])
+            if products != ():
+                self.structure = Chem.MolToSmiles(products[0][0])
+        if 'COUPLE' in mod_data:
+            rnx_smarts = self.rnx_base[mod_data['COUPLE'][0]].smarts
+            rxn = rdChemReactions.ReactionFromSmarts(rnx_smarts)
+            react2 = Chem.MolFromSmiles(self.structure)
+            react1 = Chem.MolFromSmiles(adduct)
+            products = rxn.RunReactants([react1, react2])
+            if products != ():
+                self.structure = Chem.MolToSmiles(products[0][0])
+        if 'OXID' in mod_data:
+            rnx_smarts = self.rnx_base[mod_data['OXID'][0]].smarts
+            rxn = rdChemReactions.ReactionFromSmarts(rnx_smarts)
+            ox = Chem.MolFromSmiles('O')
+            react = Chem.MolFromSmiles(self.structure)
+            products = rxn.RunReactants([react, ox])
+            if products != ():
+                self.structure = Chem.MolToSmiles(products[0][0])
+        if 'DEBL' in mod_data:
+            for id in mod_data['DEBL']:
+                rnx_smarts = self.rnx_base[id].smarts
+                rxn = rdChemReactions.ReactionFromSmarts(rnx_smarts)
                 react = Chem.MolFromSmiles(self.structure)
                 products = rxn.RunReactants([react])
-                print(products)
                 if products != ():
                     self.structure = Chem.MolToSmiles(products[0][0])
-            if i == 1:
-                rxn = rdChemReactions.ReactionFromSmarts(self.rnx_base[id].smarts)
-                react2 = Chem.MolFromSmiles(self.structure)
-                react1 = Chem.MolFromSmiles(adduct)
-                products = rxn.RunReactants([react1, react2])
+
+    def do_desupport_structure(self):
+        if self.structure != '':
+            if self.desupport_id > 0:
+                rnx_smarts = self.rnx_base[self.desupport_id].smarts
+                rxn = rdChemReactions.ReactionFromSmarts(rnx_smarts)
+                react = Chem.MolFromSmiles(self.structure)
+                products = rxn.RunReactants([react])
                 if products != ():
                     self.structure = Chem.MolToSmiles(products[0][0])
-                    print(self.structure)
-            if i > 1:
-                rxn = rdChemReactions.ReactionFromSmarts(self.rnx_base[id].smarts)
-                if id == 4:
-                    react = Chem.MolFromSmiles(self.structure)
-                    ox = Chem.MolFromSmiles('O')
-                    products = rxn.RunReactants([react, ox])
-                else:
-                    react = Chem.MolFromSmiles(self.structure)
-                    products = rxn.RunReactants([react])
+
+    def do_final_detrit_structure(self, DMT_on=True):
+        if self.structure != '':
+            if not DMT_on:
+                rnx_smarts = self.rnx_base[1].smarts
+                rxn = rdChemReactions.ReactionFromSmarts(rnx_smarts)
+                react = Chem.MolFromSmiles(self.structure)
+                products = rxn.RunReactants([react])
                 if products != ():
                     self.structure = Chem.MolToSmiles(products[0][0])
-                    print(self.structure)
 
-
-
-
-    def build(self):
+    def build(self, DMT_on=False):
         reverse_chain = self.chain[::-1]
+        self.structure = ''
+        self.desupport_id = 0
         for token in reverse_chain:
             if token in self.mod_base:
                 #print(self.mod_base[token].to_dict())
                 self.do_auto_reactions(self.mod_base[token])
             else:
                 print(f'{token} not in base')
+        self.do_desupport_structure()
+        self.do_final_detrit_structure(DMT_on=DMT_on)
 
 
 
@@ -425,9 +458,19 @@ class modification_page_model():
         with ui.row():
             ui.button('Parce seq', on_click=self.on_parse_seq)
             self.seq_area = ui.textarea(label='Sequence').style('width: 400px')
-            self.tokens_area = ui.textarea(label='Tokens').style('width: 400px')
+            self.tokens_area = ui.textarea(label='Product smiles').style('width: 800px')
+            self.props_area = ui.textarea(label='Mol props').style('width: 400px')
 
-            self.init_reaction_rowdata()
+        self.react_width = 2400
+        self.react_height = 1600
+        bkg = image_background(self.react_width, self.react_height, color=self.bkg_color)
+        self.react_image = ui.interactive_image(f"data:image/png;base64,{bkg.background_base64}",
+                                              size=(self.react_width, self.react_height), on_mouse=self.mouse_handler,
+                                              events=['mousedown', 'mousemove', 'mouseup', 'click']
+                                              )
+        self.react_context = self.react_image.add_layer()
+
+        self.init_reaction_rowdata()
 
     def init_reaction_rowdata(self):
         IP = app.storage.general.get('db_IP')
@@ -542,6 +585,10 @@ class modification_page_model():
                                                       self.obj_base.reaction_base,
                                                       self.obj_base.modification_base)
         oligo.build()
+        self.tokens_area.value = oligo.structure
+        oligo.draw_structure(self.react_context, self.react_width, self.react_height)
+        mol = moleculeInfo(oligo.structure)
+        self.props_area.value = json.dumps(mol.get_props())
 
 
 
