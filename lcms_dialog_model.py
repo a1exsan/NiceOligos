@@ -48,8 +48,7 @@ class lcms_analyser(api_db_interface):
         IP = app.storage.general.get('db_IP')
         port = app.storage.general.get('db_port')
         super().__init__(IP, port)
-        #self.pincode = app.storage.user.get('pincode')
-        self.pincode = '2b9a0a40a6fe36590b9105c0bb46619afef4c4c50dc7c12c1aef61e5d490405b'
+        self.pincode = app.storage.user.get('pincode')
 
         self.selection_rect = {}
         self.draw_mode = 'init'

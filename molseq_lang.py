@@ -11,6 +11,9 @@ from rdkit.Chem import AllChem, DataStructs, Draw
 from rdkit.Chem import rdChemReactions
 from rdkit.Chem.Draw import rdMolDraw2D
 import pandas as pd
+import random
+import threading
+import time
 
 
 class modification():
@@ -93,18 +96,18 @@ class modification_base(api_db_interface):
         self.border_color = 'gray'
 
 
-    def draw_context(self, context):
+    def draw_context(self, context, width=600, height=400):
         context.content = ''
         context.content += (f'<rect x={0} y={0} '
                             f'width={self.context_width} height={self.context_height} '
                             f' rx=10 ry=10 fill="{None}" fill-opacity="{0.6}"'
                             f'stroke="{self.border_color}" stroke-width="4"/>')
         if self.rnx_sel_id > 0:
-            self.reaction_base[self.rnx_sel_id].draw_rnx_svg(context, width=600, height=400)
+            self.reaction_base[self.rnx_sel_id].draw_rnx_svg(context, width=width, height=height)
         if self.mod_sel_id > 0:
-            self.modification_base[self.mod_sel_id].draw_mod_svg(context, width=600, height=400)
+            self.modification_base[self.mod_sel_id].draw_mod_svg(context, width=width, height=height)
             if self.reactant.smiles != '':
-                self.reactant.draw_mod_svg_reactant(context, width=600, height=400)
+                self.reactant.draw_mod_svg_reactant(context, width=width, height=height)
 
     def get_all_data_from_base(self, tab_name):
         url = f'{self.api_db_url}/get_all_tab_data/{self.mod_db_name}/{tab_name}'
@@ -236,10 +239,18 @@ class single_nucleic_acid_chain():
                     result.extend(list(cleaned.upper()))
         return result
 
+    def del_mod_from_chain(self, mod_symbol):
+        if mod_symbol in self.chain:
+            self.chain.remove(mod_symbol)
+        return ''.join(self.chain)
+
 class single_nucleic_acid_chain_assembler(single_nucleic_acid_chain):
     def __init__(self, seq, rnx_base, mod_base):
         super().__init__(seq)
+        self.do_when_build_finished = None
+        self.build_progress = None
         self.rnx_base = rnx_base
+        self.DMT_on = False
         base = {}
         rowdata = []
         for val in mod_base.values():
@@ -247,6 +258,7 @@ class single_nucleic_acid_chain_assembler(single_nucleic_acid_chain):
             rowdata.append(val.to_dict())
         self.mod_base = base
         self.structure = ''
+        self.scheme = {}
         self.desupport_id = 0
         self.border_color = 'gray'
         self.mod_base_df = pd.DataFrame(rowdata)
@@ -263,37 +275,57 @@ class single_nucleic_acid_chain_assembler(single_nucleic_acid_chain):
         svg = mol.draw_svg(width-20, height-20)
         context.content += f'<g transform="translate(10, 10)">{svg}</g>'
 
+    def get_branch_count(self, structure):
+        molecule = Chem.MolFromSmiles(structure)
+        substructure = Chem.MolFromSmiles('C1C=C(C(O)(C2C=CC=CC=2)C2C=CC=CC=2)C=CC=1')
+        matches = molecule.GetSubstructMatches(substructure)
+        if len(matches) == 0:
+            return 1
+        else:
+            return len(matches)
 
-    def do_auto_reactions(self, modification):
-        if self.structure == '':
-            self.structure = modification.smiles
-        adduct = modification.smiles
-        mod_data = json.loads(modification.data_json)
-        if 'DESUPPORT' in mod_data:
-            self.desupport_id = mod_data['DESUPPORT'][0]
+    def get_structure_count(self, structure, substructure):
+        molecule = Chem.MolFromSmiles(structure)
+        substructure_ = Chem.MolFromSmiles(substructure)
+        matches = molecule.GetSubstructMatches(substructure_)
+        if len(matches) == 0:
+            return 1
+        else:
+            return len(matches)
+
+    def do_auto_cycle_detrit(self, mod_data):
         if 'DETRIT' in mod_data:
-            rnx_smarts = self.rnx_base[mod_data['DETRIT'][0]].smarts
-            rxn = rdChemReactions.ReactionFromSmarts(rnx_smarts)
-            react = Chem.MolFromSmiles(self.structure)
-            products = rxn.RunReactants([react])
-            if products != ():
-                self.structure = Chem.MolToSmiles(products[0][0])
+            for id in mod_data['DETRIT']:
+                rnx_smarts = self.rnx_base[id].smarts
+                rxn = rdChemReactions.ReactionFromSmarts(rnx_smarts)
+                react = Chem.MolFromSmiles(self.structure)
+                products = rxn.RunReactants([react])
+                if products != ():
+                    self.structure = Chem.MolToSmiles(products[0][0])
+
+    def do_auto_cycle_couple(self, mod_data, adduct):
         if 'COUPLE' in mod_data:
-            rnx_smarts = self.rnx_base[mod_data['COUPLE'][0]].smarts
-            rxn = rdChemReactions.ReactionFromSmarts(rnx_smarts)
-            react2 = Chem.MolFromSmiles(self.structure)
-            react1 = Chem.MolFromSmiles(adduct)
-            products = rxn.RunReactants([react1, react2])
-            if products != ():
-                self.structure = Chem.MolToSmiles(products[0][0])
+            for id in mod_data['COUPLE']:
+                rnx_smarts = self.rnx_base[id].smarts
+                rxn = rdChemReactions.ReactionFromSmarts(rnx_smarts)
+                react2 = Chem.MolFromSmiles(self.structure)
+                react1 = Chem.MolFromSmiles(adduct)
+                products = rxn.RunReactants([react1, react2])
+                if products != ():
+                    self.structure = Chem.MolToSmiles(products[0][0])
+
+    def do_auto_cycle_oxid(self, mod_data):
         if 'OXID' in mod_data:
-            rnx_smarts = self.rnx_base[mod_data['OXID'][0]].smarts
-            rxn = rdChemReactions.ReactionFromSmarts(rnx_smarts)
-            ox = Chem.MolFromSmiles('O')
-            react = Chem.MolFromSmiles(self.structure)
-            products = rxn.RunReactants([react, ox])
-            if products != ():
-                self.structure = Chem.MolToSmiles(products[0][0])
+            for id in mod_data['OXID']:
+                rnx_smarts = self.rnx_base[id].smarts
+                rxn = rdChemReactions.ReactionFromSmarts(rnx_smarts)
+                ox = Chem.MolFromSmiles('O')
+                react = Chem.MolFromSmiles(self.structure)
+                products = rxn.RunReactants([react, ox])
+                if products != ():
+                    self.structure = Chem.MolToSmiles(products[0][0])
+
+    def do_auto_cycle_debl(self, mod_data):
         if 'DEBL' in mod_data:
             for id in mod_data['DEBL']:
                 rnx_smarts = self.rnx_base[id].smarts
@@ -302,6 +334,29 @@ class single_nucleic_acid_chain_assembler(single_nucleic_acid_chain):
                 products = rxn.RunReactants([react])
                 if products != ():
                     self.structure = Chem.MolToSmiles(products[0][0])
+
+    def do_auto_reactions(self, modification_):
+        if self.structure == '':
+            self.structure = modification_.smiles
+        smiles_list = modification_.smiles.split('.')
+        adduct = smiles_list[0]
+        mod_data = json.loads(modification_.data_json)
+        branch_count = self.get_branch_count(self.structure)
+        if 'DESUPPORT' in mod_data:
+            self.desupport_id = mod_data['DESUPPORT'][0]
+        #print(modification_.to_dict())
+        #print(branch_count)
+        for i in range(branch_count):
+            self.do_auto_cycle_detrit(mod_data=mod_data)
+            #print(self.structure)
+        for i in range(branch_count):
+            self.do_auto_cycle_couple(mod_data=mod_data, adduct=adduct)
+            #print(self.structure)
+        for i in range(branch_count):
+            self.do_auto_cycle_oxid(mod_data=mod_data)
+        for i in range(branch_count):
+            self.do_auto_cycle_debl(mod_data=mod_data)
+
 
     def do_desupport_structure(self):
         if self.structure != '':
@@ -323,18 +378,63 @@ class single_nucleic_acid_chain_assembler(single_nucleic_acid_chain):
                 if products != ():
                     self.structure = Chem.MolToSmiles(products[0][0])
 
-    def build(self, DMT_on=False):
+    def do_click_reaction_on_structure(self, modification_):
+        if self.structure != '':
+            mod_data = json.loads(modification_.data_json)
+            if 'click' in mod_data:
+                repeats = 1
+                if 'class' in mod_data:
+                    if mod_data['class'] == 'NHS':
+                        repeats = self.get_structure_count(self.structure, 'CCN')
+                    elif mod_data['class'] == 'azide':
+                        repeats = self.get_structure_count(self.structure, 'C#CC')
+                for i in range(repeats):
+                    for id in mod_data['click']:
+                        rnx_smarts = self.rnx_base[id].smarts
+                        rxn = rdChemReactions.ReactionFromSmarts(rnx_smarts)
+                        react1 = Chem.MolFromSmiles(modification_.smiles)
+                        react2 = Chem.MolFromSmiles(self.structure)
+                        products = rxn.RunReactants([react1, react2])
+                        if products != ():
+                            self.structure = Chem.MolToSmiles(products[0][0])
+                        else:
+                            products = rxn.RunReactants([react2, react1])
+                            if products != ():
+                                self.structure = Chem.MolToSmiles(products[0][0])
+
+    def build(self):
         reverse_chain = self.chain[::-1]
         self.structure = ''
         self.desupport_id = 0
-        for token in reverse_chain:
+
+        if self.build_progress is not None:
+            self.build_progress.value = 0
+            time.sleep(0.5)
+
+        for i, token in enumerate(reverse_chain):
+            if self.build_progress is not None:
+                self.build_progress.value = round(i / len(reverse_chain), 2)
+                time.sleep(0.1)
             if token in self.mod_base:
                 #print(token, self.get_structure_class(self.mod_base[token].smiles))
                 self.do_auto_reactions(self.mod_base[token])
+                self.do_click_reaction_on_structure(self.mod_base[token])
             else:
                 print(f'{token} not in base')
         self.do_desupport_structure()
-        self.do_final_detrit_structure(DMT_on=DMT_on)
+        self.do_final_detrit_structure(DMT_on=self.DMT_on)
+
+        if self.build_progress is not None:
+            self.build_progress.value = 1
+            time.sleep(0.1)
+
+        if self.do_when_build_finished is not None:
+            self.do_when_build_finished({'structure': self.structure})
+
+    def run_build(self):
+        background_thread = threading.Thread(target=self.build)
+        background_thread.daemon = True
+        background_thread.start()
 
 
     def get_structure_class(self, smiles):
@@ -344,11 +444,86 @@ class single_nucleic_acid_chain_assembler(single_nucleic_acid_chain):
             for row in self.mod_classes:
                 substructure = Chem.MolFromSmiles(row['smiles'])
                 if molecule.HasSubstructMatch(substructure):
+                    matches = molecule.GetSubstructMatches(substructure)
                     data = json.loads(row['data_json'])
                     if 'class' in data:
-                        result = data['class']
+                        result = data['class'], len(matches)
                         break
         return result
+
+    def compile_structure(self):
+        reverse_chain = self.chain[::-1]
+        self.scheme = {}
+        self.scheme['unknown_symbol'] = []
+        self.scheme['unknown_class'] = []
+        self.scheme['error_3end'] = []
+        self.scheme['rowdata'] = []
+        self.scheme['auto_sequence'] = None
+        self.scheme['modif_overlimit'] = None
+        for i, token in enumerate(reverse_chain):
+            if token not in self.mod_base:
+                self.scheme['unknown_symbol'].append(token)
+            else:
+                j_data = json.loads(self.mod_base[token].data_json)
+                if 'class' in j_data:
+                    t_class = j_data['class']
+                    d = {}
+                    d['symbol'] = token
+                    d['class'] = t_class
+                    d['index'] = i
+                    self.scheme['rowdata'].append(d)
+                    if i == 0 and t_class == 'amidite':
+                        self.scheme['error_3end'].append(token)
+                else:
+                    self.scheme['unknown_class'].append(token)
+        if len(self.scheme['unknown_symbol']) == 0 and len(self.scheme['unknown_class']) == 0 and len(self.scheme['error_3end'])==0:
+            df = pd.DataFrame(self.scheme['rowdata'])
+            if df.shape[0] > 0:
+                classes_set = list(df['class'].unique())
+                if classes_set == ['amidite', 'CPG'] or classes_set == ['CPG', 'amidite']:
+                    self.scheme['auto_sequence'] = self.chain
+                elif len(classes_set) <= 5:
+                    df.sort_values(by='index', ascending=False, inplace=True)
+                    self.scheme['auto_sequence'] = self.compile_auto_sequence(df)
+                else:
+                    self.scheme['modif_overlimit'] = len(classes_set)
+
+    def compile_auto_sequence(self, dataframe):
+        cls_l, symb_l = list(dataframe['class']), list(dataframe['symbol'])
+        seq = []
+        for i in range(dataframe.shape[0]):
+            if cls_l[i] == 'azide' and i == 0:
+                if cls_l[i+1] == 'amidite' or cls_l[i+1] == 'CPG' or cls_l[i+1] == 'NHS' or cls_l[i+1] == 'alkine':
+                    seq.append('[Alk]')
+                elif cls_l[i+1] == 'azide':
+                    seq.append('[Alk_dmt]')
+                else:
+                    seq.append('[Alk_dmt]')
+            elif cls_l[i] == 'azide' and i > 0:
+                if cls_l[i - 1] == 'azide':
+                    seq.append('[Alk_dmt]')
+                else:
+                    seq.append('[Alk_dT]')
+            #elif cls_l[i] == 'azide' and i == dataframe.shape[0] - 1:
+            #    seq.append('[NH2_cpg500]')
+            if cls_l[i] == 'NHS' and i == 0:
+                if cls_l[i + 1] == 'amidite' or cls_l[i + 1] == 'CPG' or cls_l[i + 1] == 'azide' or cls_l[i + 1] == 'alkine':
+                    seq.append('[NH2_C6]')
+                elif cls_l[i + 1] == 'NHS':
+                    seq.append('[Alk_dmt]')
+                else:
+                    seq.append('[NH2_C6]')
+            elif cls_l[i] == 'NHS' and i > 0:
+                if cls_l[i - 1] == 'NHS':
+                    seq.append('[Alk_dmt]')
+                else:
+                    seq.append('[Alk_dT]')
+            elif cls_l[i] == 'NHS' and i == dataframe.shape[0] - 1:
+                seq.append('[NH2_cpg500]')
+            if cls_l[i] in ['amidite', 'CPG']:
+                seq.append(symb_l[i])
+        return seq
+
 
 
 
@@ -418,9 +593,9 @@ class modification_page_model():
 
         colDefs_modif = [
             {"field": "id", 'editable': False},
-            {"field": "symbol", 'editable': True},
-            {"field": "smiles", 'editable': True},
-            {"field": "unicode", 'editable': True},
+            {"field": "symbol", 'editable': True, 'filter': 'agTextColumnFilter', 'floatingFilter': True},
+            {"field": "smiles", 'editable': True,  'filter': 'agTextColumnFilter', 'floatingFilter': True},
+            {"field": "unicode", 'editable': True,  'filter': 'agTextColumnFilter', 'floatingFilter': True},
             {"field": "data_json", 'editable': True}
         ]
 
@@ -476,10 +651,16 @@ class modification_page_model():
                 self.rnx_context = self.image.add_layer()
 
         with ui.row():
-            ui.button('Parce seq', on_click=self.on_parse_seq)
-            self.seq_area = ui.textarea(label='Sequence').style('width: 400px')
-            self.tokens_area = ui.textarea(label='Product smiles').style('width: 800px')
-            self.props_area = ui.textarea(label='Mol props').style('width: 400px')
+            with ui.column():
+                ui.button('Parce seq', on_click=self.on_parse_seq)
+                self.check_dmt = ui.checkbox('DMT on', value=True)
+                ui.button('Compile', on_click=self.on_compile_seq)
+                ui.button('Edit sheme', on_click=self.on_edit_synth_scheme)
+            self.seq_area = ui.textarea(label='Sequence').style('width: 400px; font-size: 18px')
+            with ui.column():
+                self.tokens_area = ui.textarea(label='Product smiles').style('width: 800px')
+                self.progress = ui.linear_progress().style('width: 800px')
+            self.props_area = ui.textarea(label='Mol props').style('width: 400px; font-size: 20px;')
 
         self.react_width = 2400
         self.react_height = 1600
@@ -592,7 +773,7 @@ class modification_page_model():
                                                         self.obj_base.reaction_base,
                                                         self.obj_base.modification_base)
             data_json = json.loads(data['json'])
-            data_json['class'] = oligo.get_structure_class(mod_dict['smiles'])
+            data_json['class'], data_json['class_count'] = oligo.get_structure_class(mod_dict['smiles'])
             d = {'symbol': mod_dict['symbol'],
                  'unicode': mod_dict['unicode'],
                  'smiles': mod_dict['smiles'],
@@ -600,6 +781,16 @@ class modification_page_model():
             mod = modification.from_dict(d)
             self.obj_base.update_modification(self.obj_base.mod_sel_id, mod)
             self.init_reaction_rowdata()
+
+    def on_build_finished(self, data):
+        self.tokens_area.value = data['structure']
+        oligo = single_nucleic_acid_chain_assembler('ACGT',
+                                                    self.obj_base.reaction_base,
+                                                    self.obj_base.modification_base)
+        oligo.structure = data['structure']
+        oligo.draw_structure(self.react_context, self.react_width, self.react_height)
+        mol = moleculeInfo(data['structure'])
+        self.props_area.value = json.dumps(mol.get_props())
 
     def on_parse_seq(self):
         sequence = self.seq_area.value
@@ -609,11 +800,267 @@ class modification_page_model():
         oligo = single_nucleic_acid_chain_assembler(sequence,
                                                       self.obj_base.reaction_base,
                                                       self.obj_base.modification_base)
-        oligo.build()
-        self.tokens_area.value = oligo.structure
-        oligo.draw_structure(self.react_context, self.react_width, self.react_height)
-        mol = moleculeInfo(oligo.structure)
-        self.props_area.value = json.dumps(mol.get_props())
+        oligo.DMT_on = self.check_dmt.value
+        oligo.build_progress = self.progress
+        oligo.do_when_build_finished = self.on_build_finished
+        oligo.run_build()
+
+
+    def on_compile_seq(self):
+        sequence = self.seq_area.value
+        oligo = single_nucleic_acid_chain(sequence)
+        self.tokens_area.value = json.dumps(oligo.chain)
+
+        oligo = single_nucleic_acid_chain_assembler(sequence,
+                                                      self.obj_base.reaction_base,
+                                                      self.obj_base.modification_base)
+        oligo.compile_structure()
+        self.tokens_area.value = json.dumps(oligo.scheme)
+
+    def on_edit_synth_scheme(self):
+        rowdata = []
+        dl = 'A C G T'.split(' ')
+        for i in range(30):
+            d = {}
+            d['#'] = i + 1
+            d['Sequence'] = ''.join([dl[random.randint(0,3)] for i in range(random.randint(20,50))])
+            if random.randint(1,5) == 1:
+                d['Sequence'] = d['Sequence'] + '[BHQ1]'
+            elif random.randint(1,5) == 2:
+                d['Sequence'] = d['Sequence'] + '[BHQ3]'
+            d['Position'] = 'A1'
+            rowdata.append(d)
+        sheme = synth_scheme_dialog(rowdata, self.obj_base)
+        sheme.dialog.open()
+
+
+class synth_scheme_dialog():
+    def __init__(self, rowdata, obj_base):
+        self.rowdata = rowdata
+        self.obj_base = obj_base
+        self.context_width = 800
+        self.context_height = 400
+        self.init_rowdata = []
+        self.get_init_rowdata()
+        self.init_dialog()
+
+    def get_init_rowdata(self):
+        self.init_rowdata = []
+        for row in self.rowdata:
+
+            oligo = single_nucleic_acid_chain_assembler(row['Sequence'],
+                                                        self.obj_base.reaction_base,
+                                                        self.obj_base.modification_base)
+            oligo.compile_structure()
+
+            d = {}
+            d['#'] = row['#']
+            d['Position'] = row['Position']
+            d['Sequence'] = row['Sequence']
+            d['DMT on'] = True
+            if len(oligo.scheme['error_3end']) > 0:
+                d['Chain'] = row['Sequence'] + self.get_cpg_mod(oligo.chain)
+                oligo = single_nucleic_acid_chain_assembler(d['Chain'],
+                                                            self.obj_base.reaction_base,
+                                                            self.obj_base.modification_base)
+                oligo.compile_structure()
+            else:
+                d['Chain'] = row['Sequence']
+            d['ASM sequence'] = ''
+            d['errors'] = json.dumps(
+                {
+                    'unknown_symbol': oligo.scheme['unknown_symbol'],
+                    'unknown_class': oligo.scheme['unknown_class'],
+                    'error_3end': oligo.scheme['error_3end'],
+                }
+                )
+            self.init_rowdata.append(d)
+
+    def get_cpg_mod(self, chain):
+        if len(chain) <= 30:
+            return '[CPG500]'
+        elif len(chain) > 30 and len(chain) <= 65:
+            return '[CPG1000]'
+        elif len(chain) > 65 and len(chain) <= 110:
+            return '[CPG2000]'
+        elif len(chain) > 110 and len(chain) <= 500:
+            return '[CPG3000]'
+        else:
+            return '[CPG3000]'
+
+    def init_dialog(self):
+        with ui.dialog() as self.dialog:
+            with ui.card().style('width: auto; max-width: none;'):
+                with ui.row():
+                    ui.button("add 5' mod", color="green", on_click=self.on_add_5mod)
+                    ui.button("add 3' mod", color="green", on_click=self.on_add_3mod)
+                    ui.button("del mod", color="red", on_click=self.on_del_mod)
+                    ui.button("on dmt", color="green", on_click=self.on_dmt_on)
+                    ui.button("off dmt", color="red", on_click=self.on_dmt_off)
+                colDefs = [
+                    {"field": "#", 'editable': False},
+                    {"field": "Position", 'editable': False, 'filter': 'agTextColumnFilter', 'floatingFilter': True},
+                    {"field": "Sequence", 'editable': False, 'filter': 'agTextColumnFilter', 'floatingFilter': True},
+                    {"field": "DMT on", 'editable': True, 'filter': 'agTextColumnFilter', 'floatingFilter': True},
+                    {"field": "Chain", 'editable': True, 'filter': 'agTextColumnFilter', 'floatingFilter': True},
+                    {"field": "ASM sequence", 'editable': True, 'filter': 'agTextColumnFilter', 'floatingFilter': True},
+                    {"field": "errors", 'editable': False},
+                ]
+                with ui.row():
+                    self.scheme_grid = ui.aggrid(
+                    {
+                        'columnDefs': colDefs,
+                        'rowData': self.init_rowdata,
+                        'rowSelection': 'multiple',
+                        "pagination": True,
+                        "enterNavigatesVertically": True,
+                        "enterNavigatesVerticallyAfterEdit": True,
+                        "singleClickEdit": True,
+                        # "enableRangeSelection": True,
+                    },
+                    theme='alpine-dark').style('height: 1200px; width: 1600px')  # alpine  material  quartz  balham
+                    self.scheme_grid.auto_size_columns = True
+                    self.scheme_grid.on("cellValueChanged", self.update_grid_cell_data_scheme)
+
+                    with ui.column():
+                        mod_rowdata = self.obj_base.get_modification_rowdata()
+                        colDefs_modif = [
+                            {"field": "id", 'editable': False},
+                            {"field": "symbol", 'editable': True, 'filter': 'agTextColumnFilter', 'floatingFilter': True},
+                            {"field": "smiles", 'editable': True, 'filter': 'agTextColumnFilter', 'floatingFilter': True},
+                            {"field": "unicode", 'editable': True, 'filter': 'agTextColumnFilter', 'floatingFilter': True},
+                            {"field": "data_json", 'editable': True}
+                        ]
+                        self.mod_grid = ui.aggrid(
+                            {
+                                'columnDefs': colDefs_modif,
+                                'rowData': mod_rowdata,
+                                'rowSelection': 'multiple',
+                                "pagination": True,
+                                "enterNavigatesVertically": True,
+                                "enterNavigatesVerticallyAfterEdit": True,
+                                "singleClickEdit": True,
+                                # "enableRangeSelection": True,
+                            },
+                            theme='alpine-dark').style('height: 400px; width: 800px')
+                        self.mod_grid.auto_size_columns = True
+                        self.mod_grid.on('rowSelected', self.on_select_mod_row)
+
+                        self.img_width = self.context_width
+                        self.img_height = self.context_height
+                        self.bkg_color = '#010101'
+                        self.border_color = 'gray'
+                        bkg = image_background(self.img_width, self.img_height, color=self.bkg_color)
+                        self.image = ui.interactive_image(f"data:image/png;base64,{bkg.background_base64}",
+                                                          size=(self.img_width, self.img_height),
+                                                          on_mouse=self.mouse_handler,
+                                                          events=['mousedown', 'mousemove', 'mouseup', 'click']
+                                                          )
+                        self.rnx_context = self.image.add_layer()
+
+                with ui.row():
+                    ui.button('Save', on_click=self.get_data)
+                    ui.button('Close', on_click=self.do_close)
+
+    def on_save(self, data):
+        ui.notify(data)
+
+    def get_data(self):
+        self.on_save('')
+
+    def do_close(self):
+        self.dialog.close()
+
+    async def on_add_5mod(self):
+        mod_row = await self.mod_grid.get_selected_rows()
+        scheme_row = await self.scheme_grid.get_selected_rows()
+        df = pd.DataFrame(scheme_row)
+        sel_list = list(df['#'])
+        rowdata = self.scheme_grid.options['rowData']
+        for i, row in enumerate(rowdata):
+            if row['#'] in sel_list:
+                d = row.copy()
+                d['Chain'] = mod_row[0]['symbol'] + row['Chain']
+                self.scheme_grid.options['rowData'][i] = d
+        self.scheme_grid.update()
+
+    async def on_del_mod(self):
+        mod_row = await self.mod_grid.get_selected_rows()
+        mod = mod_row[0]['symbol']
+        scheme_row = await self.scheme_grid.get_selected_rows()
+        df = pd.DataFrame(scheme_row)
+        sel_list = list(df['#'])
+        rowdata = self.scheme_grid.options['rowData']
+        for i, row in enumerate(rowdata):
+            if row['#'] in sel_list:
+                d = row.copy()
+                oligo = single_nucleic_acid_chain(row['Chain'])
+                d['Chain'] = oligo.del_mod_from_chain(mod)
+                self.scheme_grid.options['rowData'][i] = d
+        self.scheme_grid.update()
+
+
+    async def on_add_3mod(self):
+        mod_row = await self.mod_grid.get_selected_rows()
+        scheme_row = await self.scheme_grid.get_selected_rows()
+        df = pd.DataFrame(scheme_row)
+        sel_list = list(df['#'])
+        rowdata = self.scheme_grid.options['rowData']
+        for i, row in enumerate(rowdata):
+            if row['#'] in sel_list:
+                d = row.copy()
+                d['Chain'] = row['Chain'] + mod_row[0]['symbol']
+                self.scheme_grid.options['rowData'][i] = d
+        self.scheme_grid.update()
+
+
+    async def on_dmt_on(self):
+        scheme_row = await self.scheme_grid.get_selected_rows()
+        df = pd.DataFrame(scheme_row)
+        sel_list = list(df['#'])
+        rowdata = self.scheme_grid.options['rowData']
+        for i, row in enumerate(rowdata):
+            if row['#'] in sel_list:
+                d = row.copy()
+                d['DMT on'] = True
+                self.scheme_grid.options['rowData'][i] = d
+        self.scheme_grid.update()
+
+
+    async def on_dmt_off(self):
+        scheme_row = await self.scheme_grid.get_selected_rows()
+        df = pd.DataFrame(scheme_row)
+        sel_list = list(df['#'])
+        rowdata = self.scheme_grid.options['rowData']
+        for i, row in enumerate(rowdata):
+            if row['#'] in sel_list:
+                d = row.copy()
+                d['DMT on'] = False
+                self.scheme_grid.options['rowData'][i] = d
+        self.scheme_grid.update()
+
+
+
+    def mouse_handler(self, e):
+        pass
+
+    def draw_context(self, context, id):
+        context.content = ''
+        context.content += (f'<rect x={0} y={0} '
+                            f'width={self.img_width} height={self.img_height} '
+                            f' rx=10 ry=10 fill="{None}" fill-opacity="{0.6}"'
+                            f'stroke="{self.border_color}" stroke-width="4"/>')
+        mol = moleculeInfo(self.obj_base.modification_base[id].smiles)
+        svg = mol.draw_svg(self.img_width-20, self.img_height-20)
+        context.content += f'<g transform="translate(10, 10)">{svg}</g>'
+
+    async def on_select_mod_row(self):
+        selrows = await self.mod_grid.get_selected_rows()
+        self.draw_context(self.rnx_context, selrows[0]['id'])
+
+    def update_grid_cell_data_scheme(self, e):
+        self.scheme_grid.options['rowData'][e.args['rowIndex']] = e.args['data']
+        self.scheme_grid.update()
 
 
 
