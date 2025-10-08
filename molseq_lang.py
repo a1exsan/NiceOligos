@@ -707,7 +707,10 @@ class modification_page_model():
                 {"field": "data_json", 'editable': True},
                 {"field": "template", 'editable': True}
             ]
-            ui.button('Add method', on_click=self.on_add_synth_method)
+            with ui.column():
+                ui.button('Add method', on_click=self.on_add_synth_method)
+                ui.button('load method', on_click=self.on_load_synth_method)
+                ui.button('save method', on_click=self.on_save_synth_method)
             self.method_grid = ui.aggrid(
                 {
                     'columnDefs': colDefs,
@@ -726,6 +729,10 @@ class modification_page_model():
             self.method_grid.on('rowSelected', self.on_select_method_row)
             self.method_grid.options['rowData'] = self.method_base.get_all_rowdata()
             self.method_grid.update()
+
+            self.method_json = {}
+            self.method_jedit = ui.json_editor({'content': {'json': self.method_json}}).style(
+                'width: 600px; height: 600px; font-size: 20px')
 
 
 
@@ -768,6 +775,32 @@ class modification_page_model():
         self.method_grid.options['rowData'] = self.method_base.get_all_rowdata()
         self.method_grid.update()
 
+    def on_load_synth_method(self):
+        if self.method_base.selected_id > 0:
+            _json = self.method_grid.options['rowData'][self.method_base.selected_id - 1]['data_json']
+            json_obj = json.loads(_json)
+            if isinstance(json_obj, dict) and 'text' in json_obj:
+                json_obj = json.loads(json_obj['text'])
+            self.method_json = json_obj
+            #self.method_jedit.set_value(json_obj)
+            print(self.method_json)
+
+            self.method_jedit.content['json'] = json_obj
+
+            self.method_jedit.update()
+
+
+    async def on_save_synth_method(self):
+        if self.method_base.selected_id > 0:
+            d = self.method_grid.options['rowData'][self.method_base.selected_id - 1]
+            jd = await self.method_jedit.run_editor_method('get')
+            data = {'synth_name': d['synth_name'],
+                'scale': d['scale'],
+                'data_json': json.dumps(jd),
+                'template': d['template']}
+            self.method_base.update_method(self.method_base.selected_id, data)
+
+
     def update_grid_cell_data_method(self, e):
         data = {'synth_name': e.args['data']['synth_name'],
              'scale': e.args['data']['scale'],
@@ -777,9 +810,9 @@ class modification_page_model():
 
     async def on_select_method_row(self):
         selrows = await self.method_grid.get_selected_rows()
-        #self.obj_base.mod_sel_id = selrows[0]['id']
-        #self.obj_base.draw_context(self.rnx_context)
-        #self.obj_base.reactant = modification.from_dict(self.obj_base.modification_base[self.obj_base.mod_sel_id].to_dict())
+        self.method_base.selected_id = selrows[0]['id']
+        ui.notify(f'Выбран метод: {selrows[0]["synth_name"]} масштаб {selrows[0]["scale"]}')
+
 
     async def on_select_mod_row(self):
         selrows = await self.mod_grid.get_selected_rows()
