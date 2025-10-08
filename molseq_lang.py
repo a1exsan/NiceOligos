@@ -14,6 +14,7 @@ import pandas as pd
 import random
 import threading
 import time
+from synthesis_method import synth_base
 
 
 class modification():
@@ -265,6 +266,30 @@ class single_nucleic_acid_chain_assembler(single_nucleic_acid_chain):
         df = self.mod_base_df[self.mod_base_df['symbol'].str.contains('_class')]
         self.mod_classes = df.to_dict('records')
 
+    def check_chain(self):
+        errors = {}
+        class_chain = [json.loads(self.mod_base[mod].data_json)['class'] for mod in self.chain[::-1]]
+        if class_chain[0] == 'CPG' and class_chain[1] == 'amidite':
+            index = 1
+            amidite_end = False
+            while True:
+                if amidite_end:
+                    if class_chain[index] == 'amidite':
+                        errors['5end'] = 'missing amidite end'
+                if class_chain[index] != 'amidite':
+                    amidite_end = True
+                index += 1
+                if index == len(class_chain):
+                    break
+        else:
+            if class_chain[0] == 'NHS':
+                errors['3end'] = 'NHS'
+            elif class_chain[0] == 'azide':
+                errors['3end'] = 'azide'
+            elif class_chain[0] == 'amidite':
+                errors['3end'] = 'no CPG'
+        return json.dumps(errors)
+
     def draw_structure(self, context, width, height):
         context.content = ''
         context.content += (f'<rect x={0} y={0} '
@@ -472,7 +497,7 @@ class single_nucleic_acid_chain_assembler(single_nucleic_acid_chain):
                     d['class'] = t_class
                     d['index'] = i
                     self.scheme['rowdata'].append(d)
-                    if i == 0 and t_class == 'amidite':
+                    if i == 0 and t_class != 'CPG':
                         self.scheme['error_3end'].append(token)
                 else:
                     self.scheme['unknown_class'].append(token)
@@ -673,6 +698,37 @@ class modification_page_model():
 
         self.init_reaction_rowdata()
 
+        self.method_base = synth_base()
+        with ui.row():
+            colDefs = [
+                {"field": "id", 'editable': False},
+                {"field": "synth_name", 'editable': True},
+                {"field": "scale", 'editable': True},
+                {"field": "data_json", 'editable': True},
+                {"field": "template", 'editable': True}
+            ]
+            ui.button('Add method', on_click=self.on_add_synth_method)
+            self.method_grid = ui.aggrid(
+                {
+                    'columnDefs': colDefs,
+                    'rowData': [],
+                    'rowSelection': 'multiple',
+                    "pagination": True,
+                    "enterNavigatesVertically": True,
+                    "enterNavigatesVerticallyAfterEdit": True,
+                    "singleClickEdit": True,
+                    # "enableRangeSelection": True,
+                },
+                theme='alpine-dark').style('height: 600px; width: 1200px')
+
+            self.method_grid.auto_size_columns = True
+            self.method_grid.on("cellValueChanged", self.update_grid_cell_data_method)
+            self.method_grid.on('rowSelected', self.on_select_method_row)
+            self.method_grid.options['rowData'] = self.method_base.get_all_rowdata()
+            self.method_grid.update()
+
+
+
     def init_reaction_rowdata(self):
         IP = app.storage.general.get('db_IP')
         port = app.storage.general.get('db_port')
@@ -702,6 +758,28 @@ class modification_page_model():
         mod = modification.from_dict(d)
         self.obj_base.update_modification(e.args['data']['id'], mod)
         self.init_reaction_rowdata()
+
+    def on_add_synth_method(self):
+        data = {'synth_name': 'default',
+             'scale': '3 mg',
+             'data_json': '',
+             'template': ''}
+        self.method_base.insert_method(data)
+        self.method_grid.options['rowData'] = self.method_base.get_all_rowdata()
+        self.method_grid.update()
+
+    def update_grid_cell_data_method(self, e):
+        data = {'synth_name': e.args['data']['synth_name'],
+             'scale': e.args['data']['scale'],
+             'data_json': e.args['data']['data_json'],
+             'template': e.args['data']['template']}
+        self.method_base.update_method(e.args['data']['id'], data)
+
+    async def on_select_method_row(self):
+        selrows = await self.method_grid.get_selected_rows()
+        #self.obj_base.mod_sel_id = selrows[0]['id']
+        #self.obj_base.draw_context(self.rnx_context)
+        #self.obj_base.reactant = modification.from_dict(self.obj_base.modification_base[self.obj_base.mod_sel_id].to_dict())
 
     async def on_select_mod_row(self):
         selrows = await self.mod_grid.get_selected_rows()
@@ -819,11 +897,11 @@ class modification_page_model():
 
     def on_edit_synth_scheme(self):
         rowdata = []
-        dl = 'A C G T'.split(' ')
+        dl = 'A C G T N R Y'.split(' ')
         for i in range(30):
             d = {}
             d['#'] = i + 1
-            d['Sequence'] = ''.join([dl[random.randint(0,3)] for i in range(random.randint(20,50))])
+            d['Sequence'] = ''.join([dl[random.randint(0,6)] for i in range(random.randint(20,50))])
             if random.randint(1,5) == 1:
                 d['Sequence'] = d['Sequence'] + '[BHQ1]'
             elif random.randint(1,5) == 2:
@@ -832,6 +910,60 @@ class modification_page_model():
             rowdata.append(d)
         sheme = synth_scheme_dialog(rowdata, self.obj_base)
         sheme.dialog.open()
+
+class reagent_tab():
+    def __init__(self, rowdata, mod_base):
+        self.rowdata = rowdata
+        self.mod_base = {}
+        for val in mod_base.values():
+            self.mod_base[val.symbol] = val
+
+    def get_wobblw_count(self, w):
+        A, C, G, T = 'A', 'C', 'G', 'T'
+        if w == 'R':
+            return [A, G]
+        if w == 'Y':
+            return [C, T]
+        if w == 'K':
+            return [T, G]
+        if w == 'M':
+            return [A, C]
+        if w == 'S':
+            return [C, G]
+        if w == 'W':
+            return [A, T]
+        if w == 'B':
+            return [C, G, T]
+        if w == 'D':
+            return [A, G, T]
+        if w == 'H':
+            return [A, C, T]
+        if w == 'V':
+            return [A, C, G]
+        if w == 'N':
+            return [A, C, G, T]
+
+    def get_reagents(self):
+        out = []
+        d = {}
+        for row in self.rowdata:
+            oligo = single_nucleic_acid_chain(row['Chain'])
+            for cell in oligo.chain:
+                if cell not in d:
+                    d[cell] = 0
+                else:
+                    d[cell] += 1
+        for key, value in zip(d.keys(), d.values()):
+            row = {}
+            row['symbol'] = key
+            row['count'] = value
+            if key in self.mod_base:
+                row['unicode'] = self.mod_base[key].unicode
+            else:
+                row['unicode'] = ''
+            out.append(row)
+
+        return out
 
 
 class synth_scheme_dialog():
@@ -847,33 +979,23 @@ class synth_scheme_dialog():
     def get_init_rowdata(self):
         self.init_rowdata = []
         for row in self.rowdata:
-
-            oligo = single_nucleic_acid_chain_assembler(row['Sequence'],
-                                                        self.obj_base.reaction_base,
-                                                        self.obj_base.modification_base)
-            oligo.compile_structure()
-
             d = {}
             d['#'] = row['#']
             d['Position'] = row['Position']
             d['Sequence'] = row['Sequence']
             d['DMT on'] = True
-            if len(oligo.scheme['error_3end']) > 0:
-                d['Chain'] = row['Sequence'] + self.get_cpg_mod(oligo.chain)
-                oligo = single_nucleic_acid_chain_assembler(d['Chain'],
-                                                            self.obj_base.reaction_base,
-                                                            self.obj_base.modification_base)
-                oligo.compile_structure()
-            else:
-                d['Chain'] = row['Sequence']
             d['ASM sequence'] = ''
-            d['errors'] = json.dumps(
-                {
-                    'unknown_symbol': oligo.scheme['unknown_symbol'],
-                    'unknown_class': oligo.scheme['unknown_class'],
-                    'error_3end': oligo.scheme['error_3end'],
-                }
-                )
+            d['Chain'] = d['Sequence']
+            oligo = single_nucleic_acid_chain_assembler(d['Chain'],
+                                                        self.obj_base.reaction_base,
+                                                        self.obj_base.modification_base)
+            d['errors'] = json.loads(oligo.check_chain())
+            if d['errors'] != {}:
+                if '3end' in d['errors']:
+                    if d['errors']['3end'] == 'no CPG':
+                        d['Chain'] = d['Chain'] + self.get_cpg_mod(d['Chain'])
+                        oligo.chain = oligo.parse(d['Chain'])
+            d['errors'] = oligo.check_chain()
             self.init_rowdata.append(d)
 
     def get_cpg_mod(self, chain):
@@ -897,32 +1019,60 @@ class synth_scheme_dialog():
                     ui.button("del mod", color="red", on_click=self.on_del_mod)
                     ui.button("on dmt", color="green", on_click=self.on_dmt_on)
                     ui.button("off dmt", color="red", on_click=self.on_dmt_off)
-                colDefs = [
-                    {"field": "#", 'editable': False},
-                    {"field": "Position", 'editable': False, 'filter': 'agTextColumnFilter', 'floatingFilter': True},
-                    {"field": "Sequence", 'editable': False, 'filter': 'agTextColumnFilter', 'floatingFilter': True},
-                    {"field": "DMT on", 'editable': True, 'filter': 'agTextColumnFilter', 'floatingFilter': True},
-                    {"field": "Chain", 'editable': True, 'filter': 'agTextColumnFilter', 'floatingFilter': True},
-                    {"field": "ASM sequence", 'editable': True, 'filter': 'agTextColumnFilter', 'floatingFilter': True},
-                    {"field": "errors", 'editable': False},
-                ]
+                    ui.button("get reagents", on_click=self.on_get_reagent_tab)
+                    colDefs = [
+                        {"field": "#", 'editable': False},
+                        {"field": "Position", 'editable': False, 'filter': 'agTextColumnFilter', 'floatingFilter': True},
+                        {"field": "Sequence", 'editable': False, 'filter': 'agTextColumnFilter', 'floatingFilter': True},
+                        {"field": "DMT on", 'editable': True, 'filter': 'agTextColumnFilter', 'floatingFilter': True},
+                        {"field": "Chain", 'editable': True, 'filter': 'agTextColumnFilter', 'floatingFilter': True},
+                        {"field": "ASM sequence", 'editable': True, 'filter': 'agTextColumnFilter', 'floatingFilter': True},
+                        {"field": "errors", 'editable': False},
+                    ]
+                    colDefs_reagent = [
+                        {"field": "symbol", 'editable': True},
+                        {"field": "count", 'editable': False},
+                        {"field": "asm reagent", 'editable': True},
+                        {"field": "Conc, mg/ml", 'editable': True},
+                        {"field": "Reagent, mg", 'editable': True},
+                        {"field": "Reagent, ml", 'editable': True},
+                        {"field": "Consumption", 'editable': True},
+                        {"field": "unicode", 'editable': False},
+                    ]
                 with ui.row():
-                    self.scheme_grid = ui.aggrid(
-                    {
-                        'columnDefs': colDefs,
-                        'rowData': self.init_rowdata,
-                        'rowSelection': 'multiple',
-                        "pagination": True,
-                        "enterNavigatesVertically": True,
-                        "enterNavigatesVerticallyAfterEdit": True,
-                        "singleClickEdit": True,
-                        # "enableRangeSelection": True,
-                    },
-                    theme='alpine-dark').style('height: 1200px; width: 1600px')  # alpine  material  quartz  balham
-                    self.scheme_grid.auto_size_columns = True
-                    self.scheme_grid.on("cellValueChanged", self.update_grid_cell_data_scheme)
+                        self.scheme_grid = ui.aggrid(
+                        {
+                            'columnDefs': colDefs,
+                            'rowData': self.init_rowdata,
+                            'rowSelection': 'multiple',
+                            "pagination": True,
+                            "enterNavigatesVertically": True,
+                            "enterNavigatesVerticallyAfterEdit": True,
+                            "singleClickEdit": True,
+                            # "enableRangeSelection": True,
+                        },
+                        theme='alpine-dark').style('height: 900px; width: 1600px')  # alpine  material  quartz  balham
+                        self.scheme_grid.auto_size_columns = True
+                        self.scheme_grid.on("cellValueChanged", self.update_grid_cell_data_scheme)
 
-                    with ui.column():
+                        self.reagent_grid = ui.aggrid(
+                            {
+                                'columnDefs': colDefs_reagent,
+                                'rowData': [],
+                                'rowSelection': 'multiple',
+                                "pagination": True,
+                                "enterNavigatesVertically": True,
+                                "enterNavigatesVerticallyAfterEdit": True,
+                                "singleClickEdit": True,
+                                # "enableRangeSelection": True,
+                            },
+                            theme='alpine-dark').style(
+                            'height: 900px; width: 900px')  # alpine  material  quartz  balham
+                        self.reagent_grid.auto_size_columns = True
+                        self.reagent_grid.on("cellValueChanged", self.update_reagent_tab)
+
+                with ui.column():
+                    with ui.row():
                         mod_rowdata = self.obj_base.get_modification_rowdata()
                         colDefs_modif = [
                             {"field": "id", 'editable': False},
@@ -1040,6 +1190,11 @@ class synth_scheme_dialog():
         self.scheme_grid.update()
 
 
+    def on_get_reagent_tab(self):
+        tab = reagent_tab(self.scheme_grid.options['rowData'], mod_base=self.obj_base.modification_base)
+        self.reagent_grid.options['rowData'] = tab.get_reagents()
+        self.reagent_grid.update()
+
 
     def mouse_handler(self, e):
         pass
@@ -1061,6 +1216,10 @@ class synth_scheme_dialog():
     def update_grid_cell_data_scheme(self, e):
         self.scheme_grid.options['rowData'][e.args['rowIndex']] = e.args['data']
         self.scheme_grid.update()
+
+    def update_reagent_tab(self, e):
+        self.reagent_grid.options['rowData'][e.args['rowIndex']] = e.args['data']
+        self.reagent_grid.update()
 
 
 

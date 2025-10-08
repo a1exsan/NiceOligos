@@ -16,6 +16,7 @@ class api_db_interface():
         self.db_name = 'scheduler_oligolab_2.db'
         self.lcms_db_name = 'lcms_data_1.db'
         self.mod_db_name = 'modification_base_1.db'
+        self.synth_db_name = 'synth_method_1.db'
 
     def headers(self):
         return {'Authorization': f'Pincode {self.pincode}'}
