@@ -55,7 +55,6 @@ class synth_base(api_db_interface):
             ui.notify(f'Метод есть в базе')
 
     def update_method(self, id, data):
-        print(id, data)
         url = f'{self.api_db_url}/update_data/{self.synth_db_name}/main/{id}'
         r = requests.put(url,
                          json=json.dumps({

@@ -709,8 +709,7 @@ class modification_page_model():
             ]
             with ui.column():
                 ui.button('Add method', on_click=self.on_add_synth_method)
-                ui.button('load method', on_click=self.on_load_synth_method)
-                ui.button('save method', on_click=self.on_save_synth_method)
+                ui.button('Edit method', color='green', on_click=self.on_edit_synth_method)
             self.method_grid = ui.aggrid(
                 {
                     'columnDefs': colDefs,
@@ -729,12 +728,6 @@ class modification_page_model():
             self.method_grid.on('rowSelected', self.on_select_method_row)
             self.method_grid.options['rowData'] = self.method_base.get_all_rowdata()
             self.method_grid.update()
-
-            self.method_json = {}
-            self.method_jedit = ui.json_editor({'content': {'json': self.method_json}}).style(
-                'width: 600px; height: 600px; font-size: 20px')
-
-
 
     def init_reaction_rowdata(self):
         IP = app.storage.general.get('db_IP')
@@ -775,31 +768,23 @@ class modification_page_model():
         self.method_grid.options['rowData'] = self.method_base.get_all_rowdata()
         self.method_grid.update()
 
-    def on_load_synth_method(self):
+    def on_edit_synth_method(self):
         if self.method_base.selected_id > 0:
             _json = self.method_grid.options['rowData'][self.method_base.selected_id - 1]['data_json']
+            name = self.method_grid.options['rowData'][self.method_base.selected_id - 1]['synth_name']
+            scale = self.method_grid.options['rowData'][self.method_base.selected_id - 1]['scale']
             json_obj = json.loads(_json)
             if isinstance(json_obj, dict) and 'text' in json_obj:
                 json_obj = json.loads(json_obj['text'])
-            self.method_json = json_obj
-            #self.method_jedit.set_value(json_obj)
-            print(self.method_json)
+            editor = edit_json_dialog(json_obj, f'Edit method: {name} {scale}')
+            editor.on_save = self.on_save_method_json
+            editor.dialog.open()
 
-            self.method_jedit.content['json'] = json_obj
-
-            self.method_jedit.update()
-
-
-    async def on_save_synth_method(self):
-        if self.method_base.selected_id > 0:
-            d = self.method_grid.options['rowData'][self.method_base.selected_id - 1]
-            jd = await self.method_jedit.run_editor_method('get')
-            data = {'synth_name': d['synth_name'],
-                'scale': d['scale'],
-                'data_json': json.dumps(jd),
-                'template': d['template']}
-            self.method_base.update_method(self.method_base.selected_id, data)
-
+    def on_save_method_json(self, data):
+        d = {
+            'data_json': json.dumps(data['json']),
+                }
+        self.method_base.update_method(self.method_base.selected_id, d)
 
     def update_grid_cell_data_method(self, e):
         data = {'synth_name': e.args['data']['synth_name'],
@@ -948,6 +933,7 @@ class reagent_tab():
     def __init__(self, rowdata, mod_base):
         self.rowdata = rowdata
         self.mod_base = {}
+        self.wobble_list = 'R Y K M S W B D H V N'.split(' ')
         for val in mod_base.values():
             self.mod_base[val.symbol] = val
 
@@ -984,18 +970,45 @@ class reagent_tab():
             for cell in oligo.chain:
                 if cell not in d:
                     d[cell] = 0
+                    d[cell] += 1
                 else:
                     d[cell] += 1
         for key, value in zip(d.keys(), d.values()):
             row = {}
             row['symbol'] = key
             row['count'] = value
+            data_json = json.loads(self.mod_base[key].data_json)
+            row['class'] = data_json['class']
             if key in self.mod_base:
                 row['unicode'] = self.mod_base[key].unicode
             else:
                 row['unicode'] = ''
             out.append(row)
+        return out
 
+    def get_accord_dict_from_tab(self, tab):
+        d = {}
+        for row in tab:
+            d[row['symbol']] = row['asm2000 position']
+        return d
+
+    def get_asm_seq_from_chain(self, chain, accord_dict):
+        oligo = single_nucleic_acid_chain(chain)
+        out = ''
+        for s in oligo.chain:
+            if s in self.mod_base:
+                data_json = json.loads(self.mod_base[s].data_json)
+                if data_json['class'] == 'amidite':
+                    if s in accord_dict:
+                        if accord_dict[s] != 'none':
+                            out += accord_dict[s]
+                        else:
+                            if s in self.wobble_list:
+                                out += s
+                    else:
+                        out += f'[unknown: {s}]'
+            else:
+                out += f'[unknown: {s}]'
         return out
 
 
@@ -1007,6 +1020,7 @@ class synth_scheme_dialog():
         self.context_height = 400
         self.init_rowdata = []
         self.get_init_rowdata()
+        self.method_base = synth_base()
         self.init_dialog()
 
     def get_init_rowdata(self):
@@ -1053,6 +1067,7 @@ class synth_scheme_dialog():
                     ui.button("on dmt", color="green", on_click=self.on_dmt_on)
                     ui.button("off dmt", color="red", on_click=self.on_dmt_off)
                     ui.button("get reagents", on_click=self.on_get_reagent_tab)
+                    ui.button("set asm sequences", color='green', on_click=self.on_set_asm_sequences)
                     colDefs = [
                         {"field": "#", 'editable': False},
                         {"field": "Position", 'editable': False, 'filter': 'agTextColumnFilter', 'floatingFilter': True},
@@ -1065,11 +1080,11 @@ class synth_scheme_dialog():
                     colDefs_reagent = [
                         {"field": "symbol", 'editable': True},
                         {"field": "count", 'editable': False},
-                        {"field": "asm reagent", 'editable': True},
-                        {"field": "Conc, mg/ml", 'editable': True},
-                        {"field": "Reagent, mg", 'editable': True},
-                        {"field": "Reagent, ml", 'editable': True},
-                        {"field": "Consumption", 'editable': True},
+                        {"field": "asm2000 position", 'editable': True},
+                        {"field": "conc, g/ml", 'editable': True},
+                        {"field": "reagent, g", 'editable': True},
+                        {"field": "reagent, ml", 'editable': True},
+                        {"field": "ul on step", 'editable': True},
                         {"field": "unicode", 'editable': False},
                     ]
                 with ui.row():
@@ -1141,6 +1156,13 @@ class synth_scheme_dialog():
                                                           )
                         self.rnx_context = self.image.add_layer()
 
+                        df = pd.DataFrame(self.method_base.get_all_rowdata())
+                        method_list = [f'{id}) {s_name}: {scale}' for s_name, scale, id in zip(df['synth_name'],
+                                                                                     df['scale'], df['id'])]
+                        self.method_name = ui.select(options=method_list, with_input=True, value=method_list[0],
+                                                           on_change=self.on_select_method_event).classes('w-[400px]')
+                        self.set_method_data_to_reagent()
+
                 with ui.row():
                     ui.button('Save', on_click=self.get_data)
                     ui.button('Close', on_click=self.do_close)
@@ -1153,6 +1175,25 @@ class synth_scheme_dialog():
 
     def do_close(self):
         self.dialog.close()
+
+    def on_select_method_event(self, e):
+        self.set_method_data_to_reagent()
+
+    def set_method_data_to_reagent(self):
+        rowdata = self.method_base.get_all_rowdata()
+        id = int(self.method_name.value[:self.method_name.value.find(')')])
+        data = rowdata[id - 1]['data_json']
+        data = json.loads(data)
+        tab = []
+        for reag in data['json']['Reagents'].keys():
+            d = {}
+            d['asm2000 position'] = reag
+            d['ul on step'] = data['json']['Reagents'][reag]
+            d['conc, g/ml'] = data['json']['Conc'][reag]
+            d['symbol'] = data['json']['symbol'][reag]
+            tab.append(d)
+        self.reagent_grid.options['rowData'] = tab
+        self.reagent_grid.update()
 
     async def on_add_5mod(self):
         mod_row = await self.mod_grid.get_selected_rows()
@@ -1222,15 +1263,88 @@ class synth_scheme_dialog():
                 self.scheme_grid.options['rowData'][i] = d
         self.scheme_grid.update()
 
+    def get_consumption_tab(self, rowdata, reag_tab):
+        out = []
+        for row in rowdata:
+            d = row.copy()
+            if 'ul on step' in list(d.keys()):
+                d['reagent, ml'] = round(float(d['count']) * float(d['ul on step']) / 1000, 2)
+                d['reagent, g'] = round(float(d['count']) * float(d['ul on step']) * float(d['conc, g/ml']) / 1000, 2)
+            else:
+                d['ul on step'] = 0.
+                d['reagent, ml'] = 0.
+                d['reagent, g'] = 0.
+                d['conc, g/ml'] = 0.
+                d['asm2000 position'] = 'none'
+            out.append(d)
+        df = pd.DataFrame(out)
+        for row in out:
+            if row['symbol'] in reag_tab.wobble_list:
+                wobbles = reag_tab.get_wobblw_count(row['symbol'])
+                for s in wobbles:
+                    ul_on_step = df.loc[df['symbol'] == s, 'ul on step']
+                    count = float(row['count']) / len(wobbles)
+                    volume = round(count * ul_on_step / 1000, 2)
+                    conc = df.loc[df['symbol'] == s, 'conc, g/ml']
+                    df.loc[df['symbol'] == s, 'reagent, ml'] += round(count * ul_on_step / 1000, 2)
+                    df.loc[df['symbol'] == s, 'reagent, g'] += round(volume *  conc/ 1000, 2)
+
+                    #print(df.loc[df['symbol'] == s, 'reagent, ml'])
+                    #print(df.loc[df['symbol'] == s, 'reagent, g'])
+        return out
 
     def on_get_reagent_tab(self):
         tab = reagent_tab(self.scheme_grid.options['rowData'], mod_base=self.obj_base.modification_base)
-        self.reagent_grid.options['rowData'] = tab.get_reagents()
+        r_tab = tab.get_reagents()
+        df = pd.DataFrame(r_tab)
+        g = df.groupby('class').agg({'count': 'sum'})
+        total_count = g.at['amidite', 'count']
+        df_tab = pd.DataFrame(self.reagent_grid.options['rowData'])
+        for symb in df_tab['symbol']:
+            if symb in tab.mod_base:
+                df_tab.loc[df_tab['symbol'] == symb, 'unicode'] = tab.mod_base[symb].unicode
+            else:
+                df_tab.loc[df_tab['symbol'] == symb, 'unicode'] = 'unknown'
+        ext = []
+        for row in r_tab:
+            if row['symbol'] in list(df_tab['symbol']):
+                df_tab.loc[df_tab['symbol'] == row['symbol'], 'count'] = row['count']
+                df_tab.loc[df_tab['symbol'] == row['symbol'], 'unicode'] = row['unicode']
+            else:
+                d = row.copy()
+                if row['symbol'] in tab.mod_base:
+                    d['unicode'] = tab.mod_base[row['symbol']].unicode
+                else:
+                    d['unicode'] = 'unknown'
+                ext.append(d)
+        for symbol in ['DEBL', 'ACTIV', 'OXID', 'CAPA', 'CAPB', 'R2', 'W1', 'W2']:
+            df_tab.loc[df_tab['symbol'] == symbol, 'count'] = total_count
+        unicode_list = list(df_tab['unicode'])
+        df_tab.fillna(0, inplace=True)
+        df_tab['unicode'] = unicode_list
+        out = df_tab.to_dict('records')
+        out.extend(ext)
+        out = self.get_consumption_tab(out, tab)
+        self.reagent_grid.options['rowData'] = out
         self.reagent_grid.update()
+
+
+    def on_set_asm_sequences(self):
+        tab = reagent_tab(self.scheme_grid.options['rowData'], mod_base=self.obj_base.modification_base)
+        accord = tab.get_accord_dict_from_tab(self.reagent_grid.options['rowData'])
+        out = []
+        for row in self.scheme_grid.options['rowData']:
+            seq = tab.get_asm_seq_from_chain(row['Chain'], accord)
+            d = row.copy()
+            d['ASM sequence'] = seq
+            out.append(d)
+        self.scheme_grid.options['rowData'] = out
+        self.scheme_grid.update()
 
 
     def mouse_handler(self, e):
         pass
+
 
     def draw_context(self, context, id):
         context.content = ''
@@ -1242,18 +1356,20 @@ class synth_scheme_dialog():
         svg = mol.draw_svg(self.img_width-20, self.img_height-20)
         context.content += f'<g transform="translate(10, 10)">{svg}</g>'
 
+
     async def on_select_mod_row(self):
         selrows = await self.mod_grid.get_selected_rows()
         self.draw_context(self.rnx_context, selrows[0]['id'])
+
 
     def update_grid_cell_data_scheme(self, e):
         self.scheme_grid.options['rowData'][e.args['rowIndex']] = e.args['data']
         self.scheme_grid.update()
 
+
     def update_reagent_tab(self, e):
         self.reagent_grid.options['rowData'][e.args['rowIndex']] = e.args['data']
         self.reagent_grid.update()
-
 
 
 class edit_json_dialog():
