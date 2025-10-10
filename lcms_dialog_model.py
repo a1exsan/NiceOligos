@@ -13,6 +13,10 @@ from OligoMap_utils import oligomaps_search
 from oligoMass import molmassOligo as mmo
 import threading
 import time
+from molseq_lang import single_nucleic_acid_chain_assembler
+from molseq_lang import single_nucleic_acid_chain
+from molseq_lang import modification_base
+from chemicals_page import moleculeInfo
 
 
 class lcms_dialog():
@@ -36,6 +40,9 @@ class lcms_dialog():
             self.lcms.sequence.value = row['Sequence']
             self.lcms.position.value = row['Position']
             self.lcms.purification.value = row['Purif type']
+
+            if 'Chain' in row:
+                self.lcms.chain.value = row['Chain']
 
             self.lcms.on_load_data_from_base()
 
@@ -61,6 +68,14 @@ class lcms_analyser(api_db_interface):
         self.file_input = None
         self.total_data = {}
         self.chrom_line_points = 160
+
+        dbIP = app.storage.general.get('db_IP')
+        port = app.storage.general.get('db_port')
+        self.obj_modif_base = modification_base(dbIP, port)
+        self.obj_modif_base.pincode = app.storage.user.get('pincode')
+        rowdata = self.obj_modif_base.get_reaction_rowdata()
+        mod_rowdata = self.obj_modif_base.get_modification_rowdata()
+
         self.init_ui()
 
     def init_ui(self):
@@ -101,6 +116,16 @@ class lcms_analyser(api_db_interface):
                                                on_click=self.on_culc_oligo_props)
                 with ui.row():
                     self.mz_fitting = ui.checkbox('MZ fitting', on_change=self.on_mz_fitting_init)
+                with ui.column():
+                    with ui.row():
+                        self.chain = ui.textarea(label='Synth chain').style('width: 450px; font-size: 16px')
+                        with ui.column():
+                            ui.button('build structure', on_click=self.on_parse_chain)
+                            self.check_dmt = ui.checkbox('DMT on', value=True)
+                    self.struct_progress = ui.linear_progress().style('width: 450px')
+                    self.props_data = ui.textarea(label='Properties').style('width: 450px; font-size: 16px')
+                    self.oligo_smiles = ui.textarea(label='Smiles').style('width: 450px; font-size: 16px')
+
         with ui.row():
             self.plot_chrom = ui.plotly(self.fig_chrom).style('width: 1500px; height: 400px;')
             with ui.column():
@@ -298,6 +323,29 @@ class lcms_analyser(api_db_interface):
         background_thread = threading.Thread(target=self.pipeline_task)
         background_thread.daemon = True
         background_thread.start()
+
+    def on_build_finished(self, data):
+        self.oligo_smiles.value = data['structure']
+        oligo = single_nucleic_acid_chain_assembler('ACGT',
+                                                    self.obj_modif_base.reaction_base,
+                                                    self.obj_modif_base.modification_base)
+        oligo.structure = data['structure']
+        #oligo.draw_structure(self.react_context, self.react_width, self.react_height)
+        mol = moleculeInfo(data['structure'])
+        self.props_data.value = json.dumps(mol.get_props())
+
+    def on_parse_chain(self):
+        chain = self.chain.value
+        oligo = single_nucleic_acid_chain(chain)
+        self.oligo_smiles.value = json.dumps(oligo.chain)
+
+        oligo = single_nucleic_acid_chain_assembler(chain,
+                                                      self.obj_modif_base.reaction_base,
+                                                      self.obj_modif_base.modification_base)
+        oligo.DMT_on = self.check_dmt.value
+        oligo.build_progress = self.struct_progress
+        oligo.do_when_build_finished = self.on_build_finished
+        oligo.run_build()
 
 
     def handle_upload(self, e: events.UploadEventArguments):

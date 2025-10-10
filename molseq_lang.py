@@ -1155,7 +1155,7 @@ class synth_scheme_dialog():
                         {"field": "Sequence", 'editable': False, 'filter': 'agTextColumnFilter', 'floatingFilter': True},
                         {"field": "DMT on", 'editable': True, 'filter': 'agTextColumnFilter', 'floatingFilter': True},
                         {"field": "Chain", 'editable': True, 'filter': 'agTextColumnFilter', 'floatingFilter': True},
-                        {"field": "ASM sequence", 'editable': True, 'filter': 'agTextColumnFilter', 'floatingFilter': True},
+                        {"field": "asm Sequence", 'editable': True, 'filter': 'agTextColumnFilter', 'floatingFilter': True},
                         {"field": "errors", 'editable': False},
                     ]
                     colDefs_reagent = [
@@ -1427,7 +1427,7 @@ class synth_scheme_dialog():
         for row in self.scheme_grid.options['rowData']:
             seq = tab.get_asm_seq_from_chain(row['Chain'], accord)
             d = row.copy()
-            d['ASM sequence'] = seq
+            d['asm Sequence'] = seq
             out.append(d)
         self.scheme_grid.options['rowData'] = out
         self.scheme_grid.update()

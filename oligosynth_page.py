@@ -373,6 +373,9 @@ class oligosynth_panel_page_model(api_db_interface):
             {"field": "DONE", 'editable': False, 'filter': 'agTextColumnFilter', 'floatingFilter': True},
             {"field": "Wasted", 'editable': True, 'filter': 'agTextColumnFilter', 'floatingFilter': True},
             {"field": "Send", 'editable': True, 'filter': 'agTextColumnFilter', 'floatingFilter': True},
+
+            {"field": "DMT on", 'editable': True, 'filter': 'agTextColumnFilter', 'floatingFilter': True},
+            {"field": "Chain", 'editable': True, 'filter': 'agTextColumnFilter', 'floatingFilter': True},
         ]
         # with ui.column():
 
@@ -549,11 +552,13 @@ class oligosynth_panel_page_model(api_db_interface):
             {"field": "Conc, g/ml", 'editable': True},
             {"field": "ul on step", 'editable': True},
             {"field": "Amount 5mg, g", 'editable': True},
-            # {"field": "ul on step, 10mg", 'editable': True},
-            # {"field": "Amount 5mg, g"},
             {"field": "Amount 5mg, ml"},
-            # {"field": "Amount 10mg, g"},
-            # {"field": "Amount 10mg, ml"}
+
+            {"field": "symbol", 'editable': True},
+            {"field": "count", 'editable': False},
+            {"field": "reagent, g", 'editable': True},
+            {"field": "reagent, ml", 'editable': True},
+            {"field": "unicode", 'editable': False},
         ]
 
         self.accord_tab = ui.aggrid(
@@ -1055,6 +1060,17 @@ class oligosynth_panel_page_model(api_db_interface):
 
     def on_add_schem_to_map(self, rowdata, accord):
         self.xwells_obj.update_rowdata(rowdata)
+        self.oligomap_ag_grid.options['rowData'] = rowdata
+        self.oligomap_ag_grid.update()
+
+        self.accord_tab.options['rowData'] = accord
+        self.accord_tab.update()
+
+        self.oligomap_rowdata = rowdata
+
+        app.storage.user['accord_tab_rowdata'] = self.accord_tab.options['rowData']
+        app.storage.user['oligomap_ag_grid_rowdata'] = self.oligomap_ag_grid.options['rowData']
+
 
     def on_edit_synth_button_event(self):
         rowData = self.xwells_obj.get_rowData()
