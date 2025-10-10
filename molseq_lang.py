@@ -281,7 +281,13 @@ class single_nucleic_acid_chain_assembler(single_nucleic_acid_chain):
 
     def check_chain(self):
         errors = {}
-        class_chain = [json.loads(self.mod_base[mod].data_json)['class'] for mod in self.chain[::-1]]
+        class_chain = []
+        for mod in self.chain[::-1]:
+            if mod in self.mod_base:
+                class_chain.append(json.loads(self.mod_base[mod].data_json)['class'])
+            else:
+                class_chain.append(f'unknown_{mod}')
+                errors['unknown_class'] = mod
         if class_chain[0] == 'CPG' and class_chain[1] == 'amidite':
             index = 1
             amidite_end = False
@@ -322,6 +328,31 @@ class single_nucleic_acid_chain_assembler(single_nucleic_acid_chain):
             elif error['3end'] == 'no CPG':
                 self.chain.append(self.get_cpg_mod())
                 d['Chain'] = ''.join(self.chain)
+        if 'unknown_class' in error:
+            s = str(error['unknown_class'])
+            e_mod = s.replace('[', '')
+            e_mod = e_mod.replace(']', '')
+            ctrl = False
+            for symb in self.mod_base.keys():
+                if e_mod in symb or e_mod.upper() in symb:
+                    jd = json.loads(self.mod_base[symb].data_json)
+                    if jd['class'] == 'azide':
+                        for i, c in enumerate(self.chain):
+                            if e_mod in c or e_mod.upper() in c:
+                                self.chain[i] = symb
+                                self.chain.insert(i + 1, '[Alk]')
+                                ctrl=True
+                                break
+                if ctrl:
+                    break
+
+            if 'HEX' in s:
+                for i, c in enumerate(self.chain):
+                    if 'HEX' in c:
+                        self.chain[i] = '[azSIMA]'
+                        self.chain.insert(i+1, '[Alk]')
+                        break
+            d['Chain'] = ''.join(self.chain)
         err = self.check_chain()
         d['errors'] = err
         return d
@@ -1015,16 +1046,19 @@ class reagent_tab():
                 else:
                     d[cell] += 1
         for key, value in zip(d.keys(), d.values()):
-            row = {}
-            row['symbol'] = key
-            row['count'] = value
-            data_json = json.loads(self.mod_base[key].data_json)
-            row['class'] = data_json['class']
             if key in self.mod_base:
-                row['unicode'] = self.mod_base[key].unicode
+                row = {}
+                row['symbol'] = key
+                row['count'] = value
+                data_json = json.loads(self.mod_base[key].data_json)
+                row['class'] = data_json['class']
+                if key in self.mod_base:
+                    row['unicode'] = self.mod_base[key].unicode
+                else:
+                    row['unicode'] = ''
+                out.append(row)
             else:
-                row['unicode'] = ''
-            out.append(row)
+                ui.notify(f'Unknown modification {key}')
         return out
 
     def get_accord_dict_from_tab(self, tab):
@@ -1042,7 +1076,10 @@ class reagent_tab():
                 if data_json['class'] == 'amidite':
                     if s in accord_dict:
                         if accord_dict[s] != 'none':
-                            out += accord_dict[s]
+                            if accord_dict[s] in '10 11 12'.split(' '):
+                                out += f'[{accord_dict[s]}]'
+                            else:
+                                out += accord_dict[s]
                         else:
                             if s in self.wobble_list:
                                 out += s
@@ -1067,13 +1104,15 @@ class synth_scheme_dialog():
     def get_init_rowdata(self):
         self.init_rowdata = []
         for row in self.rowdata:
-            d = {}
-            d['#'] = row['#']
+            d = row.copy()
             d['Position'] = row['Position']
             d['Sequence'] = row['Sequence']
-            d['DMT on'] = True
-            d['ASM sequence'] = ''
-            d['Chain'] = d['Sequence']
+            if 'DMT on' not in d:
+                d['DMT on'] = True
+            if 'ASM sequence' not in d:
+                d['ASM sequence'] = ''
+            if 'Chain' not in d:
+                d['Chain'] = d['Sequence']
             oligo = single_nucleic_acid_chain_assembler(d['Chain'],
                                                         self.obj_base.reaction_base,
                                                         self.obj_base.modification_base)
@@ -1209,11 +1248,23 @@ class synth_scheme_dialog():
                     ui.button('Save', on_click=self.get_data)
                     ui.button('Close', on_click=self.do_close)
 
-    def on_save(self, data):
-        ui.notify(data)
+    def on_save(self, rowdata, accord):
+        print(rowdata)
+        print(accord)
+
+    def ctrl_errors(self):
+        ctrl = True
+        for row in self.scheme_grid.options['rowData']:
+            if row['errors'] != '{}':
+                ctrl = False
+        return ctrl
 
     def get_data(self):
-        self.on_save('')
+        if self.ctrl_errors():
+            self.on_save(self.scheme_grid.options['rowData'], self.reagent_grid.options['rowData'])
+            self.dialog.close()
+        else:
+            ui.notify(f'Исправьте ошибки в столбце errors')
 
     def do_close(self):
         self.dialog.close()

@@ -364,6 +364,16 @@ class XWell_plate:
                 out.append(well.oligo_data['init_row'])
         return out
 
+    def update_rowdata(self, rowdata):
+        for row in rowdata:
+            for key, well in zip(self.wells.keys(), self.wells.values()):
+                if f'{well.symb}{well.num}' == row['Position']:
+                    #print(f'{well.symb}{well.num}', row['Position'])
+                    if 'init_row' in list(well.oligo_data.keys()):
+                        self.wells[key].oligo_data['init_row'] = row
+                        #print(self.wells[key].oligo_data['init_row'])
+                        break
+
 
     def add_selrows(self, selRows, number_of_copies):
         if len(self.selected_wells.keys()) == 0:

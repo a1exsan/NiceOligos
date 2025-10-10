@@ -7,7 +7,8 @@ import requests
 from collections import Counter
 from io import BytesIO
 from datetime import datetime
-
+from molseq_lang import synth_scheme_dialog
+from molseq_lang import modification_base
 import xwell_plate_unit as XWells
 
 
@@ -222,6 +223,16 @@ class oligosynth_panel_page_model(api_db_interface):
                 ui.label('Select synthesis scale:')
                 self.synth_scale_selector = ui.radio(['1 mg', '3 mg', '5 mg'], value='3 mg',
                                                      on_change=self.synth_scale_selector_event).props('inline')
+                dbIP = app.storage.general.get('db_IP')
+                port = app.storage.general.get('db_port')
+                self.obj_modif_base = modification_base(dbIP, port)
+                self.obj_modif_base.pincode = app.storage.user.get('pincode')
+                rowdata = self.obj_modif_base.get_reaction_rowdata()
+                mod_rowdata = self.obj_modif_base.get_modification_rowdata()
+                self.on_edit_synth_button = ui.button("Edit synth scheme",
+                                                             on_click=self.on_edit_synth_button_event,
+                                                             ).classes('w-[200px]')
+
                 self.on_generate_oligomap_button = ui.button("Generate map",
                                                              on_click=self.on_generate_oligomap_button_event,
                                                              color="#00a100").classes('w-[200px]')
@@ -1042,6 +1053,15 @@ class oligosynth_panel_page_model(api_db_interface):
 
         return accord.to_dict('records')
 
+    def on_add_schem_to_map(self, rowdata, accord):
+        self.xwells_obj.update_rowdata(rowdata)
+
+    def on_edit_synth_button_event(self):
+        rowData = self.xwells_obj.get_rowData()
+        if len(rowData) > 0:
+            sheme = synth_scheme_dialog(rowData, self.obj_modif_base)
+            sheme.on_save = self.on_add_schem_to_map
+            sheme.dialog.open()
 
     def on_generate_oligomap_button_event(self):
         self.pincode = app.storage.user.get('pincode')
