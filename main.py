@@ -180,4 +180,4 @@ def main_page() -> Optional[RedirectResponse]:
        model = modification_page_model()
 
 
-ui.run(storage_secret='NiceGUI_oligo_app_1', title='NiceOligo', favicon="static_images/favicon.ico")
+ui.run(storage_secret='NiceGUI_oligo_app_2', title='NiceOligo', favicon="static_images/favicon.ico")

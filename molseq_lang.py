@@ -245,6 +245,7 @@ class single_nucleic_acid_chain():
             self.chain.remove(mod_symbol)
         return ''.join(self.chain)
 
+
 class single_nucleic_acid_chain_assembler(single_nucleic_acid_chain):
     def __init__(self, seq, rnx_base, mod_base):
         super().__init__(seq)
@@ -265,6 +266,18 @@ class single_nucleic_acid_chain_assembler(single_nucleic_acid_chain):
         self.mod_base_df = pd.DataFrame(rowdata)
         df = self.mod_base_df[self.mod_base_df['symbol'].str.contains('_class')]
         self.mod_classes = df.to_dict('records')
+
+    def get_cpg_mod(self):
+        if len(self.chain) <= 30:
+            return '[CPG500]'
+        elif len(self.chain) > 30 and len(self.chain) <= 65:
+            return '[CPG1000]'
+        elif len(self.chain) > 65 and len(self.chain) <= 110:
+            return '[CPG2000]'
+        elif len(self.chain) > 110 and len(self.chain) <= 500:
+            return '[CPG3000]'
+        else:
+            return '[CPG3000]'
 
     def check_chain(self):
         errors = {}
@@ -289,6 +302,29 @@ class single_nucleic_acid_chain_assembler(single_nucleic_acid_chain):
             elif class_chain[0] == 'amidite':
                 errors['3end'] = 'no CPG'
         return json.dumps(errors)
+
+    def correct_error(self, row):
+        d = row.copy()
+        error = json.loads(row['errors'])
+        if '3end' in error:
+            if error['3end'] == 'NHS':
+                chain = self.chain[::-1]
+                chain[0] = '[NH2_cpg500]'
+                chain.append(self.chain[-1])
+                self.chain = chain[::-1]
+                d['Chain'] = ''.join(self.chain)
+            elif error['3end'] == 'azide':
+                chain = self.chain[::-1]
+                chain[0] = '[Alk_CPG1000]'
+                chain.append(self.chain[-1])
+                self.chain = chain[::-1]
+                d['Chain'] = ''.join(self.chain)
+            elif error['3end'] == 'no CPG':
+                self.chain.append(self.get_cpg_mod())
+                d['Chain'] = ''.join(self.chain)
+        err = self.check_chain()
+        d['errors'] = err
+        return d
 
     def draw_structure(self, context, width, height):
         context.content = ''
@@ -920,10 +956,15 @@ class modification_page_model():
             d = {}
             d['#'] = i + 1
             d['Sequence'] = ''.join([dl[random.randint(0,6)] for i in range(random.randint(20,50))])
-            if random.randint(1,5) == 1:
+            selector = random.randint(1,7)
+            if selector == 1:
                 d['Sequence'] = d['Sequence'] + '[BHQ1]'
-            elif random.randint(1,5) == 2:
+            elif selector == 2:
                 d['Sequence'] = d['Sequence'] + '[BHQ3]'
+            elif selector == 3:
+                d['Sequence'] = d['Sequence'] + '[azROX]'
+            elif selector == 4:
+                d['Sequence'] = d['Sequence'] + '[azCy5]'
             d['Position'] = 'A1'
             rowdata.append(d)
         sheme = synth_scheme_dialog(rowdata, self.obj_base)
@@ -1068,6 +1109,7 @@ class synth_scheme_dialog():
                     ui.button("off dmt", color="red", on_click=self.on_dmt_off)
                     ui.button("get reagents", on_click=self.on_get_reagent_tab)
                     ui.button("set asm sequences", color='green', on_click=self.on_set_asm_sequences)
+                    ui.button("error correction", color='orange', on_click=self.on_error_correction)
                     colDefs = [
                         {"field": "#", 'editable': False},
                         {"field": "Position", 'editable': False, 'filter': 'agTextColumnFilter', 'floatingFilter': True},
@@ -1285,12 +1327,10 @@ class synth_scheme_dialog():
                     ul_on_step = df.loc[df['symbol'] == s, 'ul on step']
                     count = float(row['count']) / len(wobbles)
                     volume = round(count * ul_on_step / 1000, 2)
-                    conc = df.loc[df['symbol'] == s, 'conc, g/ml']
-                    df.loc[df['symbol'] == s, 'reagent, ml'] += round(count * ul_on_step / 1000, 2)
-                    df.loc[df['symbol'] == s, 'reagent, g'] += round(volume *  conc/ 1000, 2)
-
-                    #print(df.loc[df['symbol'] == s, 'reagent, ml'])
-                    #print(df.loc[df['symbol'] == s, 'reagent, g'])
+                    conc = df.loc[df['symbol'] == s, 'conc, g/ml'].iloc[0]
+                    df.loc[df['symbol'] == s, 'reagent, ml'] = round(df.loc[df['symbol'] == s, 'reagent, ml'] + volume, 2)
+                    df.loc[df['symbol'] == s, 'reagent, g'] = round(df.loc[df['symbol'] == s, 'reagent, ml'] * conc, 2)
+        out = df.to_dict('records')
         return out
 
     def on_get_reagent_tab(self):
@@ -1340,6 +1380,18 @@ class synth_scheme_dialog():
             out.append(d)
         self.scheme_grid.options['rowData'] = out
         self.scheme_grid.update()
+
+    def on_error_correction(self):
+        out = []
+        for row in self.scheme_grid.options['rowData']:
+            oligo = single_nucleic_acid_chain_assembler(row['Chain'],
+                                                        self.obj_base.reaction_base,
+                                                        self.obj_base.modification_base)
+            d = oligo.correct_error(row)
+            out.append(d)
+        self.scheme_grid.options['rowData'] = out
+        self.scheme_grid.update()
+
 
 
     def mouse_handler(self, e):
