@@ -248,7 +248,6 @@ class XWell_plate:
         self.coord_context = self.get_coord(0, 0)
         self.chrom_editor = chrom_dialog([{}])
         self.lcms_editor = lcms_dialog()
-        #self.chrom_editor.on_send_chrom_data = self.on_save_chrom_data_to_base
 
     def open_menu(self, e):
         coord = self.get_coord(e.image_x, e.image_y)
@@ -763,7 +762,9 @@ class XWell_plate:
         for key, well in zip(self.wells.keys(), self.wells.values()):
             if 'init_row' in list(well.oligo_data.keys()):
                 seq = well.oligo_data['init_row']['Sequence']
-                if seq.find('[Alk]') > -1:
+                if 'Chain' in well.oligo_data['init_row']:
+                    seq = well.oligo_data['init_row']['Chain']
+                if '[Alk]' in seq or '[Alk_dmt]' in seq:
                     amount = well.oligo_data['init_row']['Dens, oe/ml'] * well.oligo_data['init_row']['Vol, ml']
                     self.wells[key].oligo_data['click_data'] = click_azide(seq, amount)()
                     self.wells[key].oligo_data['click_data']['water volume, ul'] = round(

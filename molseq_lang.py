@@ -284,7 +284,13 @@ class single_nucleic_acid_chain_assembler(single_nucleic_acid_chain):
         class_chain = []
         for mod in self.chain[::-1]:
             if mod in self.mod_base:
-                class_chain.append(json.loads(self.mod_base[mod].data_json)['class'])
+                d = json.loads(self.mod_base[mod].data_json)
+                if 'class' in d:
+                    class_chain.append(json.loads(self.mod_base[mod].data_json)['class'])
+                else:
+                    class_chain.append(f'unknown_{mod}')
+                    errors['unknown_class'] = mod
+                    ui.notify(f'unknown_class: {mod}')
             else:
                 class_chain.append(f'unknown_{mod}')
                 errors['unknown_class'] = mod

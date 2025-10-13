@@ -337,7 +337,7 @@ class oligosynth_panel_page_model(api_db_interface):
                 "headerCheckboxSelection": True,
                 "headerCheckboxSelectionFilteredOnly": True,
             },
-            {"field": "map #"},
+            {"field": "map #", 'editable': True,},
             {"field": "Order id"},
             {"field": "Position", 'editable': True, 'filter': 'agTextColumnFilter'},
             {"field": "Name"},

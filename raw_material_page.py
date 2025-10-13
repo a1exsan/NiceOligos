@@ -8,6 +8,22 @@ import requests
 import json
 from datetime import datetime
 
+class stock_data(api_db_interface):
+    def __init__(self):
+        IP = app.storage.general.get('db_IP')
+        port = app.storage.general.get('db_port')
+        super().__init__(IP, port)
+        self.pincode = app.storage.user.get('pincode')
+
+    def get_stock_data(self):
+        url = f"{self.api_db_url}/get_keys_data/{self.widget_db}/main_tab/object_id/raw_material_widgets"
+        ret = requests.get(url, headers=self.headers())
+        if ret.status_code == 200:
+            return ret.json()
+        else:
+            return []
+
+
 class rawmaterial_panel_page_model(api_db_interface):
     def __init__(self, db_IP, db_port):
         super().__init__(db_IP, db_port)
@@ -65,16 +81,9 @@ class rawmaterial_panel_page_model(api_db_interface):
             self.wis_meta['date'] = wis[0][2]
             self.wis_meta['date_format'] = wis[0][3]
             self.wi_list = json.loads(wis[0][4])
+            #print(self.wi_list)
         else:
             self.init_widgets()
-
-        #data = {}
-        #data['object_id'] = 'raw_material_widgets'
-        #data['date'] = datetime.now().date().strftime('%d.%m.%Y')
-        #data['date_format'] = '%d.%m.%Y'
-        #data['obj_json'] = json.dumps(self.wi_list)
-        #print(data)
-        #self.add_widgets_to_db(data)
 
 
     def init_widgets(self):
@@ -123,9 +132,7 @@ class rawmaterial_panel_page_model(api_db_interface):
                 ui.button(f'Write-off_{key}', color='red', on_click=self.on_write_off_group)
                 ui.button(f'Write-in_{key}', color='green', on_click=self.on_write_in_group)
                 ui.button(f'Delete_{key}', color='orange', on_click=self.on_delete_wi_group)
-
             wi_w = 200
-
             with ui.grid(columns=7).classes("w-full").style(f"grid-template-columns: "
                                                         f"{wi_w}px {wi_w}px {wi_w}px {wi_w}px {wi_w}px {wi_w}px {wi_w}px"):
                 for data in self.wi_list[key]:
@@ -194,8 +201,6 @@ class rawmaterial_panel_page_model(api_db_interface):
                         self.search_text = ui.input(label='', placeholder='Search name',
                                                     on_change=self.info_panel.rawMat.search_by_name).style('font-size: 30px;').classes('w-[700px]')
                     ui.button(f'show operations', color='green', on_click=self.on_show_write_of_in_operations)
-                        #self.on_search = ui.button('Search', color="#00a100").classes('w-[200px]')
-                    #self.search_text.on_value_change = self.info_panel.search_by_name
 
             for key in self.wi_key_list:
                 for data in self.wi_list[key]:

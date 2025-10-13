@@ -1,3 +1,5 @@
+import json
+
 from nicegui import app, ui
 from invoce_page import api_db_interface
 import pandas as pd
@@ -5,6 +7,7 @@ from OligoMap_utils import stock_db_data
 from datetime import datetime
 import requests
 from io import BytesIO
+from raw_material_page import stock_data
 
 
 class stock_data_page_model(api_db_interface):
@@ -34,6 +37,7 @@ class stock_data_page_model(api_db_interface):
                 ui.button('Показать списания', color='orange', on_click=self.on_show_write_off)
                 ui.button('Скачать', color='green', on_click=self.on_save_rowmat)
                 self.total_cost = ui.input(label='Итог:')
+                ui.button('Показать склад', on_click=self.on_show_all_stock)
 
 
     def input_date(self):
@@ -123,6 +127,30 @@ class stock_data_page_model(api_db_interface):
         self.ag_grid.update()
 
         app.storage.user['stock_data_ag_grid_rowdata'] = self.ag_grid.options['rowData']
+
+
+    def on_show_all_stock(self):
+        db = stock_db_data()
+        tab = db.get_total_tab_data()
+        wi_data = stock_data()
+        data = json.loads(wi_data.get_stock_data()[0][4])
+        unicode_list, remains = [], {}
+        for key in data.keys():
+            for u in data[key]:
+                unicode_list.append(u[0])
+                remain = db.get_remaining_stock(u[0])
+                remains[u[0]] = round(remain['exist'], 3)
+        df = pd.DataFrame(tab)
+        df = df[df['Unicode'].isin(unicode_list)]
+        for u in remains.keys():
+            df.loc[df['Unicode'] == u, 'Amount'] = remains[u]
+        df.reset_index(inplace=True)
+        df['Name_y'] = df['Name']
+
+        self.ag_grid.options['rowData'] = df.to_dict('records')
+        self.ag_grid.update()
+        app.storage.user['stock_data_ag_grid_rowdata'] = self.ag_grid.options['rowData']
+
 
 
     def set_order_tab(self, width=1200, height=1000):

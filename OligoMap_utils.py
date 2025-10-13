@@ -17,6 +17,7 @@ class api_db_interface():
         self.lcms_db_name = 'lcms_data_1.db'
         self.mod_db_name = 'modification_base_1.db'
         self.synth_db_name = 'synth_method_1.db'
+        self.widget_db = 'gui_object_content_1.db'
 
     def headers(self):
         return {'Authorization': f'Pincode {self.pincode}'}
@@ -48,6 +49,14 @@ class stock_db_data(api_db_interface):
         self.db_users = 'users_1.db'
         self.strftime_format = "%Y-%m-%d"
         self.time_format = "%H:%M:%S"
+
+    def get_remaining_stock(self, unicode):
+        url = f"{self.api_db_url}/get_remaining_stock/{self.db_name}/{unicode}"
+        input_ret = requests.get(url, headers=self.headers())
+        try:
+            return input_ret.json()
+        except:
+            return {'exist': 0.}
 
     def get_all_data_in_tab(self, tab_name):
         url = f'{self.api_db_url}/get_all_tab_data/{self.db_name}/{tab_name}'
@@ -222,7 +231,6 @@ class oligomaps_search(api_db_interface):
         return ID, data
 
     def load_lcms_data_from_base(self, map_id, position):
-        #print(map_id, position)
         ID, data = self.get_lcms_data_id(int(map_id), position)
         if ID > -1:
             return data

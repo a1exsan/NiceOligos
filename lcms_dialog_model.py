@@ -396,6 +396,10 @@ class lcms_analyser(api_db_interface):
         self.total_data['position'] = self.position.value
         self.total_data['purif_type'] = self.purification.value
 
+        self.total_data['oligo_smiles'] = self.oligo_smiles.value
+        self.total_data['oligo_mol_props'] = self.props_data.value
+        self.total_data['oligo_chain'] = self.chain.value
+
         self.insert_data_to_base()
 
         #out_j = json.dumps(self.total_data)
@@ -591,6 +595,13 @@ class lcms_analyser(api_db_interface):
                     self.init_mz_zip = self.zip_lcms.get_mz_zip_data(self.zip_data)
                     self.polish_mz_zip = self.zip_lcms.get_mz_zip_data(self.zip_polish)
                     self.deconv_mz_zip = self.zip_lcms.get_mz_zip_data(self.zip_deconv)
+
+                    if 'oligo_smiles' in self.total_data:
+                        self.oligo_smiles.value = self.total_data['oligo_smiles']
+                    if 'oligo_mol_props' in self.total_data:
+                        self.props_data.value = self.total_data['oligo_mol_props']
+                    if 'oligo_chain' in self.total_data:
+                        self.chain.value = self.total_data['oligo_chain']
 
                     self.on_plot_init_data()
                 else:

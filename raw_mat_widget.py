@@ -508,20 +508,11 @@ class raw_mat_base_widget(api_db_interface):
         self.unicode = unicode
         self.pincode = pincode
 
-    #[874, 'бензол хч', 'INIT_BASE_CODE_OLIGO_LAB_0000007', 1.0, '2025-03-04', '12:02:17', '1783121115']
-    #[879, 'бензол хч', 'INIT_BASE_CODE_OLIGO_LAB_0000007', 1.0, '2025-03-10', '10:35:14', '1783121115']
-    #[880, 'бензол хч', 'INIT_BASE_CODE_OLIGO_LAB_0000007', 1.0, '2025-03-10', '10:36:06', '1783121115']
 
     def get_info_from_base(self):
         self.info_data = self.get_unicode_data_in_tab()
         self.remain = self.get_remaining_stock(self.unicode)
         self.output_data = self.get_unicode_output_data(self.unicode)
-        #omap = oligomaps_search(self.db_IP, self.db_port)
-        #map_data = omap.get_oligomaps_data()
-        #print(map_data)
-        #if len(map_data) > 0:
-        #    self.accord_data = pd.DataFrame(map_data)['accord data']
-        #    print(self.accord_data)
 
     def get_remaining_stock(self, unicode):
         url = f"{self.api_db_url}/get_remaining_stock/{self.db_name}/{unicode}"
@@ -1327,9 +1318,6 @@ class rawMatWidget(raw_mat_base_widget):
         self.base_layer.content = (f'<rect x=0 y=0 width={self.width} height={self.height} '
                                    f' rx=15 ry=15 fill="none" '
                                    f'stroke="{color}" stroke-width="2"/>')
-        #self.base_layer.content += (f'<rect x=6 y=6 width={self.width - 12} height={self.title_height} rx=10 ry=10 '
-        #                            f'fill="none" '
-        #                           f'stroke="{self.title_color}" stroke-width="2"/>')
 
     def draw_info(self):
         self.info_layer.content = ""
@@ -1349,8 +1337,7 @@ class rawMatWidget(raw_mat_base_widget):
             fill_color = 'red'
             fill_width_div = 2
             fill_const = 0
-        #self.info_layer.content += (f'<text x="{15}" y="{self.title_height + 25}" '
-        #                            f'fill="white" font-size="10">{self.info_data[0][3]}</text>')
+
         amount = f"{round(self.remain['exist'], 2)} / {self.info_data[0][5]}"
         self.info_layer.content += (f'<text x="{15}" y="{self.title_height + 15}" '
                                     f'fill="white" font-size="10">{amount}</text>')
