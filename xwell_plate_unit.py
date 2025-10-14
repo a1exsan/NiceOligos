@@ -7,6 +7,7 @@ from collections import Counter
 from lcms_chrom_data import chrom_dialog
 from OligoMap_utils import oligomaps_search
 from lcms_dialog_model import lcms_dialog
+from molseq_lang import single_nucleic_acid_chain
 
 
 class click_azide():
@@ -790,10 +791,15 @@ class XWell_plate:
                     if show_data.find('_') > -1:
                         show_data = show_data[show_data.find('_') + 1:]
                     else:
-                        show_data = ''
+                        if 'Chain' in well.oligo_data['init_row']:
+                            oligo = single_nucleic_acid_chain(well.oligo_data['init_row']['Chain'])
+                            if 'Alk' in oligo.chain[1]:
+                                show_data = oligo.chain[0]
+                            else:
+                                show_data = ''
                 else:
                     show_data = ''
-                self.oligo_data_layer.content += (f'<text x="{well.x - 15}" y="{well.y - 18}" '
+                self.oligo_data_layer.content += (f'<text x="{well.x - 25}" y="{well.y - 18}" '
                                                   f'fill="black" font-size="16">{show_data}</text>')
                 if 'click_data' in list(well.oligo_data.keys()):
                     if 'azide volume, ul' in list(well.oligo_data['click_data'].keys()):

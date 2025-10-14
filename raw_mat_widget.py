@@ -350,8 +350,6 @@ class delete_widget_dialog():
         self.dialog.close()
 
 
-
-
 class writeOff_dialog(api_db_interface):
     def __init__(self, api_IP, db_port, pincode, data, write_off=True):
         super().__init__(api_IP, db_port)
@@ -454,9 +452,10 @@ class writeOff_dialog(api_db_interface):
                 d_dict = json.loads(data['smart']['mol_lumiprobe_data'])
                 for key in d_dict.keys():
                     amount_key = float(d_dict[key]) * float(amount)
-                    r_ret = self.get_all_data_in_tab_key('total_tab', 'unicode', key)
-                    url = f"{self.api_db_url}/insert_data/{self.db_name}/{tab_name}"
-                    r = requests.post(url,
+                    if float(amount_key) > 0:
+                        r_ret = self.get_all_data_in_tab_key('total_tab', 'unicode', key)
+                        url = f"{self.api_db_url}/insert_data/{self.db_name}/{tab_name}"
+                        r = requests.post(url,
                                       json=json.dumps(
                                           [
                                               r_ret[0][1], key, amount_key,
