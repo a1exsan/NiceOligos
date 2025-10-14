@@ -678,12 +678,12 @@ def run_dialog():
 
     lcms = lcms_analyser()
 
-    ui.run(port=8081)
+    ui.run(port=8082)
 
 
-if __name__ in {"__main__", "__mp_main__"}:
+#if __name__ in {"__main__", "__mp_main__"}:
 
-    run_dialog()
+#    run_dialog()
 
 
 

@@ -189,7 +189,7 @@ class invoice_page_model(api_db_interface):
                 self.invoceChart = invoceChart()
 
         self.ag_grid = ui.aggrid(
-            {
+            options={
                 'columnDefs': colDefs,
                 'rowData': rowData.to_dict('records'),
                 'rowSelection': 'multiple',

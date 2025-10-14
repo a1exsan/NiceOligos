@@ -25,10 +25,10 @@ users = {'test': hashlib.sha256('12345'.encode('utf-8')).hexdigest()}
 #IP_addr = '84.252.133.233'
 IP_addr = IP
 
-app.add_static_files('/img', 'static_images')
 app.storage.general['db_IP'] = IP_addr
 app.storage.general['db_port'] = '8012'
 api_object = api_db_interface(app.storage.general.get('db_IP'), app.storage.general['db_port'])
+app.add_static_files('/img', 'static_images')
 
 
 @ui.page('/')
@@ -82,6 +82,7 @@ def login_page() -> Optional[RedirectResponse]:
     ui.dark_mode(True)
 
     def login():
+
         ps = f'{email.value}:{password.value}'
         api_object.pincode = hashlib.sha256(ps.encode('utf-8')).hexdigest()
         #print(api_object.check_pincode())
@@ -105,7 +106,6 @@ def login_page() -> Optional[RedirectResponse]:
         email = ui.input('Email')
         password = ui.input('Пароль', password=True)
     ui.button('Войти', on_click=login)
-    #ui.link('Нет аккаунта? Зарегистрироваться', '/register')
     ui.image('images/background_1.jpeg').style('max-width: 100%; height: 1000px;')
 
 
@@ -173,11 +173,17 @@ def stock_data_page() -> Optional[RedirectResponse]:
 @ui.page('/modifications')
 def main_page() -> Optional[RedirectResponse]:
     if not app.storage.user.get('authenticated', False):
-        return RedirectResponse('/login')
+        return RedirectResponse('/login')#
 
     navi_front = navigation_menu(IP_addr, '8012')
     if app.storage.user.get('user_status') in ['own', 'owner']:
        model = modification_page_model()
 
 
-ui.run(storage_secret='NiceGUI_oligo_app_2', title='NiceOligo', favicon="static_images/favicon.ico")
+#if __name__ == '__main__':
+ui.run(
+        storage_secret='lfjvnieurvqneorivnq/lke',
+        title='NiceOligo',
+        favicon="static_images/favicon.ico",
+        port=8080
+    )

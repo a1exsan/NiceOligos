@@ -46,11 +46,11 @@ class history_stat_data_sorter():
         df['x_day'] = pd.to_datetime(df['x'], format='%d.%m.%Y')
         df = df.sort_values('x_day', ascending=True)
 
-        ff = 'M'
+        ff = 'ME'
         if self.sorting_mode.find('quarter') > -1:
             ff = 'Q'
         elif self.sorting_mode.find('month') > -1:
-            ff = 'M'
+            ff = 'ME'
         elif self.sorting_mode.find('week') > -1:
             ff = 'W'
 

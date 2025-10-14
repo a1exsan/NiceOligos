@@ -623,9 +623,6 @@ class single_nucleic_acid_chain_assembler(single_nucleic_acid_chain):
         return seq
 
 
-
-
-
 def run():
     ss_dna = single_nucleic_acid_chain('[A]CGTA[FAM_dT[mod2]CGTIIUa+agggURSY+TTT[BHQ2]')
     print(ss_dna.chain)
@@ -1510,5 +1507,5 @@ class edit_json_dialog():
         self.dialog.close()
 
 
-if __name__ in {"__main__", "__mp_main__"}:
-    run_mods()
+#if __name__ in {"__main__", "__mp_main__"}:
+#    run_mods()
