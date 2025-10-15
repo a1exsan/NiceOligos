@@ -1170,6 +1170,7 @@ class synth_scheme_dialog():
                         {"field": "reagent, ml", 'editable': True},
                         {"field": "ul on step", 'editable': True},
                         {"field": "unicode", 'editable': False},
+                        {"field": "class", 'editable': False},
                     ]
                 with ui.row():
                         self.scheme_grid = ui.aggrid(
@@ -1397,8 +1398,17 @@ class synth_scheme_dialog():
         for symb in df_tab['symbol']:
             if symb in tab.mod_base:
                 df_tab.loc[df_tab['symbol'] == symb, 'unicode'] = tab.mod_base[symb].unicode
+                if tab.mod_base[symb].data_json != '':
+                    jd = json.loads(tab.mod_base[symb].data_json)
+                    if 'class' in jd:
+                        df_tab.loc[df_tab['symbol'] == symb, 'class'] = jd['class']
+                    else:
+                        df_tab.loc[df_tab['symbol'] == symb, 'class'] = 'unknown'
+                else:
+                    df_tab.loc[df_tab['symbol'] == symb, 'class'] = 'unknown'
             else:
                 df_tab.loc[df_tab['symbol'] == symb, 'unicode'] = 'unknown'
+                df_tab.loc[df_tab['symbol'] == symb, 'class'] = 'unknown'
         ext = []
         for row in r_tab:
             if row['symbol'] in list(df_tab['symbol']):

@@ -18,6 +18,8 @@ class api_db_interface():
         self.mod_db_name = 'modification_base_1.db'
         self.synth_db_name = 'synth_method_1.db'
         self.widget_db = 'gui_object_content_1.db'
+        self.stock_db_name = 'stock_oligolab_5.db'
+        self.db_users = 'users_1.db'
 
     def headers(self):
         return {'Authorization': f'Pincode {self.pincode}'}

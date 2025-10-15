@@ -9,7 +9,9 @@ from io import BytesIO
 from datetime import datetime
 from molseq_lang import synth_scheme_dialog
 from molseq_lang import modification_base
+from molseq_lang import single_nucleic_acid_chain
 import xwell_plate_unit as XWells
+import json
 
 
 class stat_dialog():
@@ -91,6 +93,152 @@ class set_oe_val_dialog():
         self.dialog.close()
 
 
+class write_off_reagents_dialog(api_db_interface):
+    def __init__(self, rowdata, map_rowdata):
+        IP = app.storage.general.get('db_IP')
+        port = app.storage.general.get('db_port')
+        super().__init__(IP, port)
+        self.pincode = app.storage.user.get('pincode')
+        self.strftime_format = "%Y-%m-%d"
+        self.time_format = "%H:%M:%S"
+        self.rowdata = rowdata
+        self.map = map_rowdata
+        self.cpg_amount_tab = pd.DataFrame([])
+        self.group_cpg()
+
+        colDefs_reagent = [
+            {"field": "symbol", 'editable': False},
+            {"field": "count", 'editable': False},
+            {"field": "reagent, g", 'editable': False},
+            {"field": "reagent, ml", 'editable': False},
+            {"field": "write-off data", 'editable': True},
+            {"field": "unicode", 'editable': False},
+        ]
+
+        with ui.dialog() as self.dialog:
+            with ui.card().style('width: auto; max-width: none;'):
+                self.grid = ui.aggrid(
+                    {
+                        'columnDefs': colDefs_reagent,
+                        'rowData': self.rowdata,
+                        'rowSelection': 'multiple',
+                        "pagination": True,
+                        "enterNavigatesVertically": True,
+                        "enterNavigatesVerticallyAfterEdit": True,
+                        "singleClickEdit": True,
+                    },
+                    theme='alpine-dark').style('width: 1200px; height: 1000px')  # alpine  material  quartz  balham
+                self.grid.auto_size_columns = True
+                self.grid.on("cellValueChanged", self.update_grid_cell_data)
+                self.grid.options['rowData'] = self.drop_zero_rowdata()
+                self.grid.update()
+                self.rowdata = self.grid.options['rowData']
+
+                with ui.row():
+                    ui.button('Списать', on_click=self.on_save_settings)
+                    ui.button('Отмена', on_click=self.dialog.close)
+
+    def get_all_data_in_tab_key(self, tab_name, key, value):
+        url = f'{self.api_db_url}/get_keys_data/{self.stock_db_name}/{tab_name}/{key}/{value}'
+        ret = requests.get(url, headers=self.headers())
+        return ret.json()
+
+    def substruct_solution(self, unicode, amount, tab_name):
+        ret = self.get_all_data_in_tab_key('total_tab', 'unicode', unicode)
+        data = json.loads(ret[0][4])
+        if 'smart' in list(data.keys()):
+            if data['smart']['mol_lumiprobe_data'] not in ['', '{}']:
+                d_dict = json.loads(data['smart']['mol_lumiprobe_data'])
+                for key in d_dict.keys():
+                    amount_key = float(d_dict[key]) * float(amount)
+                    if float(amount_key) > 0:
+                        r_ret = self.get_all_data_in_tab_key('total_tab', 'unicode', key)
+                        url = f"{self.api_db_url}/insert_data/{self.stock_db_name}/{tab_name}"
+                        r = requests.post(url,
+                                      json=json.dumps(
+                                          [
+                                              r_ret[0][1], key, amount_key,
+                                              datetime.now().date().strftime(self.strftime_format),
+                                              datetime.now().time().strftime(self.time_format),
+                                              self.get_user_id()
+                                          ]
+                                      )
+                                      , headers=self.headers())
+
+
+    def substruct_from_stock(self, tab_name, rowdata):
+        for row in rowdata:
+            print(row)
+            if row['write-off data'] > 0:
+                print('write-off')
+                ret = self.get_all_data_in_tab_key('total_tab', 'unicode', row['unicode'])
+                row['name'] = ret[0][1]
+                if row['name'].find('_sol_') > -1:
+                    self.substruct_solution(row['unicode'], row['write-off data'], tab_name)
+                else:
+                    try:
+                        f_amount = float(row['write-off data'])
+                    except:
+                        f_amount = 0
+                    if float(f_amount) > 0:
+                        url = f"{self.api_db_url}/insert_data/{self.stock_db_name}/{tab_name}"
+                        r = requests.post(url,
+                        json=json.dumps(
+                            [
+                            row['name'], row['unicode'], row['write-off data'],
+                            datetime.now().date().strftime(self.strftime_format),
+                            datetime.now().time().strftime(self.time_format),
+                            #user_id
+                            self.get_user_id()
+                            ]
+                            )
+                        , headers=self.headers())
+
+    def get_user_id(self):
+        url = f"{self.api_db_url}/get_keys_data/{self.db_users}/users/pass/{self.pincode}"
+        r = requests.get(url, headers=self.headers())
+        return r.json()[0][1]
+
+    def group_cpg(self):
+        out = []
+        for row in self.map:
+            if 'Chain' in row:
+                d = {}
+                oligo = single_nucleic_acid_chain(row['Chain'])
+                d['CPG'] = oligo.chain[-1]
+                if 'mg' in row['CPG, mg']:
+                    d['CPG_mass'] = float(row['CPG, mg'][:row['CPG, mg'].find('mg')])
+                else:
+                    d['CPG_mass'] = float(row['CPG, mg'])
+                out.append(d)
+        if len(out) > 0:
+            df = pd.DataFrame(out)
+            self.cpg_amount_tab = df.groupby('CPG').agg({'CPG_mass': 'sum'})
+            self.cpg_amount_tab.reset_index(inplace=True)
+
+    def drop_zero_rowdata(self):
+        out = []
+        for row in self.rowdata:
+            d = row.copy()
+            d['write-off data'] = 0.
+            if 'count' in d and 'unicode' in d:
+                if d['count'] != 0:
+                    if self.cpg_amount_tab.shape[0] > 0:
+                        df = self.cpg_amount_tab[self.cpg_amount_tab['CPG'] == d['symbol']]
+                        if df.shape[0] > 0:
+                            d['reagent, g'] = df['CPG_mass'].max() / 1000
+                    out.append(d)
+        return out
+
+    def update_grid_cell_data(self, e):
+        self.rowdata[e.args["rowIndex"]] = e.args["data"]
+
+    def on_send_data(self, rowdata):
+        self.substruct_from_stock('output_tab', rowdata)
+
+    def on_save_settings(self):
+        self.on_send_data(self.grid.options['rowData'])
+        self.dialog.close()
 
 
 class set_param_dialog():
@@ -250,7 +398,9 @@ class oligosynth_panel_page_model(api_db_interface):
                     on_change=self.wells_layer_selector_event,
                     value='Base layer').props('inline')
 
-            self.get_oligos_stack_grid()
+            with ui.column():
+                self.get_oligos_stack_grid()
+                ui.button('write-off reagents', color='orange', on_click=self.on_write_off_reagents)
 
         with ui.grid(columns=3).classes("w-full").style("grid-template-columns: 1200px 200px 1300px"):
             self.get_oligomaps_list_grid()
@@ -714,6 +864,11 @@ class oligosynth_panel_page_model(api_db_interface):
 
         app.storage.user['xwells_obj'] = self.xwells_obj.get_copy()
 
+    def on_write_off_reagents(self):
+        write_off = write_off_reagents_dialog(self.accord_tab.options['rowData'],
+                                              self.oligomap_ag_grid.options['rowData'])
+        write_off.dialog.open()
+
 
     def get_orders_by_status(self, status):
 
@@ -1119,7 +1274,13 @@ class oligosynth_panel_page_model(api_db_interface):
     def download_sequences_file(self):
         seq_file = ''
         for row in self.oligomap_rowdata:
-            seq_file += f"{row['Position']},{row['asm Sequence']},+\n"
+            if 'DMT on' in row:
+                if row['DMT on']:
+                    seq_file += f"{row['Position']},{row['asm Sequence']},+\n"
+                else:
+                    seq_file += f"{row['Position']},{row['asm Sequence']},x\n"
+            else:
+                seq_file += f"{row['Position']},{row['asm Sequence']},+\n"
         return seq_file
 
     def on_export_seq_btn_event(self):
