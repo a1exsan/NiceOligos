@@ -48,6 +48,34 @@ class click_azide():
         return self.tab
 
 
+class click_NHS():
+
+    def __init__(self, oligos_sequence, amount_oe):
+        self.seq = oligos_sequence
+        self.amount = amount_oe
+        self.tab = {}
+        self.__rools_protocol()
+
+    def __react_volume(self):
+        o = mmo.oligoNASequence(self.seq)
+        self.amount_nmol = self.amount * 1e6 / o.getExtinction()
+        self.tab['amount nmol'] = round(self.amount_nmol, 2)
+        self.tab['sequence'] = self.seq
+        self.tab['amount oe'] = round(self.amount, 2)
+        return 100
+
+    def __rools_protocol(self):
+        react_volume = self.__react_volume()
+        self.tab['react volume, ul'] = react_volume
+        self.tab['NHS volume, ul'] = round(self.amount_nmol * 8 / 20, 0)
+        self.tab['buffer volume, ul'] = round(react_volume * 0.33, 0)
+        self.tab['activator volume, ul'] = 0
+        self.tab['water volume, ul'] = 0
+
+    def __call__(self, *args, **kwargs):
+        return self.tab
+
+
 class Well:
     def __init__(self, x, y, symb, num):
         self.x = x
