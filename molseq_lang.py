@@ -266,6 +266,7 @@ class single_nucleic_acid_chain_assembler(single_nucleic_acid_chain):
         self.mod_base_df = pd.DataFrame(rowdata)
         df = self.mod_base_df[self.mod_base_df['symbol'].str.contains('_class')]
         self.mod_classes = df.to_dict('records')
+        self.class_chain = []
 
     def get_cpg_mod(self):
         if len(self.chain) <= 30:
@@ -313,7 +314,17 @@ class single_nucleic_acid_chain_assembler(single_nucleic_acid_chain):
                 errors['3end'] = 'azide'
             elif class_chain[0] == 'amidite':
                 errors['3end'] = 'no CPG'
+        self.class_chain = class_chain[::-1]
         return json.dumps(errors)
+
+    def get_first_mod_by_class(self, _class):
+        ret = 'unknown'
+        if len(self.chain) == len(self.class_chain):
+            for symb, c in zip(self.chain, self.class_chain):
+                if c == _class:
+                    ret = symb
+                    break
+        return ret
 
     def correct_error(self, row):
         d = row.copy()

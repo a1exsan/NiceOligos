@@ -3,6 +3,7 @@ from OligoMap_utils import api_db_interface
 import pandas as pd
 from nicegui import app, ui
 from OligoMap_utils import oligomaps_search
+from OligoMap_utils import stock_write_inoff
 import requests
 from collections import Counter
 from io import BytesIO
@@ -10,7 +11,10 @@ from datetime import datetime
 from molseq_lang import synth_scheme_dialog
 from molseq_lang import modification_base
 from molseq_lang import single_nucleic_acid_chain
+from molseq_lang import single_nucleic_acid_chain_assembler
 import xwell_plate_unit as XWells
+from xwell_plate_unit import click_azide
+from xwell_plate_unit import click_NHS
 import json
 
 
@@ -92,15 +96,203 @@ class set_oe_val_dialog():
         self.on_send_data(df.to_dict('records'))
         self.dialog.close()
 
-
-class write_off_reagents_dialog(api_db_interface):
-    def __init__(self, rowdata, map_rowdata):
+class write_off_click_dialog():
+    def __init__(self, rowdata, map_rowdata, click_type='azide'):
         IP = app.storage.general.get('db_IP')
         port = app.storage.general.get('db_port')
-        super().__init__(IP, port)
         self.pincode = app.storage.user.get('pincode')
-        self.strftime_format = "%Y-%m-%d"
-        self.time_format = "%H:%M:%S"
+        self.rowdata = rowdata
+        self.map = map_rowdata
+        self.click_type = click_type
+
+        self.obj_base = modification_base(IP, port)
+        self.obj_base.pincode = app.storage.user.get('pincode')
+        rnx_rowdata = self.obj_base.get_reaction_rowdata()
+        mod_rowdata = self.obj_base.get_modification_rowdata()
+
+        if self.click_type == 'azide':
+            self.map = self.filtrate_map_azide()
+
+            colDefs_reagent = [
+            {"field": "Position", 'editable': False},
+            {"field": "Chain", 'editable': False},
+            {"field": "azide Dens, oe/ml", 'editable': True},
+            {"field": "azide Vol, ml", 'editable': True},
+            {"field": "Oligo_amount, nmol", 'editable': False},
+            {"field": "Water, ul", 'editable': True},
+            {"field": "Buffer, ul", 'editable': True},
+            {"field": "Azide, ul", 'editable': True},
+            {"field": "Activator, ul", 'editable': True},
+
+        ]
+        elif self.click_type == 'NHS':
+            self.map = self.filtrate_map_NHS()
+
+            colDefs_reagent = [
+                {"field": "Position", 'editable': False},
+                {"field": "Chain", 'editable': False},
+                {"field": "NHS Dens, oe/ml", 'editable': True},
+                {"field": "NHS Vol, ml", 'editable': True},
+                {"field": "Oligo_amount, nmol", 'editable': False},
+                {"field": "Water, ul", 'editable': True},
+                {"field": "Buffer, ul", 'editable': True},
+                {"field": "NHS, ul", 'editable': True},
+            ]
+
+        with ui.dialog() as self.dialog:
+            with ui.card().style('width: auto; max-width: none;'):
+                self.grid = ui.aggrid(
+                    {
+                        'columnDefs': colDefs_reagent,
+                        'rowData': self.map,
+                        'rowSelection': 'multiple',
+                        "pagination": True,
+                        "enterNavigatesVertically": True,
+                        "enterNavigatesVerticallyAfterEdit": True,
+                        "singleClickEdit": True,
+                    },
+                    theme='alpine-dark').style('width: 1200px; height: 1000px')  # alpine  material  quartz  balham
+                self.grid.auto_size_columns = True
+                self.grid.on("cellValueChanged", self.update_grid_cell_data)
+                self.grid.update()
+                self.rowdata = self.grid.options['rowData']
+
+                with ui.row():
+                    ui.button('Списать', color='orange', on_click=self.on_write_off)
+                    ui.button('Отмена', on_click=self.dialog.close)
+                    ui.button('Рассчитать', on_click=self.on_culc)
+                    ui.button('Сохранить данные', color='green', on_click=self.on_save_data)
+
+    def filtrate_map_NHS(self):
+        out = []
+        for row in self.map:
+            d = row.copy()
+            if 'Chain' in row:
+                oligo = single_nucleic_acid_chain_assembler(row['Chain'],
+                                                            self.obj_base.reaction_base,
+                                                            self.obj_base.modification_base)
+                oligo.check_chain()
+                if self.click_type in oligo.class_chain:
+
+                    if 'NHS Dens, oe/ml' in row and 'NHS Vol, ml' in row:
+                        amount = float(row['NHS Dens, oe/ml']) * float(row['NHS Vol, ml'])
+                    else:
+                        amount = float(row['Dens, oe/ml']) * float(row['Vol, ml'])
+                        d['NHS Dens, oe/ml'] = row['Dens, oe/ml']
+                        d['NHS Vol, ml'] = row['Vol, ml']
+                    d['NHS_name'] = oligo.get_first_mod_by_class(self.click_type)
+                    if d['NHS_name'] != 'unknown':
+                        d['NHS_unicode'] = oligo.mod_base[d['NHS_name']].unicode
+                    click_data = click_NHS(row['Sequence'], amount)()
+                    d['Oligo_amount, nmol'] = click_data['amount nmol']
+                    d['Water, ul'] = click_data['water volume, ul']
+                    d['Buffer, ul'] = click_data['buffer volume, ul']
+                    d['NHS, ul'] = click_data['NHS volume, ul']
+                    d['Activator, ul'] = click_data['activator volume, ul']
+            else:
+                d['Oligo_amount, nmol'] = 0
+                d['Water, ul'] = 0
+                d['Buffer, ul'] = 0
+                d['Azide, ul'] = 0
+                d['Activator, ul'] = 0
+            out.append(d)
+        return out
+
+    def filtrate_map_azide(self):
+        out = []
+        for row in self.map:
+            d = row.copy()
+            if 'Chain' in row:
+                oligo = single_nucleic_acid_chain_assembler(row['Chain'],
+                                                            self.obj_base.reaction_base,
+                                                            self.obj_base.modification_base)
+                oligo.check_chain()
+                if self.click_type in oligo.class_chain:
+
+                    if 'azide Dens, oe/ml' in row and 'azide Vol, ml' in row:
+                        amount = float(row['azide Dens, oe/ml']) * float(row['azide Vol, ml'])
+                    else:
+                        amount = float(row['Dens, oe/ml']) * float(row['Vol, ml'])
+                        d['azide Dens, oe/ml'] = row['Dens, oe/ml']
+                        d['azide Vol, ml'] = row['Vol, ml']
+                    d['azide_name'] = oligo.get_first_mod_by_class(self.click_type)
+                    if d['azide_name'] != 'unknown':
+                        d['azide_unicode'] = oligo.mod_base[d['azide_name']].unicode
+                    click_data = click_azide(row['Sequence'], amount)()
+                    d['Oligo_amount, nmol'] = click_data['amount nmol']
+                    d['Water, ul'] = click_data['water volume, ul']
+                    d['Buffer, ul'] = click_data['Cu buffer volume, ul']
+                    d['Azide, ul'] = click_data['azide volume, ul']
+                    d['Activator, ul'] = click_data['activator volume, ul']
+            else:
+                d['Oligo_amount, nmol'] = 0
+                d['Water, ul'] = 0
+                d['Buffer, ul'] = 0
+                d['Azide, ul'] = 0
+                d['Activator, ul'] = 0
+            out.append(d)
+        return out
+
+    def update_grid_cell_data(self, e):
+        self.map[e.args["rowIndex"]] = e.args["data"]
+
+    def on_write_off(self):
+        rowdata = []
+        if self.click_type == 'azide':
+            rowdata = self.on_write_off_azide()
+        elif self.click_type == 'NHS':
+            rowdata = self.on_write_off_NHS()
+        df = pd.DataFrame(rowdata)
+        df = df.groupby('unicode').agg({'name': 'first', 'write-off data': 'sum'})
+        df.reset_index(inplace=True)
+        rowdata = df.to_dict('records')
+        if len(rowdata) > 0:
+            write_off = stock_write_inoff(rowdata)
+            write_off.write_off()
+            self.dialog.close()
+
+    def on_write_off_NHS(self):
+        rowdata = []
+        for row in self.map:
+            if 'azide_unicode' in row:
+                d = {}
+                d['name'] = row['NHS_name']
+                d['unicode'] = row['NHS_unicode']
+                d['write-off data'] = row['NHS, ul']
+                rowdata.append(d)
+        return rowdata
+
+    def on_write_off_azide(self):
+        rowdata = []
+        for row in self.map:
+            if 'azide_unicode' in row:
+                d = {}
+                d['name'] = row['azide_name']
+                d['unicode'] = row['azide_unicode']
+                d['write-off data'] = row['Azide, ul']
+                rowdata.append(d)
+        return rowdata
+
+
+    def on_culc(self):
+        if self.click_type == 'azide':
+            self.map = self.filtrate_map_azide()
+            self.grid.options['rowData'] = self.map
+            self.grid.update()
+        elif self.click_type == 'NHS':
+            self.map = self.filtrate_map_NHS()
+            self.grid.options['rowData'] = self.map
+            self.grid.update()
+
+    def on_save_map(self, rowdata):
+        pass
+
+    def on_save_data(self):
+        self.on_save_map(self.map)
+
+
+class write_off_reagents_dialog():
+    def __init__(self, rowdata, map_rowdata):
         self.rowdata = rowdata
         self.map = map_rowdata
         self.cpg_amount_tab = pd.DataFrame([])
@@ -138,67 +330,6 @@ class write_off_reagents_dialog(api_db_interface):
                     ui.button('Списать', on_click=self.on_save_settings)
                     ui.button('Отмена', on_click=self.dialog.close)
 
-    def get_all_data_in_tab_key(self, tab_name, key, value):
-        url = f'{self.api_db_url}/get_keys_data/{self.stock_db_name}/{tab_name}/{key}/{value}'
-        ret = requests.get(url, headers=self.headers())
-        return ret.json()
-
-    def substruct_solution(self, unicode, amount, tab_name):
-        ret = self.get_all_data_in_tab_key('total_tab', 'unicode', unicode)
-        data = json.loads(ret[0][4])
-        if 'smart' in list(data.keys()):
-            if data['smart']['mol_lumiprobe_data'] not in ['', '{}']:
-                d_dict = json.loads(data['smart']['mol_lumiprobe_data'])
-                for key in d_dict.keys():
-                    amount_key = float(d_dict[key]) * float(amount)
-                    if float(amount_key) > 0:
-                        r_ret = self.get_all_data_in_tab_key('total_tab', 'unicode', key)
-                        url = f"{self.api_db_url}/insert_data/{self.stock_db_name}/{tab_name}"
-                        r = requests.post(url,
-                                      json=json.dumps(
-                                          [
-                                              r_ret[0][1], key, amount_key,
-                                              datetime.now().date().strftime(self.strftime_format),
-                                              datetime.now().time().strftime(self.time_format),
-                                              self.get_user_id()
-                                          ]
-                                      )
-                                      , headers=self.headers())
-
-
-    def substruct_from_stock(self, tab_name, rowdata):
-        for row in rowdata:
-            print(row)
-            if row['write-off data'] > 0:
-                print('write-off')
-                ret = self.get_all_data_in_tab_key('total_tab', 'unicode', row['unicode'])
-                row['name'] = ret[0][1]
-                if row['name'].find('_sol_') > -1:
-                    self.substruct_solution(row['unicode'], row['write-off data'], tab_name)
-                else:
-                    try:
-                        f_amount = float(row['write-off data'])
-                    except:
-                        f_amount = 0
-                    if float(f_amount) > 0:
-                        url = f"{self.api_db_url}/insert_data/{self.stock_db_name}/{tab_name}"
-                        r = requests.post(url,
-                        json=json.dumps(
-                            [
-                            row['name'], row['unicode'], row['write-off data'],
-                            datetime.now().date().strftime(self.strftime_format),
-                            datetime.now().time().strftime(self.time_format),
-                            #user_id
-                            self.get_user_id()
-                            ]
-                            )
-                        , headers=self.headers())
-
-    def get_user_id(self):
-        url = f"{self.api_db_url}/get_keys_data/{self.db_users}/users/pass/{self.pincode}"
-        r = requests.get(url, headers=self.headers())
-        return r.json()[0][1]
-
     def group_cpg(self):
         out = []
         for row in self.map:
@@ -234,7 +365,8 @@ class write_off_reagents_dialog(api_db_interface):
         self.rowdata[e.args["rowIndex"]] = e.args["data"]
 
     def on_send_data(self, rowdata):
-        self.substruct_from_stock('output_tab', rowdata)
+        write_off = stock_write_inoff(rowdata)
+        write_off.write_off()
 
     def on_save_settings(self):
         self.on_send_data(self.grid.options['rowData'])
@@ -400,7 +532,10 @@ class oligosynth_panel_page_model(api_db_interface):
 
             with ui.column():
                 self.get_oligos_stack_grid()
-                ui.button('write-off reagents', color='orange', on_click=self.on_write_off_reagents)
+                with ui.row():
+                    ui.button('write-off reagents', color='orange', on_click=self.on_write_off_reagents)
+                    ui.button('write-off azide click', color='green', on_click=self.on_write_off_azide_click)
+                    ui.button('write-off NHS click', color='green', on_click=self.on_write_off_NHS_click)
 
         with ui.grid(columns=3).classes("w-full").style("grid-template-columns: 1200px 200px 1300px"):
             self.get_oligomaps_list_grid()
@@ -526,6 +661,13 @@ class oligosynth_panel_page_model(api_db_interface):
 
             {"field": "DMT on", 'editable': True, 'filter': 'agTextColumnFilter', 'floatingFilter': True},
             {"field": "Chain", 'editable': True, 'filter': 'agTextColumnFilter', 'floatingFilter': True},
+            {"field": "Azide, ul", 'editable': False, 'filter': 'agTextColumnFilter', 'floatingFilter': True},
+            {"field": "NHS, ul", 'editable': False, 'filter': 'agTextColumnFilter', 'floatingFilter': True},
+
+            #{"field": "azide Dens, oe/ml", 'editable': False, 'filter': 'agTextColumnFilter', 'floatingFilter': True},
+            #{"field": "azide Vol, ml", 'editable': False, 'filter': 'agTextColumnFilter', 'floatingFilter': True},
+            #{"field": "NHS Dens, oe/ml", 'editable': False, 'filter': 'agTextColumnFilter', 'floatingFilter': True},
+            #{"field": "NHS Vol, ml", 'editable': False, 'filter': 'agTextColumnFilter', 'floatingFilter': True},
         ]
         # with ui.column():
 
@@ -869,6 +1011,27 @@ class oligosynth_panel_page_model(api_db_interface):
                                               self.oligomap_ag_grid.options['rowData'])
         write_off.dialog.open()
 
+    def on_save_click_data(self, rowdata):
+        self.oligomap_rowdata = rowdata
+        self.oligomap_ag_grid.options['rowData'] = rowdata
+        self.oligomap_ag_grid.update()
+        self.on_update_oligomap.run_method('click')
+
+    def on_write_off_azide_click(self):
+        _click = write_off_click_dialog(self.accord_tab.options['rowData'],
+                                             self.oligomap_ag_grid.options['rowData'],
+                                             click_type='azide')
+        _click.on_save_map = self.on_save_click_data
+        _click.dialog.open()
+
+
+    def on_write_off_NHS_click(self):
+        _click = write_off_click_dialog(self.accord_tab.options['rowData'],
+                                             self.oligomap_ag_grid.options['rowData'],
+                                             click_type='NHS')
+        _click.on_save_map = self.on_save_click_data
+        _click.dialog.open()
+
 
     def get_orders_by_status(self, status):
 
@@ -987,7 +1150,6 @@ class oligosynth_panel_page_model(api_db_interface):
         self.oligomap_ag_grid.options['rowData'] = rowData
         self.oligomap_ag_grid.update()
         self.xwells_obj.load_selrows(rowData)
-
         #app.storage.user['oligomap_ag_grid_rowdata'] = self.oligomap_ag_grid.options['rowData']
         #app.storage.user['xwells_obj'] = self.xwells_obj.get_copy()
 

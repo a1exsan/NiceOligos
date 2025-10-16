@@ -34,6 +34,87 @@ class api_db_interface():
         ret = requests.get(url, headers=self.headers())
         return ret
 
+class stock_write_inoff(api_db_interface):
+    def __init__(self, rowdata):
+        IP = app.storage.general.get('db_IP')
+        port = app.storage.general.get('db_port')
+        super().__init__(IP, port)
+        self.pincode = app.storage.user.get('pincode')
+        self.rowdata = rowdata
+        self.strftime_format = "%Y-%m-%d"
+        self.time_format = "%H:%M:%S"
+
+    def get_all_data_in_tab_key(self, tab_name, key, value):
+        url = f'{self.api_db_url}/get_keys_data/{self.stock_db_name}/{tab_name}/{key}/{value}'
+        ret = requests.get(url, headers=self.headers())
+        return ret.json()
+
+    def substruct_solution(self, unicode, amount, tab_name):
+        ret = self.get_all_data_in_tab_key('total_tab', 'unicode', unicode)
+        data = json.loads(ret[0][4])
+        if 'smart' in list(data.keys()):
+            if data['smart']['mol_lumiprobe_data'] not in ['', '{}']:
+                d_dict = json.loads(data['smart']['mol_lumiprobe_data'])
+                for key in d_dict.keys():
+                    amount_key = float(d_dict[key]) * float(amount)
+                    if float(amount_key) > 0:
+                        r_ret = self.get_all_data_in_tab_key('total_tab', 'unicode', key)
+                        url = f"{self.api_db_url}/insert_data/{self.stock_db_name}/{tab_name}"
+                        r = requests.post(url,
+                                      json=json.dumps(
+                                          [
+                                              r_ret[0][1], key, amount_key,
+                                              datetime.now().date().strftime(self.strftime_format),
+                                              datetime.now().time().strftime(self.time_format),
+                                              self.get_user_id()
+                                          ]
+                                      )
+                                      , headers=self.headers())
+
+
+    def substruct_from_stock(self, tab_name, rowdata):
+        for row in rowdata:
+            if row['write-off data'] > 0:
+                #print('write-off')
+                ret = self.get_all_data_in_tab_key('total_tab', 'unicode', row['unicode'])
+                row['name'] = ret[0][1]
+                if row['name'].find('_sol_') > -1:
+                    self.substruct_solution(row['unicode'], row['write-off data'], tab_name)
+                else:
+                    try:
+                        f_amount = float(row['write-off data'])
+                    except:
+                        f_amount = 0
+                    if float(f_amount) > 0:
+                        url = f"{self.api_db_url}/insert_data/{self.stock_db_name}/{tab_name}"
+                        r = requests.post(url,
+                        json=json.dumps(
+                            [
+                            row['name'], row['unicode'], row['write-off data'],
+                            datetime.now().date().strftime(self.strftime_format),
+                            datetime.now().time().strftime(self.time_format),
+                            #user_id
+                            self.get_user_id()
+                            ]
+                            )
+                        , headers=self.headers())
+                        if r.status_code == 200:
+                            if tab_name == 'output_tab':
+                                ui.notify('Реагенты успешно списаны')
+                            else:
+                                ui.notify('Реагенты успешно внесены')
+
+    def write_off(self):
+        self.substruct_from_stock('output_tab', self.rowdata)
+
+    def write_in(self):
+        self.substruct_from_stock('input_tab', self.rowdata)
+
+    def get_user_id(self):
+        url = f"{self.api_db_url}/get_keys_data/{self.db_users}/users/pass/{self.pincode}"
+        r = requests.get(url, headers=self.headers())
+        return r.json()[0][1]
+
 
 class oligos_data_stack():
     def __init__(self):
@@ -606,6 +687,8 @@ class oligomaps_search(api_db_interface):
                               })
                              , headers=self.headers())
             print(f'update status {self.oligo_map_id}: {r.status_code}')
+            if r.status_code == 200:
+                ui.notify('Данные обновлены')
             return out
         else:
             return rowData
