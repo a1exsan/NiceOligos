@@ -672,7 +672,7 @@ class invoice_page_model(api_db_interface):
             invoce = selrows[0]['invoce']
             if 'УТ' in invoce:
                 invoce = invoce[invoce.find('УТ')+2:]
-            self.save_docx_passport(pass_data.to_dict('records'), invoce, pass_filename)
+            self.save_docx_passport(pass_data.to_dict('records'), invoce, f'{pass_filename}.docx')
         self.progressbar.visible = False
 
 

@@ -1,5 +1,5 @@
-nicegui
-nicegui[highcharts]
+nicegui==2.24.1
+nicegui[highcharts]==2.24.1
 pandas
 oligoMass
 matplotlib
@@ -15,3 +15,4 @@ plotly
 py3Dmol
 docxcompose
 python-docx
+docxtpl
