@@ -7,6 +7,7 @@ from OligoMap_utils import oligomaps_search
 import requests
 import json
 from oligoMass import molmassOligo as mmo
+from OligoMap_utils import docx_passport
 
 from datetime import datetime
 from datetime import timedelta
@@ -224,8 +225,13 @@ class invoice_page_model(api_db_interface):
                                                      color='green').classes('w-[200px]')
             self.on_update_invoces_tab = ui.button('update tab',
                                                    on_click=self.on_update_invoces_tab_event).classes('w-[200px]')
-            self.on_print_invoce_passport = ui.button('print passport',
-                            on_click=self.on_print_invoce_passport_event, color='#FFA000').classes('w-[200px]')
+            #self.on_print_invoce_passport = ui.button('print passport',
+            #                on_click=self.on_print_invoce_passport_event, color='#FFA000').classes('w-[200px]')
+            with ui.dropdown_button('print passport', auto_close=True).classes('w-[200px]') as self.on_print_invoce_passport:
+                for key in ['excel', 'docx']:
+                    ui.item(key, on_click=lambda n=key: self.on_print_invoce_passport_event(n))
+            self.on_print_invoce_passport.props['color'] = 'orange'
+
             self.progressbar = ui.spinner(size='md', color='#FFA000')
             self.on_send_oligos_button = ui.button('Send selection to map', on_click=self.on_send_oligos_button_event,
                                                    color='green').classes('w-[200px]')
@@ -609,8 +615,13 @@ class invoice_page_model(api_db_interface):
             out_tab.append(d)
         return pd.DataFrame(out_tab)
 
+    def save_docx_passport(self, rowdata, invoce_number, filename):
+        docx = docx_passport(invoce_number, rowdata)
+        docx.compose_passport()
+        ui.download('templates/passport_doc.docx', filename=filename)
 
-    async def on_print_invoce_passport_event(self):
+
+    async def on_print_invoce_passport_event(self, e):
         self.pincode = app.storage.user.get('pincode')
         self.progressbar.visible = True
         selrows = await self.ag_grid.get_selected_rows()
@@ -655,7 +666,13 @@ class invoice_page_model(api_db_interface):
 
         pass_filename = selrows[0]['invoce'].replace('/', '_')
         pass_data = self.print_pass(self.invoce_content_tab.options['rowData'])
-        self.save_passport(pass_filename, pass_data)
+        if e == 'excel':
+            self.save_passport(pass_filename, pass_data)
+        elif e == 'docx':
+            invoce = selrows[0]['invoce']
+            if 'УТ' in invoce:
+                invoce = invoce[invoce.find('УТ')+2:]
+            self.save_docx_passport(pass_data.to_dict('records'), invoce, pass_filename)
         self.progressbar.visible = False
 
 
