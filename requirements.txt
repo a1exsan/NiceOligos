@@ -12,3 +12,6 @@ scipy
 requests
 tqdm
 plotly
+py3Dmol
+docxcompose
+python-docx

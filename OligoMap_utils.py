@@ -4,6 +4,13 @@ import json
 from datetime import datetime
 from nicegui import app, ui
 
+from docx.shared import Inches, Pt
+from docx.oxml.ns import qn
+from docxtpl import DocxTemplate
+from docx.enum.text import WD_ALIGN_PARAGRAPH
+from docxcompose.composer import Composer
+from docx import Document
+
 class api_db_interface():
 
     def __init__(self, db_IP, db_port):
@@ -33,6 +40,73 @@ class api_db_interface():
         url = f'{self.api_db_url}/auth'
         ret = requests.get(url, headers=self.headers())
         return ret
+
+class docx_passport():
+    def __init__(self, invoce_number, rowdata):
+        self.invoce_number = invoce_number
+        self.rowdata = rowdata
+
+        self.path = 'templates'
+        self.headers = [
+            '№',
+            'Название',
+            '5’ – 3’ последовательность',
+            'Кол-во ОЕ',
+            'Кол-во нмоль',
+            'V(H2O)100 мкМ р-р, мкл',
+            'Очистка'
+        ]
+        self.column_widths_cm = [0.3, 1.4, 2.0, 0.7, 0.7, 0.7, 1.0]
+
+    def set_cell_text(self, cell, text, font_name='Arial', font_size=Pt(10), bold=False):
+        cell.text = ''
+        paragraph = cell.paragraphs[0]
+        run = paragraph.add_run(text)
+        font = run.font
+        font.name = font_name
+        font.size = font_size
+        font.bold = bold
+        rFonts = run._element.rPr.rFonts
+        rFonts.set(qn('w:eastAsia'), font_name)
+        paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
+
+    def save_table(self):
+        document = Document()
+        table = document.add_table(rows=1, cols=7)
+        for i in range(len(table.columns)):
+            table.columns[i].width = Inches(self.column_widths_cm[i])
+        hdr_cells = table.rows[0].cells
+        for cell, text in zip(hdr_cells, self.headers):
+            self.set_cell_text(cell, text, font_name='Times New Roman', font_size=Pt(12), bold=True)
+
+        for row in self.rowdata:
+            row_cells = table.add_row().cells
+            self.set_cell_text(row_cells[0], str(row['#']), font_name='Calibri', font_size=Pt(8))
+            self.set_cell_text(row_cells[1], str(row['Name']), font_name='Calibri', font_size=Pt(8))
+            self.set_cell_text(row_cells[2], str(row['Sequence']), font_name='Calibri', font_size=Pt(8))
+            self.set_cell_text(row_cells[3], str(row['Amount,_oe']), font_name='Calibri', font_size=Pt(8))
+            self.set_cell_text(row_cells[4], str(row['Amount,_nmol']), font_name='Calibri', font_size=Pt(8))
+            self.set_cell_text(row_cells[5], str(row['Desolving']), font_name='Calibri', font_size=Pt(8))
+            self.set_cell_text(row_cells[6], str(row['Purification']), font_name='Calibri', font_size=Pt(8))
+        table.style = 'TableGrid'
+        document.save(f'{self.path}/passport_rowdata.docx')
+
+    def compose_passport(self):
+        self.save_table()
+        master = Document(f"{self.path}/pass_tmpl.docx")
+        composer = Composer(master)
+        doc1 = Document(f"{self.path}/passport_rowdata.docx")
+        doc2 = Document(f"{self.path}/pass_tmpl_2.docx")
+        composer.append(doc1)
+        composer.append(doc2)
+        composer.save(f"{self.path}/combined.docx")
+        doc = DocxTemplate(f"{self.path}/combined.docx")
+        context = {
+            'date': datetime.now().date().strftime('%d.%m.%Y'),
+            'invoce_number': f'{self.invoce_number}',
+        }
+        doc.render(context)
+        doc.save(f"{self.path}/passport_doc.docx")
 
 class stock_write_inoff(api_db_interface):
     def __init__(self, rowdata):

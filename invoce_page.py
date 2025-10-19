@@ -615,7 +615,6 @@ class invoice_page_model(api_db_interface):
         self.progressbar.visible = True
         selrows = await self.ag_grid.get_selected_rows()
         orders_tab = self.get_invoce_content(selrows)
-        print('PASSPORT')
         out = []
         oserch = oligomaps_search(self.db_IP, self.db_port)
         oserch.pincode = self.pincode
