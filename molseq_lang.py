@@ -477,15 +477,16 @@ class single_nucleic_acid_chain_assembler(single_nucleic_acid_chain):
                 if products != ():
                     self.structure = Chem.MolToSmiles(products[0][0])
 
-    def do_final_detrit_structure(self, DMT_on=True):
+    def do_final_detrit_structure(self, detrit_ids, DMT_on=True):
         if self.structure != '':
             if not DMT_on:
-                rnx_smarts = self.rnx_base[1].smarts
-                rxn = rdChemReactions.ReactionFromSmarts(rnx_smarts)
-                react = Chem.MolFromSmiles(self.structure)
-                products = rxn.RunReactants([react])
-                if products != ():
-                    self.structure = Chem.MolToSmiles(products[0][0])
+                for id in detrit_ids:
+                    rnx_smarts = self.rnx_base[id].smarts
+                    rxn = rdChemReactions.ReactionFromSmarts(rnx_smarts)
+                    react = Chem.MolFromSmiles(self.structure)
+                    products = rxn.RunReactants([react])
+                    if products != ():
+                        self.structure = Chem.MolToSmiles(products[0][0])
 
     def do_click_reaction_on_structure(self, modification_):
         if self.structure != '':
@@ -520,7 +521,9 @@ class single_nucleic_acid_chain_assembler(single_nucleic_acid_chain):
             self.build_progress.value = 0
             time.sleep(0.5)
 
+        last_token = ''
         for i, token in enumerate(reverse_chain):
+            last_token = token
             if self.build_progress is not None:
                 self.build_progress.value = round(i / len(reverse_chain), 2)
                 time.sleep(0.1)
@@ -531,7 +534,10 @@ class single_nucleic_acid_chain_assembler(single_nucleic_acid_chain):
             else:
                 print(f'{token} not in base')
         self.do_desupport_structure()
-        self.do_final_detrit_structure(DMT_on=self.DMT_on)
+
+        last_detrit = json.loads(self.mod_base[last_token].data_json)['DETRIT']
+
+        self.do_final_detrit_structure(last_detrit, DMT_on=self.DMT_on)
 
         if self.build_progress is not None:
             self.build_progress.value = 1

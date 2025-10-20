@@ -81,7 +81,7 @@ class lcms_analyser(api_db_interface):
     def init_ui(self):
         with ui.row():
             self.file_input = ui.input(label='filename')
-            ui.upload(label='Загрузить хроматограмму',
+            ui.upload(label='Загрузить LCMS данные',
                   on_upload=self.handle_upload).props("accept=.mzdata.xml").classes("max-w-full")
             with ui.column():
                 ui.button('perform data', on_click=self.on_perform_data)
