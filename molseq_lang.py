@@ -444,23 +444,22 @@ class single_nucleic_acid_chain_assembler(single_nucleic_acid_chain):
                 if products != ():
                     self.structure = Chem.MolToSmiles(products[0][0])
 
-    def do_auto_reactions(self, modification_):
+    def do_auto_reactions(self, modification_, branch_ctrl=False):
         if self.structure == '':
             self.structure = modification_.smiles
         smiles_list = modification_.smiles.split('.')
         adduct = smiles_list[0]
         mod_data = json.loads(modification_.data_json)
-        branch_count = self.get_branch_count(self.structure)
+        if branch_ctrl:
+            branch_count = self.get_branch_count(self.structure)
+        else:
+            branch_count = 1
         if 'DESUPPORT' in mod_data:
             self.desupport_id = mod_data['DESUPPORT'][0]
-        #print(modification_.to_dict())
-        #print(branch_count)
         for i in range(branch_count):
             self.do_auto_cycle_detrit(mod_data=mod_data)
-            #print(self.structure)
         for i in range(branch_count):
             self.do_auto_cycle_couple(mod_data=mod_data, adduct=adduct)
-            #print(self.structure)
         for i in range(branch_count):
             self.do_auto_cycle_oxid(mod_data=mod_data)
         for i in range(branch_count):
@@ -488,7 +487,7 @@ class single_nucleic_acid_chain_assembler(single_nucleic_acid_chain):
                     if products != ():
                         self.structure = Chem.MolToSmiles(products[0][0])
 
-    def do_click_reaction_on_structure(self, modification_):
+    def do_click_reaction_on_structure(self, modification_, repeats_ctrl=False):
         if self.structure != '':
             mod_data = json.loads(modification_.data_json)
             if 'click' in mod_data:
@@ -498,6 +497,8 @@ class single_nucleic_acid_chain_assembler(single_nucleic_acid_chain):
                         repeats = self.get_structure_count(self.structure, 'CCN')
                     elif mod_data['class'] == 'azide':
                         repeats = self.get_structure_count(self.structure, 'C#CC')
+                if not repeats_ctrl:
+                    repeats = 1
                 for i in range(repeats):
                     for id in mod_data['click']:
                         rnx_smarts = self.rnx_base[id].smarts
@@ -535,9 +536,10 @@ class single_nucleic_acid_chain_assembler(single_nucleic_acid_chain):
                 print(f'{token} not in base')
         self.do_desupport_structure()
 
-        last_detrit = json.loads(self.mod_base[last_token].data_json)['DETRIT']
-
-        self.do_final_detrit_structure(last_detrit, DMT_on=self.DMT_on)
+        data_json = json.loads(self.mod_base[last_token].data_json)
+        if 'DETRIT' in data_json:
+            last_detrit = data_json['DETRIT']
+            self.do_final_detrit_structure(last_detrit, DMT_on=self.DMT_on)
 
         if self.build_progress is not None:
             self.build_progress.value = 1

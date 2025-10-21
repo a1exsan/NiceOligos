@@ -52,7 +52,7 @@ class price_db_manager(api_db_interface):
         end5 = set(df[df['type']=='5end']['mod'].max())
         end3 = set(df[df['type']=='3end']['mod'].max())
         pt = set(df[df['type']=='purif_type']['mod'].max())
-        return list(end5), list(end3), list(pt)
+        return list(end5), list(end3), list(pt), scale_list
 
 
     def get_all_scales(self):
@@ -153,8 +153,6 @@ class oligo_price_calculator():
             self.price = self.check_modification(mod_list, scale, purif)
         else:
             self.error['unknown scale'] = scale
-
-
 
 
 class price_dialog():
@@ -325,9 +323,10 @@ class input_order_page_model(api_db_interface):
         self.db_name = 'scheduler_oligolab_2.db'
 
         self.price_base = price_db_manager()
-        self.end5_list, self.end3_list, self.pt_list = self.price_base.get_all_types_groups()
+        self.end5_list, self.end3_list, self.pt_list, self.scale_list = self.price_base.get_all_types_groups()
         self.end5_list.append('none')
         self.end3_list.append('none')
+        self.selected_cell = {}
 
         self.clip_js = '''
             (event) => {
@@ -409,7 +408,14 @@ class input_order_page_model(api_db_interface):
             with ui.dropdown_button('purif type', auto_close=True).classes('w-[200px]') as self.on_set_pt_mod:
                 for key in self.pt_list:
                     ui.item(key, on_click=lambda n=key: self.on_set_pt_mod_event(n))
-            #self.on_print_invoce_passport.props['color'] = 'orange'
+
+            with ui.dropdown_button('scale', auto_close=True).classes('w-[200px]') as self.on_set_scale:
+                for key in self.scale_list:
+                    ui.item(key, on_click=lambda n=key: self.on_set_scale_event(n))
+
+            ui.button('add row', color='green', on_click=self.on_add_row_event).style('width: 200px')
+            ui.button('del rows', color='red', on_click=self.on_del_rows_event).style('width: 200px')
+            ui.button('download form', on_click=self.on_download_form_event).style('width: 200px')
 
         self.input_tab = ui.aggrid(
             {
@@ -420,15 +426,11 @@ class input_order_page_model(api_db_interface):
             }
             ,
             theme='alpine-dark').style('width: 2000px; height: 1000px')
-
-            #self.price_grid = price_tab()
-
-        #self.scale_selected.on_value_change(self.price_grid.on_change_scale)
-
         self.rowdata = self.input_tab.options['rowData']
         self.input_tab.on('paste', js_handler=self.clip_js)
         self.input_tab.auto_size_columns = True
         self.input_tab.on("cellValueChanged", self.update_cell_data)
+        self.input_tab.on('cellClicked', self.input_tab_handle_click)
 
     def update_cell_data(self, e):
         self.rowdata[e.args["rowIndex"]] = e.args["data"]
@@ -436,14 +438,15 @@ class input_order_page_model(api_db_interface):
         self.input_tab.update()
 
     def handle_upload(self, e: events.UploadEventArguments):
-        data = e.content.read()
-        self.b64_string = base64.b64encode(data).decode()
-        print(self.b64_string)
-
-        content = e.content.read()
-        excel_io = BytesIO(content)
-        df = pd.read_excel(excel_io, engine='openpyxl')
-        print(df)
+        try:
+            content_io = BytesIO(e.content.read())
+            df = pd.read_excel(content_io, engine='openpyxl')
+            print(e.name)
+            print(df)
+            for row in df.to_dict('records'):
+                print(row)
+        except:
+            ui.notify(f'Проблемы с чтением файла {e.name}')
 
     def handle_clipboard(self, e):
         cname = {}
@@ -496,6 +499,69 @@ class input_order_page_model(api_db_interface):
                 self.input_tab.options['rowData'][i]["Purification"] = mod
         self.input_tab.update()
 
+    async def on_set_scale_event(self, scale):
+        selrows = await self.input_tab.get_selected_rows()
+        index_list = pd.DataFrame(selrows)['#'].to_list()
+        for i, row in enumerate(self.input_tab.options['rowData']):
+            if row['#'] in index_list:
+                self.input_tab.options['rowData'][i]["Amount_OE"] = scale
+        self.input_tab.update()
+
+    def on_add_row_event(self):
+        self.input_tab.options['rowData'].append(
+            {
+                '#': len(self.input_tab.options['rowData']) + 1,
+                'Name':'',
+                "5'-end":'',
+                'Sequence':'',
+                "3'-end":'',
+                'Amout_OE':'',
+                'Purification':'',
+             }
+        )
+        self.input_tab.update()
+
+    async def on_del_rows_event(self):
+        selrows = await self.input_tab.get_selected_rows()
+        sel_index = pd.DataFrame(selrows)['#'].to_list()
+        out = []
+        for row in self.input_tab.options['rowData']:
+            if row['#'] not in sel_index:
+                out.append(row)
+        df = pd.DataFrame(out)
+        df['#'] = [i + 1 for i in range(len(out))]
+        self.input_tab.options['rowData'] = df.to_dict('records')
+        self.input_tab.update()
+
+    def download_excel_form(self, filename, data):
+        buffer = BytesIO()
+        data.to_excel(buffer, index=False)
+        buffer.seek(0)
+        ui.download(buffer.read(), filename=f'{filename}.xlsx')
+
+    def on_download_form_event(self):
+        df = pd.DataFrame(self.input_tab.options['rowData'])
+        rowdata = self.input_tab.options['rowData']
+        rowdata.append(
+            {
+                '#': len(self.input_tab.options['rowData']) + 1,
+                'Name': '',
+                "5'-end": '',
+                'Sequence': '',
+                "3'-end": '',
+                'Amount_OE': '',
+                'Purification': 'Итого:',
+                'Price': str(df['Price'].sum()),
+                'Error': ''
+            }
+        )
+        if self.invoce.value == '':
+            filename = 'invoce_form.xlsx'
+        else:
+            filename = f'{self.invoce.value}.xlsx'
+        self.download_excel_form(filename, pd.DataFrame(rowdata))
+
+
     def on_clipboard_event(self, e):
         cname = {}
         cname['0'] = 'Name'
@@ -505,21 +571,30 @@ class input_order_page_model(api_db_interface):
         cname['4'] = 'Amount_OE'
         cname['5'] = 'Purification'
         rowdata = []
-        for row in e.args.split('\n'):
-            insert_row = {}
-            for i, col in enumerate(row.split('\t')):
-                if col == '':
-                    insert_row[cname[str(i)]] = 'none'
-                else:
-                    insert_row[cname[str(i)]] = col
-            rowdata.append(insert_row)
-        df = pd.DataFrame(rowdata)
-        df.dropna(inplace=True)
-        df['#'] = [i + 1 for i in range(df.shape[0])]
+        if '\t' in e.args or '\n' in e.args:
+            for row in e.args.split('\n'):
+                insert_row = {}
+                for i, col in enumerate(row.split('\t')):
+                    if col == '':
+                        insert_row[cname[str(i)]] = 'none'
+                    else:
+                        insert_row[cname[str(i)]] = col
+                rowdata.append(insert_row)
+            df = pd.DataFrame(rowdata)
+            df.dropna(inplace=True)
+            df['#'] = [i + 1 for i in range(df.shape[0])]
 
-        self.input_tab.options['rowData'] = df.to_dict('records')
-        self.rowdata = self.input_tab.options['rowData']
-        self.input_tab.update()
+            self.input_tab.options['rowData'] = df.to_dict('records')
+            self.rowdata = self.input_tab.options['rowData']
+            self.input_tab.update()
+        else:
+            self.rowdata[int(self.selected_cell['rowId'])][self.selected_cell['colId']] = e.args
+            self.input_tab.options['rowData'] = self.rowdata
+            self.input_tab.update()
+
+
+    def input_tab_handle_click(self, e):
+        self.selected_cell = {"rowId": e.args["rowId"], "colId": e.args["colId"]}
 
 
     def on_paste_clipboard(self):
