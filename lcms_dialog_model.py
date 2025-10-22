@@ -1,5 +1,4 @@
 import json
-
 import pandas as pd
 from nicegui import app, ui, events
 from OligoMap_utils import api_db_interface
@@ -7,8 +6,6 @@ from lcms_zip import zip_oligo_mzdata
 from lcms_zip import interpolate_crom_line
 import base64
 import plotly.graph_objects as go
-import asyncio
-import sys
 from OligoMap_utils import oligomaps_search
 from oligoMass import molmassOligo as mmo
 import threading

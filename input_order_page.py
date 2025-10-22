@@ -1,17 +1,15 @@
 import pandas as pd
 from nicegui import ui, app, events
 from datetime import datetime
-from datetime import timedelta
 from OligoMap_utils import api_db_interface
 import json
 import requests
 from oligoMass import molmassOligo as mmo
-import asyncio
-import pandas as pd
 from molseq_lang import single_nucleic_acid_chain
 from collections import Counter
-import base64
 from io import BytesIO
+import threading
+import time
 
 
 class price_db_manager(api_db_interface):
@@ -432,6 +430,8 @@ class input_order_page_model(api_db_interface):
         self.input_tab.on("cellValueChanged", self.update_cell_data)
         self.input_tab.on('cellClicked', self.input_tab_handle_click)
 
+        self.progress = ui.linear_progress().style('width: 2000px')
+
     def update_cell_data(self, e):
         self.rowdata[e.args["rowIndex"]] = e.args["data"]
         self.input_tab.options['rowData'] = self.rowdata
@@ -441,12 +441,23 @@ class input_order_page_model(api_db_interface):
         try:
             content_io = BytesIO(e.content.read())
             df = pd.read_excel(content_io, engine='openpyxl')
-            print(e.name)
-            print(df)
-            for row in df.to_dict('records'):
-                print(row)
+            df = pd.DataFrame(df.values)
+            df = df[df[2].notna()]
+            df.fillna('', inplace=True)
+            #print(df)
+            out_df = pd.DataFrame([])
+            out_df['Name'] = df[0]
+            out_df["5'-end"] = df[1]
+            out_df['Sequence'] = df[2]
+            out_df["3'-end"] = df[3]
+            out_df['Amount_OE'] = df[4]
+            out_df['Purification'] = df[5]
+            out_df['#'] = [i + 1 for i in range(df.shape[0])]
+            self.input_tab.options['rowData'] = out_df.to_dict('records')
+            self.input_tab.update()
+            self.rowdata = self.input_tab.options['rowData']
         except:
-            ui.notify(f'Проблемы с чтением файла {e.name}')
+            ui.notify(f'Ошибка чтения файла {e.name}')
 
     def handle_clipboard(self, e):
         cname = {}
@@ -515,7 +526,7 @@ class input_order_page_model(api_db_interface):
                 "5'-end":'',
                 'Sequence':'',
                 "3'-end":'',
-                'Amout_OE':'',
+                'Amount_OE':'',
                 'Purification':'',
              }
         )
@@ -541,25 +552,26 @@ class input_order_page_model(api_db_interface):
 
     def on_download_form_event(self):
         df = pd.DataFrame(self.input_tab.options['rowData'])
-        rowdata = self.input_tab.options['rowData']
-        rowdata.append(
-            {
-                '#': len(self.input_tab.options['rowData']) + 1,
-                'Name': '',
-                "5'-end": '',
-                'Sequence': '',
-                "3'-end": '',
-                'Amount_OE': '',
-                'Purification': 'Итого:',
-                'Price': str(df['Price'].sum()),
-                'Error': ''
-            }
-        )
-        if self.invoce.value == '':
-            filename = 'invoce_form.xlsx'
-        else:
-            filename = f'{self.invoce.value}.xlsx'
-        self.download_excel_form(filename, pd.DataFrame(rowdata))
+        if df.shape[0] > 0:
+            rowdata = self.input_tab.options['rowData']
+            rowdata.append(
+                {
+                    '#': '',
+                    'Name': '',
+                    "5'-end": '',
+                    'Sequence': '',
+                    "3'-end": '',
+                    'Amount_OE': '',
+                    'Purification': 'Итого:',
+                    'Price': str(df['Price'].sum()),
+                    'Error': ''
+                }
+            )
+            if self.invoce.value == '':
+                filename = 'invoce_form.xlsx'
+            else:
+                filename = f'{self.invoce.value}.xlsx'
+            self.download_excel_form(filename, pd.DataFrame(rowdata))
 
 
     def on_clipboard_event(self, e):
@@ -660,9 +672,12 @@ class input_order_page_model(api_db_interface):
         self.price_grid.tab.update()
 
 
-    def culc_modif_count(self):
+    def get_price(self):
         rowdata = []
-        for row in self.input_tab.options['rowData']:
+        max_i = len(self.input_tab.options['rowData'])
+        for i, row in enumerate(self.input_tab.options['rowData']):
+            self.progress.value = i / max_i
+            time.sleep(0.1)
             oligo = oligo_price_calculator()
             oligo.check_oligo_params(row)
             d = row.copy()
@@ -673,10 +688,23 @@ class input_order_page_model(api_db_interface):
                     out_err[key] = oligo.error[key]
             d['Error'] = str(out_err)
             rowdata.append(d)
-        df = pd.DataFrame(rowdata)
+        self.rowdata = rowdata
+        self.progress.value = 1
+        time.sleep(0.2)
+
+    def culc_modif_count(self):
+        self.progress.value = 0
+        time.sleep(0.1)
+        background_thread = threading.Thread(target=self.get_price())
+        background_thread.daemon = True
+        background_thread.start()
+
+        df = pd.DataFrame(self.rowdata)
         self.culc_price.value = df['Price'].sum()
-        self.input_tab.options['rowData'] = rowdata
+        self.input_tab.options['rowData'] = self.rowdata
         self.input_tab.update()
+        self.progress.value = 0
+        time.sleep(0.1)
 
 
 
