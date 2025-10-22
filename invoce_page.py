@@ -65,10 +65,11 @@ class navigation_menu(api_db_interface):
         navigation = ui.row()
         with navigation:
             ui.link('Home', '/').style('font-size: 24px;')
-            if user_status in ['own', 'owner', 'synth_master']:
+            if user_status in ['own', 'owner', 'synth_master', 'product_manager']:
                 ui.link('Input order', '/input_order_panel').style('font-size: 24px;')
-            if user_status in ['own', 'lab_master', 'owner', 'synth_master']:
+            if user_status in ['own', 'lab_master', 'owner', 'synth_master', 'product_manager']:
                 ui.link('Invoces', '/invoce_panel').style('font-size: 24px;')
+            if user_status in ['own', 'lab_master', 'owner', 'synth_master']:
                 ui.link('Oligo synthesis', '/oligosynth_panel').style('font-size: 24px;')
                 ui.link('Raw materials', '/rawmaterials_panel').style('font-size: 24px;')
             if user_status in ['own', 'owner']:
@@ -247,10 +248,10 @@ class invoice_page_model(api_db_interface):
                                                 on_click=self.on_print_orders_date_range_event).classes('w-[200px]')
                 self.change_status_btn = ui.button('Change status', color='green',
                                                             on_click=self.on_change_status_event).classes(
-                    'w-[200px]')
+                        'w-[200px]')
                 self.update_content_tab_btn = ui.button('Update tab', color='orange',
                                                    on_click=self.on_update_content_tab_event).classes(
-                    'w-[200px]')
+                        'w-[200px]')
             with ui.column().classes('w-[2400px]'):
                 self.set_order_tab()
 
@@ -358,15 +359,13 @@ class invoice_page_model(api_db_interface):
 
 
     def update_invoce_cell_data(self, e):
-        self.invoice_tab_rowdata[e.args["rowIndex"]] = e.args["data"]
-        self.on_update_invoces_tab.run_method('click')
+        if app.storage.user.get('user_status') in ['own', 'owner', 'lab_master', 'synth_master']:
+            self.invoice_tab_rowdata[e.args["rowIndex"]] = e.args["data"]
+            self.on_update_invoces_tab.run_method('click')
 
     def update_invoce_content_cell_data(self, e):
-        #print(e.args["data"])
-        #self.invoce_content_tab_rowdata[e.args["rowIndex"]] = e.args["data"]
-        self.update_invoce_content_tab_in_base([e.args["data"]])
-        #self.update_content_tab_btn.run_method('click')
-        #print(self.invoce_content_tab_rowdata[e.args["rowIndex"]])
+        if app.storage.user.get('user_status') in ['own', 'owner', 'lab_master', 'synth_master']:
+            self.update_invoce_content_tab_in_base([e.args["data"]])
 
 
     def get_all_invoces(self):
@@ -535,15 +534,15 @@ class invoice_page_model(api_db_interface):
 
 
     def on_update_invoces_tab_event(self):
-        self.pincode = app.storage.user.get('pincode')
-
-        self.update_send_invoce_data(self.invoice_tab_rowdata)
-        df = pd.DataFrame(self.invoice_tab_rowdata)
-        df = df[(df['status'] == 'in progress') | (df['send'] == False)]
-        self.invoice_tab_rowdata = df.to_dict('records')
-        self.ag_grid.options['rowData'] = self.invoice_tab_rowdata
-        self.ag_grid.update()
-        app.storage.user['ag_grid_rowdata'] = self.ag_grid.options['rowData']
+        if app.storage.user.get('user_status') in ['own', 'owner', 'lab_master', 'synth_master']:
+            self.pincode = app.storage.user.get('pincode')
+            self.update_send_invoce_data(self.invoice_tab_rowdata)
+            df = pd.DataFrame(self.invoice_tab_rowdata)
+            df = df[(df['status'] == 'in progress') | (df['send'] == False)]
+            self.invoice_tab_rowdata = df.to_dict('records')
+            self.ag_grid.options['rowData'] = self.invoice_tab_rowdata
+            self.ag_grid.update()
+            app.storage.user['ag_grid_rowdata'] = self.ag_grid.options['rowData']
 
 
     async def on_show_invoces_content_event(self):
@@ -622,99 +621,102 @@ class invoice_page_model(api_db_interface):
 
 
     async def on_print_invoce_passport_event(self, e):
-        self.pincode = app.storage.user.get('pincode')
-        self.progressbar.visible = True
-        selrows = await self.ag_grid.get_selected_rows()
-        orders_tab = self.get_invoce_content(selrows)
-        out = []
-        oserch = oligomaps_search(self.db_IP, self.db_port)
-        oserch.pincode = self.pincode
-        date = datetime.strptime(orders_tab[0]['input date'], '%m.%d.%Y')
-        date = date - timedelta(days=10)
-        oserch.map_list = pd.DataFrame(oserch.get_oligomaps_date_tail(date.strftime('%Y-%m-%d'), tail_len=30))
-        for row in orders_tab:
-            d = row.copy()
-            maps = oserch.find_amount_by_order_id(row['#'])
-            maps = maps[maps['Dens, oe/ml'] > 0]
-            maps['Synt number'] = pd.to_numeric(maps['Synt number'], errors='coerce')
-            maps = maps.sort_values(by='Synt number', ascending=False)
-            #print(maps[['Synt number', 'Position', 'Dens, oe/ml', 'Vol, ml']])
-            tab = maps.to_dict('records')
-            if len(tab) > 0:
-                df = maps['Dens, oe/ml'].astype(float) * maps['Vol, ml'].astype(float)
-                d['Exist, oe'] = round(df.sum(), 0)
-                limit = oserch.get_low_amount_limit(d['Amount, oe'])
-                d['sufficiency'] = d['Exist, oe'] - limit
-                d['Purif type'] = maps['Purif type'].max()
-                #d['Position'] = maps['Position'].min()
-                d['Position'] = tab[0]['Position']
-                #maps['Synt number'] = pd.to_numeric(maps['Synt number'], errors='coerce')
-                #d['Synt number'] = maps['Synt number'].max()
-                d['Synt number'] = tab[0]['Synt number']
-                d['Status'] = maps['Status'].max()
-                d['Vol, ml'] = 1
-                d['Dens, oe/ml'] = d['Exist, oe']
-                d['Order id'] = maps['Order id'].max()
-                d['Seq'] = maps['Sequence'].max()
-                out.append(d)
+        if app.storage.user.get('user_status') in ['own', 'owner', 'lab_master', 'synth_master']:
+            self.pincode = app.storage.user.get('pincode')
+            self.progressbar.visible = True
+            selrows = await self.ag_grid.get_selected_rows()
+            orders_tab = self.get_invoce_content(selrows)
+            out = []
+            oserch = oligomaps_search(self.db_IP, self.db_port)
+            oserch.pincode = self.pincode
+            date = datetime.strptime(orders_tab[0]['input date'], '%m.%d.%Y')
+            date = date - timedelta(days=10)
+            oserch.map_list = pd.DataFrame(oserch.get_oligomaps_date_tail(date.strftime('%Y-%m-%d'), tail_len=30))
+            for row in orders_tab:
+                d = row.copy()
+                maps = oserch.find_amount_by_order_id(row['#'])
+                maps = maps[maps['Dens, oe/ml'] > 0]
+                maps['Synt number'] = pd.to_numeric(maps['Synt number'], errors='coerce')
+                maps = maps.sort_values(by='Synt number', ascending=False)
+                #print(maps[['Synt number', 'Position', 'Dens, oe/ml', 'Vol, ml']])
+                tab = maps.to_dict('records')
+                if len(tab) > 0:
+                    df = maps['Dens, oe/ml'].astype(float) * maps['Vol, ml'].astype(float)
+                    d['Exist, oe'] = round(df.sum(), 0)
+                    limit = oserch.get_low_amount_limit(d['Amount, oe'])
+                    d['sufficiency'] = d['Exist, oe'] - limit
+                    d['Purif type'] = maps['Purif type'].max()
+                    #d['Position'] = maps['Position'].min()
+                    d['Position'] = tab[0]['Position']
+                    #maps['Synt number'] = pd.to_numeric(maps['Synt number'], errors='coerce')
+                    #d['Synt number'] = maps['Synt number'].max()
+                    d['Synt number'] = tab[0]['Synt number']
+                    d['Status'] = maps['Status'].max()
+                    d['Vol, ml'] = 1
+                    d['Dens, oe/ml'] = d['Exist, oe']
+                    d['Order id'] = maps['Order id'].max()
+                    d['Seq'] = maps['Sequence'].max()
+                    out.append(d)
 
-        self.invoce_content_tab.options['rowData'] = out
-        self.invoce_content_tab.update()
-        self.invoce_content_tab_rowdata = self.invoce_content_tab.options['rowData']
+            self.invoce_content_tab.options['rowData'] = out
+            self.invoce_content_tab.update()
+            self.invoce_content_tab_rowdata = self.invoce_content_tab.options['rowData']
 
-        app.storage.user['invoce_content_tab_rowdata'] = self.invoce_content_tab.options['rowData']
+            app.storage.user['invoce_content_tab_rowdata'] = self.invoce_content_tab.options['rowData']
 
-        pass_filename = selrows[0]['invoce'].replace('/', '_')
-        pass_data = self.print_pass(self.invoce_content_tab.options['rowData'])
-        if e == 'excel':
-            self.save_passport(pass_filename, pass_data)
-        elif e == 'docx':
-            invoce = selrows[0]['invoce']
-            if 'УТ' in invoce:
-                invoce = invoce[invoce.find('УТ')+2:]
-            self.save_docx_passport(pass_data.to_dict('records'), invoce, f'{pass_filename}.docx')
-        self.progressbar.visible = False
+            pass_filename = selrows[0]['invoce'].replace('/', '_')
+            pass_data = self.print_pass(self.invoce_content_tab.options['rowData'])
+            if e == 'excel':
+                self.save_passport(pass_filename, pass_data)
+            elif e == 'docx':
+                invoce = selrows[0]['invoce']
+                if 'УТ' in invoce:
+                    invoce = invoce[invoce.find('УТ')+2:]
+                self.save_docx_passport(pass_data.to_dict('records'), invoce, f'{pass_filename}.docx')
+            self.progressbar.visible = False
 
 
     async def on_show_oligos_synt_button_event(self):
-        self.pincode = app.storage.user.get('pincode')
-        selrows = await self.invoce_content_tab.get_selected_rows()
-        sel_orders = list(pd.DataFrame(selrows)['#'])
-        rowdata = self.invoce_content_tab.options['rowData']
+        if app.storage.user.get('user_status') in ['own', 'owner', 'lab_master', 'synth_master']:
+            self.pincode = app.storage.user.get('pincode')
+            selrows = await self.invoce_content_tab.get_selected_rows()
+            sel_orders = list(pd.DataFrame(selrows)['#'])
+            rowdata = self.invoce_content_tab.options['rowData']
 
-        out = []
-        oserch = oligomaps_search(self.db_IP, self.db_port)
-        oserch.pincode = self.pincode
-        date = datetime.strptime(selrows[0]['input date'], '%m.%d.%Y')
-        date = date - timedelta(days=10)
-        oserch.map_list = pd.DataFrame(oserch.get_oligomaps_date_tail(date.strftime('%Y-%m-%d'), tail_len=30))
-        for row in rowdata:
-            d = row.copy()
-            #print(d)
-            if row['#'] in sel_orders:
-                maps = oserch.find_amount_by_order_id(row['#'])
-                s = ""
-                for syn, pos in zip(maps['Synt number'], maps['Position']):
-                    #print(syn, pos)
-                    s += f'{syn}_{pos}, '
-                d['synt, positions'] = s
-            out.append(d)
+            out = []
+            oserch = oligomaps_search(self.db_IP, self.db_port)
+            oserch.pincode = self.pincode
+            date = datetime.strptime(selrows[0]['input date'], '%m.%d.%Y')
+            date = date - timedelta(days=10)
+            oserch.map_list = pd.DataFrame(oserch.get_oligomaps_date_tail(date.strftime('%Y-%m-%d'), tail_len=30))
+            for row in rowdata:
+                d = row.copy()
+                #print(d)
+                if row['#'] in sel_orders:
+                    maps = oserch.find_amount_by_order_id(row['#'])
+                    s = ""
+                    for syn, pos in zip(maps['Synt number'], maps['Position']):
+                        #print(syn, pos)
+                        s += f'{syn}_{pos}, '
+                    d['synt, positions'] = s
+                out.append(d)
 
-        self.invoce_content_tab.options['rowData'] = out
-        self.invoce_content_tab.update()
-        self.invoce_content_tab_rowdata = self.invoce_content_tab.options['rowData']
-        app.storage.user['invoce_content_tab_rowdata'] = self.invoce_content_tab.options['rowData']
+            self.invoce_content_tab.options['rowData'] = out
+            self.invoce_content_tab.update()
+            self.invoce_content_tab_rowdata = self.invoce_content_tab.options['rowData']
+            app.storage.user['invoce_content_tab_rowdata'] = self.invoce_content_tab.options['rowData']
 
 
     async def on_send_oligos_button_event(self):
-        self.pincode = app.storage.user.get('pincode')
-        selrows = await self.invoce_content_tab.get_selected_rows()
+        if app.storage.user.get('user_status') in ['own', 'owner', 'lab_master', 'synth_master']:
+            self.pincode = app.storage.user.get('pincode')
+            selrows = await self.invoce_content_tab.get_selected_rows()
 
-        if 'oligos_list_synth' in list(app.storage.user.keys()):
-            app.storage.user['oligos_list_synth'].extend(selrows)
-        else:
-            app.storage.user['oligos_list_synth'] = []
-            app.storage.user['oligos_list_synth'].extend(selrows)
+            if 'oligos_list_synth' in list(app.storage.user.keys()):
+                app.storage.user['oligos_list_synth'].extend(selrows)
+            else:
+                app.storage.user['oligos_list_synth'] = []
+                app.storage.user['oligos_list_synth'].extend(selrows)
 
 
     def get_orders_by_status(self, status):
@@ -750,32 +752,35 @@ class invoice_page_model(api_db_interface):
 
 
     def on_show_by_status_event(self, param):
-        self.pincode = app.storage.user.get('pincode')
-        out = self.get_orders_by_status(param.value)
-        self.invoce_content_tab.options['rowData'] = out
-        self.invoce_content_tab.update()
-        self.invoce_content_tab_rowdata = self.invoce_content_tab.options['rowData']
-        app.storage.user['invoce_content_tab_rowdata'] = self.invoce_content_tab.options['rowData']
+        if app.storage.user.get('user_status') in ['own', 'owner', 'lab_master', 'synth_master']:
+            self.pincode = app.storage.user.get('pincode')
+            out = self.get_orders_by_status(param.value)
+            self.invoce_content_tab.options['rowData'] = out
+            self.invoce_content_tab.update()
+            self.invoce_content_tab_rowdata = self.invoce_content_tab.options['rowData']
+            app.storage.user['invoce_content_tab_rowdata'] = self.invoce_content_tab.options['rowData']
 
 
     def on_print_orders_date_range_event(self):
-        self.pincode = app.storage.user.get('pincode')
-        start_date = datetime.strptime(self.start_date.value, "%Y-%m-%d")
-        end_date = datetime.strptime(self.end_date.value, "%Y-%m-%d")
+        if app.storage.user.get('user_status') in ['own', 'owner', 'lab_master', 'synth_master']:
+            self.pincode = app.storage.user.get('pincode')
+            start_date = datetime.strptime(self.start_date.value, "%Y-%m-%d")
+            end_date = datetime.strptime(self.end_date.value, "%Y-%m-%d")
 
-        data = pd.DataFrame(self.invoce_content_tab.options['rowData'])
-        data['Date'] = pd.to_datetime(data['input date'], format='%m.%d.%Y')
-        conditions = (data['Date'] >= start_date)&(data['Date'] <= end_date)
-        columns = ["#", "Name", "5'-end", "Sequence", "3'-end", "Amount, oe", "Purification", "Lenght", "order id",
-                   "client id", "input date"]
-        df = data[conditions][columns]
-        self.save_passport('data_range', df)
-        app.storage.user['invoce_content_tab_rowdata'] = self.invoce_content_tab.options['rowData']
+            data = pd.DataFrame(self.invoce_content_tab.options['rowData'])
+            data['Date'] = pd.to_datetime(data['input date'], format='%m.%d.%Y')
+            conditions = (data['Date'] >= start_date)&(data['Date'] <= end_date)
+            columns = ["#", "Name", "5'-end", "Sequence", "3'-end", "Amount, oe", "Purification", "Lenght", "order id",
+                       "client id", "input date"]
+            df = data[conditions][columns]
+            self.save_passport('data_range', df)
+            app.storage.user['invoce_content_tab_rowdata'] = self.invoce_content_tab.options['rowData']
 
     async def on_change_status_event(self):
-        selrows = await self.invoce_content_tab.get_selected_rows()
-        status_dialog = change_status_dialog(self.db_IP, self.db_port, self.pincode, selrows)
-        status_dialog.dialog.open()
+        if app.storage.user.get('user_status') in ['own', 'owner', 'lab_master', 'synth_master']:
+            selrows = await self.invoce_content_tab.get_selected_rows()
+            status_dialog = change_status_dialog(self.db_IP, self.db_port, self.pincode, selrows)
+            status_dialog.dialog.open()
 
 
     def update_invoce_content_tab_in_base(self, rowData):
@@ -803,7 +808,8 @@ class invoice_page_model(api_db_interface):
 
 
     def on_update_content_tab_event(self):
-        self.on_show_invoces_content.run_method('click')
+        if app.storage.user.get('user_status') in ['own', 'owner', 'lab_master', 'synth_master']:
+            self.on_show_invoces_content.run_method('click')
 
 
     def init_data(self):

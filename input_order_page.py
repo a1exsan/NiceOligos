@@ -103,7 +103,8 @@ class price_db_manager(api_db_interface):
 class oligo_price_calculator():
     def __init__(self):
         self.price_base = price_db_manager()
-        self.error = {'unknown mod': '', 'unknown scale': '', 'unknown purif': ''}
+        self.end5_list, self.end3_list, self.pt_list, self.scale_list = self.price_base.get_all_types_groups()
+        self.error = {'unknown mod': '', 'unknown scale': '', 'unknown purif': '', '5end err': '', '3end err': ''}
         self.price = 0
 
     def check_scale(self, scale):
@@ -138,11 +139,16 @@ class oligo_price_calculator():
             self.error['unknown purif'] = purif
         return sum_price
 
-
     def check_oligo_params(self, row_dict):
         oligo = single_nucleic_acid_chain(row_dict['Sequence'])
         mod_5end = row_dict["5'-end"]
         mod_3end = row_dict["3'-end"]
+
+        if mod_3end not in self.end3_list:
+            self.error['3end err'] = mod_3end
+        if mod_5end not in self.end5_list:
+            self.error['5end err'] = mod_5end
+
         scale = row_dict["Amount_OE"]
         purif = row_dict["Purification"]
         if self.check_scale(scale):
@@ -216,14 +222,17 @@ class price_dialog():
                     ui.button('Отмена', on_click=self.dialog.close)
 
     def on_save_data(self):
-        price_dict, type_dict = {}, {}
-        self.grid.options['rowData'] = self.rowdata
-        self.grid.update()
-        for row in self.grid.options['rowData']:
-            price_dict[row['Symbol']] = row['Price']
-            type_dict[row['Symbol']] = row['Type']
-        self.price_base.insert_price_data(self.scale_param.value, price_dict, type_dict)
-        self.dialog.close()
+        if app.storage.user.get('user_status') in ['own', 'owner']:
+            price_dict, type_dict = {}, {}
+            self.grid.options['rowData'] = self.rowdata
+            self.grid.update()
+            for row in self.grid.options['rowData']:
+                price_dict[row['Symbol']] = row['Price']
+                type_dict[row['Symbol']] = row['Type']
+            self.price_base.insert_price_data(self.scale_param.value, price_dict, type_dict)
+            self.dialog.close()
+        else:
+            ui.notify('Недостаточно прав')
 
     def update_grid_cell_data(self, e):
         self.rowdata[e.args["rowIndex"]] = e.args["data"]
@@ -387,7 +396,10 @@ class input_order_page_model(api_db_interface):
                                                   ).classes('w-[200px]')
             ui.button('Edit price base', color='orange', on_click=self.on_edit_price)
             with ui.column():
-                self.invoce_price_btn = ui.button('Get price', on_click=self.culc_modif_count).classes('w-[200px]')
+                with ui.row():
+                    self.invoce_price_btn = ui.button('Get price', on_click=self.culc_modif_count).classes('w-[200px]')
+                    self.progressbar = ui.spinner(size='md', color='#FFA000')
+                    self.progressbar.visible = False
                 self.culc_price = ui.input(label='Summary price').classes('w-[200px]')
             ui.upload(label='Загрузить форму',
                       on_upload=self.handle_upload).props().classes("max-w-full")#"accept=.mzdata.xml"
@@ -430,7 +442,11 @@ class input_order_page_model(api_db_interface):
         self.input_tab.on("cellValueChanged", self.update_cell_data)
         self.input_tab.on('cellClicked', self.input_tab_handle_click)
 
+        self.progress_value_object = {'value': 0.}
+
         self.progress = ui.linear_progress().style('width: 2000px')
+        self.progress.bind_value_from(self.progress_value_object, 'value')
+
 
     def update_cell_data(self, e):
         self.rowdata[e.args["rowIndex"]] = e.args["data"]
@@ -456,6 +472,8 @@ class input_order_page_model(api_db_interface):
             self.input_tab.options['rowData'] = out_df.to_dict('records')
             self.input_tab.update()
             self.rowdata = self.input_tab.options['rowData']
+            self.progress_value_object['value'] = 0.
+            self.progress.update()
         except:
             ui.notify(f'Ошибка чтения файла {e.name}')
 
@@ -676,7 +694,9 @@ class input_order_page_model(api_db_interface):
         rowdata = []
         max_i = len(self.input_tab.options['rowData'])
         for i, row in enumerate(self.input_tab.options['rowData']):
-            self.progress.value = i / max_i
+            #self.progress.value = i / max_i
+            #self.progress.update()
+            self.progress_value_object['value'] = i/max_i
             time.sleep(0.1)
             oligo = oligo_price_calculator()
             oligo.check_oligo_params(row)
@@ -689,12 +709,16 @@ class input_order_page_model(api_db_interface):
             d['Error'] = str(out_err)
             rowdata.append(d)
         self.rowdata = rowdata
-        self.progress.value = 1
-        time.sleep(0.2)
+        #self.progress.value = 1
+        #self.progress.update()
+        self.progress_value_object['value'] = 1.
+        time.sleep(0.1)
 
     def culc_modif_count(self):
-        self.progress.value = 0
-        time.sleep(0.1)
+        #self.progress.value = 0
+        #self.progress.update()
+        self.progress_value_object['value'] = 0.
+
         background_thread = threading.Thread(target=self.get_price())
         background_thread.daemon = True
         background_thread.start()
@@ -703,17 +727,17 @@ class input_order_page_model(api_db_interface):
         self.culc_price.value = df['Price'].sum()
         self.input_tab.options['rowData'] = self.rowdata
         self.input_tab.update()
-        self.progress.value = 0
-        time.sleep(0.1)
-
 
 
     def on_add_to_base(self):
-        invoce = self.invoce.value
-        client = self.client.value
-        data = self.input_tab.options['rowData']
-        price = self.price.value
-        self.add_invoce_to_base(invoce, client, data, price)
+        if app.storage.user.get('user_status') in ['own', 'owner', 'synth_master']:
+            invoce = self.invoce.value
+            client = self.client.value
+            data = self.input_tab.options['rowData']
+            price = self.price.value
+            self.add_invoce_to_base(invoce, client, data, price)
+        else:
+            ui.notify('Недостаточно прав')
 
 
     def add_invoce_to_base(self, invoce, client, data, price):

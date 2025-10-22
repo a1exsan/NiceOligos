@@ -120,7 +120,7 @@ def input_order_panel() -> Optional[RedirectResponse]:
         return RedirectResponse('/login')
 
     navi_front = navigation_menu(IP_addr, '8012')
-    if app.storage.user.get('user_status') in ['own', 'owner', 'synth_master']:
+    if app.storage.user.get('user_status') in ['own', 'owner', 'synth_master', 'product_manager']:
         order_page = input_order_page_model(IP_addr, '8012')
 
 @ui.page('/invoce_panel')
@@ -129,7 +129,7 @@ def invoce_panel_page() -> Optional[RedirectResponse]:
         return RedirectResponse('/login')
 
     navi_front = navigation_menu(IP_addr, '8012')
-    if app.storage.user.get('user_status') in ['own', 'owner', 'lab_master', 'synth_master']:
+    if app.storage.user.get('user_status') in ['own', 'owner', 'lab_master', 'synth_master', 'product_manager']:
         invoce_front = invoice_page_model(IP_addr, '8012')
 
 @ui.page('/oligosynth_panel')
