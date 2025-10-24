@@ -50,7 +50,14 @@ class price_db_manager(api_db_interface):
         end5 = set(df[df['type']=='5end']['mod'].max())
         end3 = set(df[df['type']=='3end']['mod'].max())
         pt = set(df[df['type']=='purif_type']['mod'].max())
-        return list(end5), list(end3), list(pt), scale_list
+
+        end5_list = list(end5)
+        end5_list.append('none')
+
+        end3_list = list(end3)
+        end3_list.append('none')
+
+        return end5_list, end3_list, list(pt), scale_list
 
 
     def get_all_scales(self):
@@ -171,18 +178,24 @@ class price_dialog():
 
         colDefs = [
             {"field": "Symbol", 'editable': True},
-            {"field": "Price", 'editable': True},
+            #{"field": "Price", 'editable': True},
+            {"field": "1-3", 'editable': True},
+            {"field": "3-10", 'editable': True},
+            {"field": "5-10", 'editable': True},
+            {"field": "10-15", 'editable': True},
+            {"field": "15-20", 'editable': True},
+            {"field": "30-40", 'editable': True},
             {"field": "Type", 'editable': True},
         ]
 
-        scale_list = self.price_base.get_all_scales()
+        self.scale_list = self.price_base.get_all_scales()
 
         with ui.dialog() as self.dialog:
             with ui.card().style('width: auto; max-width: none;'):
                 with ui.row():
-                    self.scale_param = ui.input(label='Set scale').style('width: 200px; font-size: 20px')
-                    self.scale_selected = ui.select(options=scale_list, with_input=True, on_change=self.on_change_scale,
-                                                    value='1-3').classes('w-[200px]')
+                    #self.scale_param = ui.input(label='Set scale').style('width: 200px; font-size: 20px')
+                    #self.scale_selected = ui.select(options=self.scale_list, with_input=True, on_change=self.on_change_scale,
+                    #                                value='1-3').classes('w-[200px]')
                     ui.button('Add modification', on_click=self.on_add_modification)
                 rowdata = []
                 if self.price_data == {}:
@@ -194,7 +207,8 @@ class price_dialog():
                         {'Symbol': 'T', 'Price': 35},
                     ]
                 else:
-                    self.scale_param.value = self.scale
+                    all_rowdata = self.get_all_prices_rowdata(self.scale_list)
+                    #self.scale_param.value = self.scale
                     for key in self.price_data.keys():
                         rowdata.append(
                             {
@@ -206,14 +220,14 @@ class price_dialog():
                 self.grid = ui.aggrid(
                     {
                         'columnDefs': colDefs,
-                        'rowData': rowdata,
+                        'rowData': all_rowdata,
                         'rowSelection': 'multiple',
                         "pagination": True,
                         "enterNavigatesVertically": True,
                         "enterNavigatesVerticallyAfterEdit": True,
                         "singleClickEdit": True,
                     },
-                    theme='alpine-dark').style('width: 600px; height: 800px')
+                    theme='alpine-dark').style('width: 1600px; height: 1000px')
                 self.grid.auto_size_columns = True
                 self.grid.on("cellValueChanged", self.update_grid_cell_data)
                 self.rowdata = self.grid.options['rowData']
@@ -221,15 +235,35 @@ class price_dialog():
                     ui.button('Сохранить', color='orange', on_click=self.on_save_data)
                     ui.button('Отмена', on_click=self.dialog.close)
 
+    def get_all_prices_rowdata(self, scale_list):
+        price_data, type_data = self.price_base.get_price_data(scale_list[0])
+        rowdata = []
+        key_list = price_data.keys()
+        for key in key_list:
+            rowdata.append(
+                {
+                    'Symbol': key,
+                    '1-3': price_data[key],
+                    'Type': type_data[key],
+                }
+            )
+        df = pd.DataFrame(rowdata)
+        for scale in scale_list[1:]:
+            price_data, type_data = self.price_base.get_price_data(scale)
+            df[scale] = [price_data[key] for key in key_list]
+        return df.to_dict('records')
+
+
     def on_save_data(self):
         if app.storage.user.get('user_status') in ['own', 'owner']:
-            price_dict, type_dict = {}, {}
-            self.grid.options['rowData'] = self.rowdata
-            self.grid.update()
-            for row in self.grid.options['rowData']:
-                price_dict[row['Symbol']] = row['Price']
-                type_dict[row['Symbol']] = row['Type']
-            self.price_base.insert_price_data(self.scale_param.value, price_dict, type_dict)
+            for scale in self.scale_list:
+                price_dict, type_dict = {}, {}
+                self.grid.options['rowData'] = self.rowdata
+                self.grid.update()
+                for row in self.grid.options['rowData']:
+                    price_dict[row['Symbol']] = row[scale]
+                    type_dict[row['Symbol']] = row['Type']
+                self.price_base.insert_price_data(scale, price_dict, type_dict)
             self.dialog.close()
         else:
             ui.notify('Недостаточно прав')
@@ -238,7 +272,10 @@ class price_dialog():
         self.rowdata[e.args["rowIndex"]] = e.args["data"]
 
     def on_add_modification(self):
-        self.rowdata.append({'Symbol': '', 'Price': 1})
+        d = {'Symbol': ''}
+        for scale in self.scale_list:
+            d[scale] = 0
+        self.rowdata.append(d)
         self.grid.options['rowData'] = self.rowdata
         self.grid.update()
 
@@ -331,8 +368,6 @@ class input_order_page_model(api_db_interface):
 
         self.price_base = price_db_manager()
         self.end5_list, self.end3_list, self.pt_list, self.scale_list = self.price_base.get_all_types_groups()
-        self.end5_list.append('none')
-        self.end3_list.append('none')
         self.selected_cell = {}
 
         self.clip_js = '''
