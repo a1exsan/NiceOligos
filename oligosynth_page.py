@@ -449,7 +449,7 @@ class oligosynth_panel_page_model(api_db_interface):
         self.pincode = app.storage.user.get('pincode')
 
         self.strftime_format = "%Y-%m-%d"
-        self.db_name = 'scheduler_oligolab_2.db'
+        #self.db_name = 'scheduler_oligolab_2.db'
 
         with ui.row().classes("w-full"):
             self.synth_name_label = ui.label('Synthesis name')
@@ -625,7 +625,7 @@ class oligosynth_panel_page_model(api_db_interface):
             {"field": "map #", 'editable': True,},
             {"field": "Order id"},
             {"field": "Position", 'editable': True, 'filter': 'agTextColumnFilter'},
-            {"field": "Name"},
+            {"field": "Name", 'editable': True,},
             {"field": "Sequence", 'editable': True, 'filter': 'agTextColumnFilter'},
             {"field": "Purif type", 'editable': True, 'filter': 'agTextColumnFilter'},
             {"field": "Support type", 'editable': True, 'filter': 'agTextColumnFilter'},

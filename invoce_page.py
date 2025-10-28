@@ -16,7 +16,7 @@ class change_status_dialog(api_db_interface):
     def __init__(self, api_IP, db_port, pincode, rowdata):
         super().__init__(api_IP, db_port)
         self.pincode = pincode
-        self.db_name = 'scheduler_oligolab_2.db'
+        #self.db_name = 'scheduler_oligolab_2.db'
 
         self.rowdata = rowdata
 
@@ -110,8 +110,8 @@ class invoice_page_model(api_db_interface):
         super().__init__(api_IP, db_port)
 
         self.pincode = ''
-        self.db_name = 'scheduler_oligolab_2.db'
-        self.status_hist_db = 'oligo_status_history_1.db'
+        #self.db_name = 'scheduler_oligolab_2.db'
+        #self.status_hist_db = 'oligo_status_history_1.db'
 
         rowData = pd.DataFrame({
             '#': [0],

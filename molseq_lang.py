@@ -140,6 +140,14 @@ class modification_base(api_db_interface):
             if products != []:
                 self.reactant.smiles = Chem.MolToSmiles(products[0][0])
 
+    def delete_substructure(self, sub_smiles):
+        if self.reactant.smiles != '' and sub_smiles != '':
+            mol = Chem.MolFromSmiles(self.reactant.smiles)
+            pattern = Chem.MolFromSmarts(sub_smiles)
+            res = Chem.DeleteSubstructs(mol, pattern)
+            self.reactant.smiles = Chem.MolToSmiles(res)
+
+
     def get_modification_rowdata(self):
         tab = self.get_all_data_from_base('mod')
         out = []
@@ -720,6 +728,7 @@ class modification_page_model():
                 ui.button('react', color='orange', on_click=self.on_react_modification)
                 ui.button('edit rnx json', on_click=self.on_edit_rnx_json)
                 ui.button('edit mod json', color='green', on_click=self.on_edit_mod_json)
+                ui.button('substruct', color='orange', on_click=self.on_substruct_modification)
             with ui.column():
                 self.rnx_grid = ui.aggrid(
                     {
@@ -775,6 +784,7 @@ class modification_page_model():
                 self.tokens_area = ui.textarea(label='Product smiles').style('width: 800px')
                 self.progress = ui.linear_progress().style('width: 800px')
             self.props_area = ui.textarea(label='Mol props').style('width: 400px; font-size: 20px;')
+            self.substructure_area = ui.textarea(label='Substructure').style('width: 400px; font-size: 20px;')
 
         self.react_width = 2400
         self.react_height = 1600
@@ -928,6 +938,12 @@ class modification_page_model():
     def on_react_modification(self):
         self.obj_base.single_reaction()
         self.obj_base.draw_context(self.rnx_context)
+
+    def on_substruct_modification(self):
+        sub_smiles = self.substructure_area.value
+        self.obj_base.delete_substructure(sub_smiles)
+        self.obj_base.draw_context(self.rnx_context)
+
 
     async def on_edit_rnx_json(self):
         selrows = await self.rnx_grid.get_selected_rows()

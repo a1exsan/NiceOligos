@@ -18,7 +18,6 @@ class price_db_manager(api_db_interface):
         port = app.storage.general.get('db_port')
         super().__init__(IP, port)
         self.pincode = app.storage.user.get('pincode')
-        self.db_price_name = 'oligo_price_blmx_2.db'
 
     def get_all_data_in_tab_key(self, tab_name, key, value):
         url = f'{self.api_db_url}/get_keys_data/{self.db_price_name}/{tab_name}/{key}/{value}'
@@ -364,7 +363,7 @@ class input_order_page_model(api_db_interface):
     def __init__(self, api_IP, db_port):
         super().__init__(api_IP, db_port)
         self.init_pincode()
-        self.db_name = 'scheduler_oligolab_2.db'
+        #self.db_name = 'scheduler_oligolab_2.db'
 
         self.price_base = price_db_manager()
         self.end5_list, self.end3_list, self.pt_list, self.scale_list = self.price_base.get_all_types_groups()
@@ -734,7 +733,11 @@ class input_order_page_model(api_db_interface):
             self.progress_value_object['value'] = i/max_i
             time.sleep(0.1)
             oligo = oligo_price_calculator()
-            oligo.check_oligo_params(row)
+            try:
+                oligo.check_oligo_params(row)
+            except Exception as e:
+                ui.notify(e)
+
             d = row.copy()
             d['Price'] = oligo.price
             out_err = {}

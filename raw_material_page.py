@@ -29,8 +29,6 @@ class rawmaterial_panel_page_model(api_db_interface):
         super().__init__(db_IP, db_port)
         self.pincode = ''
         self.init_data()
-
-        self.widget_db = 'gui_object_content_1.db'
         self.set_widget_list()
         self.init_frontend()
 

@@ -17,8 +17,7 @@ class show_stock_operations(api_db_interface):
         else:
             self.pincode = ''
 
-        self.db_name = 'stock_oligolab_5.db'
-        self.db_users = 'users_1.db'
+        self.db_name = self.stock_db_name
         self.strftime_format = "%Y-%m-%d"
         self.time_format = "%H:%M:%S"
         self.tab_name = ''
@@ -355,8 +354,7 @@ class writeOff_dialog(api_db_interface):
         super().__init__(api_IP, db_port)
 
         self.write_off = write_off
-        self.db_name = 'stock_oligolab_5.db'
-        self.db_users = 'users_1.db'
+        self.db_name = self.stock_db_name
         self.strftime_format = "%Y-%m-%d"
         self.time_format = "%H:%M:%S"
 
@@ -500,7 +498,7 @@ class raw_mat_base_widget(api_db_interface):
     def __init__(self, api_IP, db_port, unicode, pincode):
         super().__init__(api_IP, db_port)
 
-        self.db_name = 'stock_oligolab_5.db'
+        self.db_name = self.stock_db_name
         self.strftime_format = "%Y-%m-%d"
         self.time_format = "%H:%M:%S"
 
@@ -653,7 +651,7 @@ class rawMatList(api_db_interface):
         self.pincode = pincode
         self.visible = True
 
-        self.db_name = 'stock_oligolab_5.db'
+        self.db_name = self.stock_db_name
         self.strftime_format = "%Y-%m-%d"
         self.time_format = "%H:%M:%S"
 
@@ -1020,10 +1018,9 @@ class infoPanel(api_db_interface):
         self.label_obj = lbl_obj
         self._bkg = 'infopanel_bkg_2.png'
 
-        self.db_name = 'stock_oligolab_5.db'
+        self.db_name = self.stock_db_name
         self.strftime_format = "%Y-%m-%d"
         self.time_format = "%H:%M:%S"
-        self.widget_db = 'gui_object_content_1.db'
 
         self.width = 1000
         self.height = 800

@@ -27,6 +27,10 @@ class api_db_interface():
         self.widget_db = 'gui_object_content_1.db'
         self.stock_db_name = 'stock_oligolab_5.db'
         self.db_users = 'users_1.db'
+        self.db_price_name = 'oligo_price_blmx_2.db'
+        self.chrom_db = 'chrom_data_1.db'
+        self.maps_db_name = 'asm2000_map_1.db'
+        self.status_hist_db = 'oligo_status_history_1.db'
 
     def headers(self):
         return {'Authorization': f'Pincode {self.pincode}'}
@@ -201,9 +205,8 @@ class stock_db_data(api_db_interface):
         port = app.storage.general.get('db_port')
         super().__init__(IP, port)
         self.pincode = app.storage.user.get('pincode')
-
-        self.db_name = 'stock_oligolab_5.db'
-        self.db_users = 'users_1.db'
+        self.db_name = self.stock_db_name#'stock_oligolab_5.db'
+        #self.db_users = 'users_1.db'
         self.strftime_format = "%Y-%m-%d"
         self.time_format = "%H:%M:%S"
 
@@ -286,18 +289,14 @@ class stock_db_data(api_db_interface):
         return tab_df.to_dict('records')
 
 
-
-
 class oligomaps_search(api_db_interface):
 
     def __init__(self, api_IP, db_port):
         super().__init__(api_IP, db_port)
-
         self.pincode = ''
-        self.maps_db_name = 'asm2000_map_1.db'
         self.strftime_format = "%Y-%m-%d"
-        self.db_name = 'scheduler_oligolab_2.db'
-        self.chrom_db = 'chrom_data_1.db'
+        #self.db_name = 'scheduler_oligolab_2.db'
+
 
     def map_in_progress(self, mapdata):
         map = json.loads(mapdata)
