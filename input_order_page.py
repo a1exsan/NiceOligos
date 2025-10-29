@@ -467,8 +467,7 @@ class input_order_page_model(api_db_interface):
                 'rowData': df.to_dict('records'),
                 'rowSelection': 'multiple',
                 "pagination": True,
-            }
-            ,
+            },
             theme='alpine-dark').style('width: 2000px; height: 1000px')
         self.rowdata = self.input_tab.options['rowData']
         self.input_tab.on('paste', js_handler=self.clip_js)
@@ -499,6 +498,7 @@ class input_order_page_model(api_db_interface):
             out_df['Name'] = df[0]
             out_df["5'-end"] = df[1]
             out_df['Sequence'] = df[2]
+            out_df['Sequence'] = out_df['Sequence'].str.replace(' ', '')
             out_df["3'-end"] = df[3]
             out_df['Amount_OE'] = df[4]
             out_df['Purification'] = df[5]
@@ -510,29 +510,6 @@ class input_order_page_model(api_db_interface):
             self.progress.update()
         except:
             ui.notify(f'Ошибка чтения файла {e.name}')
-
-    def handle_clipboard(self, e):
-        cname = {}
-        cname['0'] = 'Name'
-        cname['1'] = "5'-end"
-        cname['2'] = 'Sequence'
-        cname['3'] = "3'-end"
-        cname['4'] = 'Amount_OE'
-        cname['5'] = 'Purification'
-        rowdata = []
-        for row in e.args.split('\n'):
-            insert_row = {}
-            for i, col in enumerate(row.split('\t')):
-                if col == '':
-                    insert_row[cname[str(i)]] = 'none'
-                else:
-                    insert_row[cname[str(i)]] = col
-            rowdata.append(insert_row)
-        df = pd.DataFrame(rowdata)
-        df.dropna(inplace=True)
-        self.input_tab.options['rowData'] = df.to_dict('records')
-        self.rowdata = self.input_tab.options['rowData']
-        self.input_tab.update()
 
     def on_edit_price(self):
         dlg = price_dialog('1-3')
@@ -643,6 +620,8 @@ class input_order_page_model(api_db_interface):
                         insert_row[cname[str(i)]] = 'none'
                     else:
                         insert_row[cname[str(i)]] = col
+                    if 'Sequence' in insert_row:
+                        insert_row['Sequence'] = insert_row['Sequence'].replace(' ', '')
                 rowdata.append(insert_row)
             df = pd.DataFrame(rowdata)
             df.dropna(inplace=True)
@@ -753,14 +732,10 @@ class input_order_page_model(api_db_interface):
         time.sleep(0.1)
 
     def culc_modif_count(self):
-        #self.progress.value = 0
-        #self.progress.update()
         self.progress_value_object['value'] = 0.
-
         background_thread = threading.Thread(target=self.get_price())
         background_thread.daemon = True
         background_thread.start()
-
         df = pd.DataFrame(self.rowdata)
         self.culc_price.value = df['Price'].sum()
         self.input_tab.options['rowData'] = self.rowdata
