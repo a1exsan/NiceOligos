@@ -235,6 +235,7 @@ class single_nucleic_acid_chain():
 
     def parse(self, seq):
         seq = re.sub(r'\+(\w)', r'[+\1]', seq)
+        seq = re.sub(r'(r)(\w)', r'[r\2]', seq)
         pattern = r'(\[[^\]]*\])|([^\[\]]+)'
         matches = re.findall(pattern, seq)
         result = []
@@ -458,6 +459,8 @@ class single_nucleic_acid_chain_assembler(single_nucleic_acid_chain):
         smiles_list = modification_.smiles.split('.')
         adduct = smiles_list[0]
         mod_data = json.loads(modification_.data_json)
+        if 'DEBL_RNA' in mod_data:
+            self.rna_list.extend(mod_data['DEBL_RNA'])
         if branch_ctrl:
             branch_count = self.get_branch_count(self.structure)
         else:
@@ -478,6 +481,16 @@ class single_nucleic_acid_chain_assembler(single_nucleic_acid_chain):
         if self.structure != '':
             if self.desupport_id > 0:
                 rnx_smarts = self.rnx_base[self.desupport_id].smarts
+                rxn = rdChemReactions.ReactionFromSmarts(rnx_smarts)
+                react = Chem.MolFromSmiles(self.structure)
+                products = rxn.RunReactants([react])
+                if products != ():
+                    self.structure = Chem.MolToSmiles(products[0][0])
+
+    def do_rna_deblock(self, rnx_list):
+        if len(rnx_list) > 0:
+            for id in rnx_list:
+                rnx_smarts = self.rnx_base[id].smarts
                 rxn = rdChemReactions.ReactionFromSmarts(rnx_smarts)
                 react = Chem.MolFromSmiles(self.structure)
                 products = rxn.RunReactants([react])
@@ -531,6 +544,7 @@ class single_nucleic_acid_chain_assembler(single_nucleic_acid_chain):
             time.sleep(0.5)
 
         last_token = ''
+        self.rna_list = []
         for i, token in enumerate(reverse_chain):
             last_token = token
             if self.build_progress is not None:
@@ -543,6 +557,7 @@ class single_nucleic_acid_chain_assembler(single_nucleic_acid_chain):
             else:
                 print(f'{token} not in base')
         self.do_desupport_structure()
+        self.do_rna_deblock(self.rna_list)
 
         data_json = json.loads(self.mod_base[last_token].data_json)
         if 'DETRIT' in data_json:
