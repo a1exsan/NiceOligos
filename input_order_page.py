@@ -704,12 +704,14 @@ class input_order_page_model(api_db_interface):
 
 
     def get_price(self):
+        self.progress_value_object['value'] = 0.64
+        time.sleep(0.1)
         rowdata = []
         max_i = len(self.input_tab.options['rowData'])
         for i, row in enumerate(self.input_tab.options['rowData']):
             #self.progress.value = i / max_i
             #self.progress.update()
-            self.progress_value_object['value'] = i/max_i
+            self.progress_value_object['value'] = 0.99
             time.sleep(0.1)
             oligo = oligo_price_calculator()
             try:

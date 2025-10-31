@@ -12,6 +12,7 @@ from input_order_page import input_order_page_model
 from invoce_page import api_db_interface
 from stock_data_page import stock_data_page_model
 from molseq_lang import modification_page_model
+from asm2000_method import asm2000_method_page_model
 from server import IP
 
 import hashlib
@@ -178,6 +179,16 @@ def main_page() -> Optional[RedirectResponse]:
     navi_front = navigation_menu(IP_addr, '8012')
     if app.storage.user.get('user_status') in ['own', 'owner']:
        model = modification_page_model()
+
+
+@ui.page('/asm2000_method')
+def main_page() -> Optional[RedirectResponse]:
+    if not app.storage.user.get('authenticated', False):
+        return RedirectResponse('/login')#
+
+    navi_front = navigation_menu(IP_addr, '8012')
+    if app.storage.user.get('user_status') in ['own', 'owner']:
+        model = asm2000_method_page_model()
 
 
 #if __name__ == '__main__':
