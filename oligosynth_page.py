@@ -254,7 +254,7 @@ class write_off_click_dialog():
     def on_write_off_NHS(self):
         rowdata = []
         for row in self.map:
-            if 'azide_unicode' in row:
+            if 'NHS_unicode' in row:
                 d = {}
                 d['name'] = row['NHS_name']
                 d['unicode'] = row['NHS_unicode']
