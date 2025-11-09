@@ -198,7 +198,8 @@ class invoice_page_model(api_db_interface):
                 'rowData': rowData.to_dict('records'),
                 'rowSelection': 'multiple',
                 "pagination": True,
-                #"enableRangeSelection": True,
+                ':getRowStyle': '(params) => params.data.status === "complited" ? { background: "green" } :'
+                                ' { background: "none" }'
             }
         ,
         theme='alpine-dark').classes('h-[800px]') # alpine  material  quartz  balham

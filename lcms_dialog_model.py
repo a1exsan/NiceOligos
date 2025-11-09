@@ -83,7 +83,9 @@ class lcms_analyser(api_db_interface):
             with ui.column():
                 ui.button('perform data', on_click=self.on_perform_data)
                 self.progress = ui.linear_progress()
-                self.selection_switch = ui.switch('selection rect', on_change=self.on_switch_selection)
+                with ui.row():
+                    self.selection_switch = ui.switch('selection rect', on_change=self.on_switch_selection)
+                    self.ctrl_polish = ui.checkbox('Polish', value=True)
             ui.button('plot init data', on_click=self.on_plot_init_data)
             ui.button('plot polish data', on_click=self.on_plot_polish_data)
             ui.button('plot deconv data', on_click=self.on_deconvolute)
@@ -282,7 +284,7 @@ class lcms_analyser(api_db_interface):
         self.progress.value = 0.6
         time.sleep(1)
 
-        self.deconv_data = self.zip_lcms.deconvolution()
+        self.deconv_data = self.zip_lcms.deconvolution(ctrl_polish=self.ctrl_polish.value)
         self.progress.value = 0.77
         time.sleep(1)
 

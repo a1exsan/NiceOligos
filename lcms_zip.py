@@ -348,25 +348,31 @@ class zip_oligo_mzdata():
         self.neighbor_treshold = neighbor_treshold
         self.low_intens_treshold = int_treshold
         self.bkg_polish_count = neighbor_repeats
-
         self.substract_bkg()
 
+        data = []
         for i in range(self.bkg_polish_count):
             map = get_intensity_map(self.data, low_treshold=self.low_intens_treshold, param=self.polish_param)
-            self.data = find_inner_points(self.data, map, neighbor_treshold=self.neighbor_treshold, param=self.polish_param)
+            data = find_inner_points(self.data, map, neighbor_treshold=self.neighbor_treshold, param=self.polish_param)
+        if data != []:
+            self.data = data
+
 
     def substract_bkg(self):
         self.data = substract_bkg(self.init_data, self.bkg, treshold=self.bkg_treshold,
                                   rt_min=self.rt_interval[0], rt_max=self.rt_interval[1])
 
-    def deconvolution(self):
+    def deconvolution(self, ctrl_polish=True):
         retention_interval = self.rt_interval
         bkg_treshold = self.bkg_treshold
         neighbor_treshold = self.neighbor_treshold
         bkg_polish_repeats = self.bkg_polish_count
         low_intens_treshold = self.low_intens_treshold
-        self.polish(retention_interval, bkg_treshold, neighbor_treshold,
+        if ctrl_polish:
+            self.polish(retention_interval, bkg_treshold, neighbor_treshold,
                               bkg_polish_repeats, low_intens_treshold)
+        else:
+            self.data = self.init_data
         deconv = oligosDeconvolution(self.data[:, 0], self.data[:, 1], self.data[:, 2], is_positive=False, max_charge=10)
         deconv.deconv_fast = True
         deconv_data = deconv.deconvolute()

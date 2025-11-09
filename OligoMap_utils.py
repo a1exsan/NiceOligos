@@ -358,7 +358,7 @@ class oligomaps_search(api_db_interface):
                     ui.notify('данные добавлены в базу')
             else:
                 url = f'{self.api_db_url}/update_data/{self.lcms_db_name}/tab/{ID}'
-                print(lcms_data)
+                #print(lcms_data)
                 r = requests.put(url,
                                  json=json.dumps({
                                      'name_list': ['data_json', 'date'],
@@ -366,7 +366,6 @@ class oligomaps_search(api_db_interface):
                                  }), headers=self.headers())
                 if r.status_code == 200:
                     ui.notify('данные обновлены')
-
             return r.status_code == 200
         else:
             return False
