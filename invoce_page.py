@@ -74,6 +74,7 @@ class navigation_menu(api_db_interface):
                 ui.link('Raw materials', '/rawmaterials_panel').style('font-size: 24px;')
             if user_status in ['own', 'owner']:
                 ui.link('Chemicals', '/chemicals_panel').style('font-size: 24px;')
+            if user_status in ['own', 'owner', 'synth_master']:
                 ui.link('Modifications', '/modifications').style('font-size: 24px;')
             if user_status in ['own', 'owner', 'stock_viewer']:
                 ui.link('Stock data', '/stock_data').style('font-size: 24px;')

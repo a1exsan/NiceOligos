@@ -177,7 +177,7 @@ def main_page() -> Optional[RedirectResponse]:
         return RedirectResponse('/login')#
 
     navi_front = navigation_menu(IP_addr, '8012')
-    if app.storage.user.get('user_status') in ['own', 'owner']:
+    if app.storage.user.get('user_status') in ['own', 'owner', 'synth_master']:
        model = modification_page_model()
 
 

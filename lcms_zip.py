@@ -350,12 +350,12 @@ class zip_oligo_mzdata():
         self.bkg_polish_count = neighbor_repeats
         self.substract_bkg()
 
-        data = []
+        #data = []
         for i in range(self.bkg_polish_count):
             map = get_intensity_map(self.data, low_treshold=self.low_intens_treshold, param=self.polish_param)
-            data = find_inner_points(self.data, map, neighbor_treshold=self.neighbor_treshold, param=self.polish_param)
-        if data != []:
-            self.data = data
+            self.data = find_inner_points(self.data, map, neighbor_treshold=self.neighbor_treshold, param=self.polish_param)
+        #if data != []:
+        #    self.data = data
 
 
     def substract_bkg(self):
