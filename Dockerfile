@@ -32,6 +32,9 @@ ADD mzdatapy.py .
 ADD server.py .
 ADD molseq_lang.py .
 ADD synthesis_method.py .
+ADD asm2000_method.py .
+ADD asm_templates.py .
+ADD mol3D.py .
 
 RUN mkdir -p /app/static_images
 RUN mkdir -p /app/images
@@ -59,6 +62,8 @@ ADD templates/pass_tmpl_2.docx ./templates
 ADD templates/combined.docx ./templates
 ADD templates/passport_doc.docx ./templates
 ADD templates/passport_rowdata.docx ./templates
+ADD templates/autosampler_75ul_method1.pr2 ./templates
+ADD templates/autosampler_75ul_template.pr2 ./templates
 
 # VOLUME "/app/data/temp"
 

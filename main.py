@@ -18,13 +18,8 @@ from server import IP
 import hashlib
 
 oligo_map_stack = oligos_data_stack()
-
-users = {'test': hashlib.sha256('12345'.encode('utf-8')).hexdigest()}
-
-#IP_addr = '127.0.0.1'
-#IP_addr = '192.168.16.145'
-#IP_addr = '84.252.133.233'
 IP_addr = IP
+
 
 app.storage.general['db_IP'] = IP_addr
 app.storage.general['db_port'] = '8012'
@@ -52,6 +47,7 @@ def logout():
         '''
     )
 
+
 @ui.page('/register')
 def register_page():
     ui.dark_mode(True)
@@ -75,6 +71,7 @@ def register_page():
 
     ui.button('Зарегистрироваться', on_click=register)
     ui.link('Есть аккаунт? Войти', '/login')
+
 
 @ui.page('/login')
 def login_page() -> Optional[RedirectResponse]:
@@ -124,6 +121,7 @@ def input_order_panel() -> Optional[RedirectResponse]:
     if app.storage.user.get('user_status') in ['own', 'owner', 'synth_master', 'product_manager']:
         order_page = input_order_page_model(IP_addr, '8012')
 
+
 @ui.page('/invoce_panel')
 def invoce_panel_page() -> Optional[RedirectResponse]:
     if not app.storage.user.get('authenticated', False):
@@ -132,6 +130,7 @@ def invoce_panel_page() -> Optional[RedirectResponse]:
     navi_front = navigation_menu(IP_addr, '8012')
     if app.storage.user.get('user_status') in ['own', 'owner', 'lab_master', 'synth_master', 'product_manager']:
         invoce_front = invoice_page_model(IP_addr, '8012')
+
 
 @ui.page('/oligosynth_panel')
 def oligosynth_panel_page() -> Optional[RedirectResponse]:
@@ -152,6 +151,7 @@ def rawmaterials_panel_page() -> Optional[RedirectResponse]:
     if app.storage.user.get('user_status') in ['own', 'owner', 'lab_master', 'synth_master']:
         rawmat_panel = rawmaterial_panel_page_model(IP_addr, 8012)
 
+
 @ui.page('/chemicals_panel')
 def chemicals_panel_page() -> Optional[RedirectResponse]:
     if not app.storage.user.get('authenticated', False):
@@ -160,6 +160,7 @@ def chemicals_panel_page() -> Optional[RedirectResponse]:
     navi_front = navigation_menu(IP_addr, '8012')
     if app.storage.user.get('user_status') in ['own', 'owner']:
         chem_page = chemicals_page_model(IP_addr, 8012)
+
 
 @ui.page('/stock_data')
 def stock_data_page() -> Optional[RedirectResponse]:

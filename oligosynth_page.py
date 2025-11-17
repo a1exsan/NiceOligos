@@ -15,7 +15,6 @@ from molseq_lang import single_nucleic_acid_chain_assembler
 import xwell_plate_unit as XWells
 from xwell_plate_unit import click_azide
 from xwell_plate_unit import click_NHS
-import json
 
 
 class stat_dialog():

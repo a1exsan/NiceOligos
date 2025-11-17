@@ -32,6 +32,8 @@ class stock_data_page_model(api_db_interface):
             with ui.row():
                 ui.button('Показать продукцию', color='orange', on_click=self.on_show_products)
                 ui.button('Скачать', color='green', on_click=self.on_save_products)
+                self.total_price = ui.input(label='Total:')
+                self.total_price_lab = ui.input(label='Total lab:')
 
             with ui.row():
                 ui.button('Показать списания', color='orange', on_click=self.on_show_write_off)
@@ -70,9 +72,14 @@ class stock_data_page_model(api_db_interface):
         else:
             return []
 
+    def get_all_invoces(self):
+        url = f'{self.api_db_url}/get_all_invoces/{self.db_name}'
+        ret = requests.get(url, headers=self.headers())
+        return ret.json()
 
     def on_show_products(self):
         data = self.get_finished_orders()
+        invoces_df = pd.DataFrame(self.get_all_invoces())
 
         start_date = datetime.strptime(self.start_date.value, "%Y-%m-%d")
         end_date = datetime.strptime(self.end_date.value, "%Y-%m-%d")
@@ -81,13 +88,24 @@ class stock_data_page_model(api_db_interface):
             'start date': self.start_date.value,
             'end date': self.end_date.value
                                                  }
-
         df = pd.DataFrame(data)
-        df['Date'] = pd.to_datetime(df['input date'], format='%m.%d.%Y')
+        df['Date'] = pd.to_datetime(df['output date'], errors='coerce', format='%d.%m.%Y')
+        #print(df.keys())
+        #df['Date'] = pd.to_datetime(df['output date'], errors='coerce', format='mixed')
         conditions = (df['Date'] >= start_date) & (df['Date'] <= end_date)
         columns = ["#", "Name", "5'-end", "Sequence", "3'-end", "Amount, oe", "Purification", "Lenght", "order id",
                    "client id", "input date", "output date"]
         df = df[conditions][columns]
+
+        invoce_names = list(df['order id'].unique())
+        invoces_df = invoces_df[invoces_df['invoce'].isin(invoce_names)]
+        invoces_df['value P'] = pd.to_numeric(invoces_df['value P'], errors='coerce').fillna(0).astype(int)
+        #invoces_df['value P'] = invoces_df['value P'].astype(int)
+        total = round(invoces_df['value P'].sum(), 0)
+        invoces_df = invoces_df[(invoces_df['client'] != 'Kolya') & (invoces_df['invoce'].str.contains('УТ', na=False))]
+
+        self.total_price.value = round(invoces_df['value P'].sum(), 0)
+        self.total_price_lab.value = round(total - invoces_df['value P'].sum(), 0)
 
         self.invoce_content_tab.options['rowData'] = df.to_dict('records')
         self.invoce_content_tab.update()
@@ -121,7 +139,7 @@ class stock_data_page_model(api_db_interface):
         m_df = pd.merge(g_out_df, df_tab, how='inner', on='Unicode')
         df = m_df[['Name_y', 'Amount', 'units', 'producer', 'supplyer', 'price', 'Unicode', 'articul']]
         df['sum'] = df['Amount'] * df['price']
-        self.total_cost.value = str(df['sum'].sum())
+        self.total_cost.value = str(round(df['sum'].sum(), 0))
 
         self.ag_grid.options['rowData'] = df.to_dict('records')
         self.ag_grid.update()
@@ -277,7 +295,9 @@ class stock_data_page_model(api_db_interface):
         ui.download(buffer.read(), filename=f'{filename}.xlsx')
 
     def on_save_products(self):
-        self.save_excel('products', pd.DataFrame(self.invoce_content_tab.options['rowData']))
+        df = pd.DataFrame(self.invoce_content_tab.options['rowData'])
+        df['Name'] = df['Name'].astype(str).str.replace(r'[\x00-\x1F]', '', regex=True)
+        self.save_excel('products', df)
 
     def on_save_rowmat(self):
         self.save_excel('rowmaterials', pd.DataFrame(self.ag_grid.options['rowData']))
