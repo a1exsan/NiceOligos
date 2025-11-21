@@ -2,15 +2,28 @@ from rdkit import Chem
 from rdkit.Chem import AllChem
 import py3Dmol
 from nicegui import ui
+from rdkit.Chem import rdDistGeom
 
 # Генерация молекулы
 smiles = """
-COc1cc(/N=N/c2ccc(C)cc2[N+](=O)[O-])c(C)cc1/N=N/c1ccc(N(CCO)CCOP(=O)(O)O[C@H]2C[C@H](n3ccc(N)nc3=O)O[C@@H]2COP(=O)(O)O[C@H]2C[C@H](n3cnc4c(O)nc(N)nc43)O[C@@H]2COP(=O)(O)O[C@H]2C[C@H](n3cnc4c(N)ncnc43)O[C@@H]2COP(=O)(O)O[C@H]2C[C@H](n3cc(C)c(O)nc3=O)O[C@@H]2COP(=O)(O)O[C@H]2C[C@H](n3cc(C)c(O)nc3=O)O[C@@H]2COP(=O)(O)O[C@H]2C[C@H](n3cc(C)c(O)nc3=O)O[C@@H]2COP(=O)(O)O[C@H]2C[C@H](n3cc(C)c(O)nc3=O)O[C@@H]2COP(=O)(O)O[C@H]2C[C@H](n3cnc4c(O)nc(N)nc43)O[C@@H]2COP(=O)(O)O[C@H]2C[C@H](n3ccc(N)nc3=O)O[C@@H]2COP(=O)(O)O[C@H]2C[C@H](n3cnc4c(N)ncnc43)O[C@@H]2COP(=O)(O)O[C@H]2C[C@H](n3cc(C)c(O)nc3=O)O[C@@H]2COP(=O)(O)O[C@H]2C[C@H](n3cnc4c(O)nc(N)nc43)O[C@@H]2COP(=O)(O)O[C@H]2C[C@H](n3ccc(N)nc3=O)O[C@@H]2COP(=O)(O)O[C@H]2C[C@H](n3cnc4c(N)ncnc43)O[C@@H]2COP(=O)(O)O[C@H]2C[C@H](n3cc(C)c(O)nc3=O)O[C@@H]2COP(=O)(O)O[C@H]2C[C@H](n3cnc4c(O)nc(N)nc43)O[C@@H]2COP(=O)(O)O[C@H]2C[C@H](n3ccc(N)nc3=O)O[C@@H]2COP(=O)(O)O[C@H]2C[C@H](n3cnc4c(N)ncnc43)O[C@@H]2COP(=O)(O)OCCCCCC/N=C(\O)c2ccc3c(c2)C2(OC3=O)c3ccc(O)cc3Oc3cc(O)ccc32)cc1
+Cc1cn([C@H]2C[C@H](OP(=O)(O)OC[C@H]3O[C@@H](n4ccc(N)nc4=O)C[C@@H]3OP(=O)(O)OC[C@H]3O[C@@H](n4ccc(N)nc4=O)C[C@@H]3OP(=O)(O)OC[C@H]3O[C@@H](n4ccc(N)nc4=O)C[C@@H]3OP(=O)(O)OC[C@H]3O[C@@H](n4ccc(N)nc4=O)C[C@@H]3OP(=O)(O)OC[C@H]3O[C@@H](n4cnc5c(N)ncnc54)C[C@@H]3OP(=O)(O)OC[C@H]3O[C@@H](n4ccc(N)nc4=O)C[C@@H]3OP(=O)(O)OC[C@H]3O[C@@H](n4ccc(N)nc4=O)C[C@@H]3OP(=O)(O)OC[C@H]3O[C@@H](n4ccc(N)nc4=O)C[C@@H]3O)[C@@H](COP(=O)(O)O[C@H]3C[C@H](n4ccc(N)nc4=O)O[C@@H]3COP(=O)(O)O[C@H]3C[C@H](n4ccc(N)nc4=O)O[C@@H]3COP(=O)(O)O[C@H]3C[C@H](n4cnc5c(N)ncnc54)O[C@@H]3COP(=O)(O)O[C@H]3C[C@H](n4ccc(N)nc4=O)O[C@@H]3COP(=O)(O)O[C@H]3C[C@H](n4ccc(N)nc4=O)O[C@@H]3COP(=O)(O)O[C@H]3C[C@H](n4cc(C)c(O)nc4=O)O[C@@H]3COP(=O)(O)O[C@H]3C[C@H](n4cc(C)c(O)nc4=O)O[C@@H]3COP(=O)(O)O[C@H]3C[C@H](n4cnc5c(N)ncnc54)O[C@@H]3COP(=O)(O)O[C@H]3C[C@H](n4cc(C)c(O)nc4=O)O[C@@H]3COP(=O)(O)O[C@H]3C[C@H](n4cnc5c(N)ncnc54)O[C@@H]3COP(=O)(O)O[C@H]3C[C@H](n4cnc5c(N)ncnc54)O[C@@H]3COP(=O)(O)OC3CCC(NC(=O)CCCc4cn(CCC/N=C(/O)c5cc(Cl)c6c(c5Cl)C5(OC6=O)c6cc(-c7ccccc7)c(O)cc6Oc6cc(O)c(-c7ccccc7)cc65)nn4)CC3)O2)c(=O)nc1O
 """
 mol = Chem.MolFromSmiles(smiles)
 mol = Chem.AddHs(mol)
-AllChem.EmbedMolecule(mol)
-#AllChem.UFFOptimizeMolecule(mol)
+
+params = rdDistGeom.EmbedParameters()
+params.clearConfs = True         # пример параметров
+params.randomSeed = 42
+params.maxIterations = 1000
+#params.pruneRmsThresh = 0.1
+conf_id = AllChem.EmbedMolecule(mol, params)
+
+#res = AllChem.EmbedMolecule(mol, maxAttempts=1000, randomSeed=42)
+print(conf_id)
+if conf_id == -1:
+    print("Генерация конформеров не удалась")
+else:
+    AllChem.UFFOptimizeMolecule(mol)
 mol_block = Chem.MolToMolBlock(mol)
 
 # Создаем py3Dmol view
@@ -28,5 +41,4 @@ ui.add_body_html(html)
 
 # Добавляем только div-контейнер для визуализации (ID должен совпадать с id py3Dmol)
 ui.html('<div id="container" style="width: 1500px; height: 1000px;"></div>').style('display: block;')
-
 ui.run(port=8085)

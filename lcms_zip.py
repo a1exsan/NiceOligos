@@ -317,6 +317,51 @@ class zip_oligo_mzdata():
                         break
         return new_d
 
+    def filtrate_zip_by_rt_rect(self, rect, zip_data):
+        rowdata = []
+        for key, val in zip(zip_data.keys(), zip_data.values()):
+            d = {}
+            d['rt0'] = key[0] / self.rt_mul
+            d['rt1'] = key[1] / self.rt_mul
+            d['mz'] = key[2] / self.mz_mul
+            d['intens'] = val
+            rowdata.append(d)
+        df = pd.DataFrame(rowdata)
+        df = df[(df['rt0']>=rect['x0'])&(df['rt0']<=rect['x1'])]
+        df = df[(df['mz']>=rect['y0'])&(df['mz']<=rect['y1'])]
+        return df
+
+    def get_spectra_mz_charge_deconv(self, df, ledder, mass, wind_size=5):
+        rowdata = []
+        for charge, mz in zip(ledder.keys(), ledder.values()):
+            d = {}
+            d['charge'] = charge
+            mzz = (mass - charge) / charge
+            d['mz_l'] = mzz - wind_size / charge
+            d['mz_h'] = mzz + wind_size / charge
+            d['mz'] = mzz
+            dff = df[(df['mz']>=d['mz_l'])&(df['mz']<=d['mz_h'])]
+            d['sum_intens'] = dff['intens'].sum()
+            if d['sum_intens'] > 0:
+                d['mz_max'] = dff.loc[dff['intens'].idxmax(), 'mz']
+            else:
+                d['mz_max'] = 0
+            #print(d)
+            rowdata.append(d)
+        out_df = pd.DataFrame(rowdata)
+        out_df['t_mass'] = mass
+        out_df['e_mass'] = out_df['charge'] * out_df['mz_max'] + out_df['charge']
+        out_df = out_df[out_df['mz_max'] > 0]
+        t_mass = out_df['t_mass'].mean()
+        e_mass = out_df['e_mass'].mean()
+        sum_i = out_df['sum_intens'].sum()
+        sum_init = df['intens'].sum()
+        #print(out_df[['charge', 't_mass', 'e_mass', 'mz_max', 'mz']])
+        #print(t_mass, e_mass, sum_i, sum_init)
+        return t_mass, e_mass, sum_i, sum_init, out_df[['charge', 't_mass', 'e_mass', 'mz_max', 'mz']]
+
+
+
     def fast_deconvolution(self, data):
         x_list, mz_list, intens_list, keys = [], [], [], []
         for key, value in zip(data.keys(), data.values()):

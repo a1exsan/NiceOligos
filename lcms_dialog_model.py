@@ -47,6 +47,7 @@ class lcms_dialog():
 
 class lcms_analyser(api_db_interface):
     def __init__(self):
+        self.mz_charge_ledder_df = None
         self.x_init_ledder = []
         self.y_init_ledder = []
         IP = app.storage.general.get('db_IP')
@@ -133,16 +134,19 @@ class lcms_analyser(api_db_interface):
                     self.init_lc_area = ui.input(label='LC area', value=0).style('width: 100px;')
                     self.init_lcms_area = ui.input(label='LCMS area', value=0).style('width: 100px;')
                     ui.button('add', on_click=self.on_culc_init_area)
+                    self.exp_mass_input = ui.input(label='Experiment mass:').style('width: 250px; font-size: 16px')
                 with ui.row():
                     ui.label('Polish area:').style('width: 100px; font-size: 18px;')
                     self.polish_lc_area = ui.input(label='LC area', value=0).style('width: 100px;')
                     self.polish_lcms_area = ui.input(label='LCMS area', value=0).style('width: 100px;')
                     ui.button('add', on_click=self.on_culc_polish_area)
+                    self.mz_charge_purity = ui.input(label='Purity:').style('width: 250px; font-size: 16px')
                 with ui.row():
                     ui.label('Deconv area:').style('width: 100px; font-size: 18px;')
                     self.deconv_lc_area = ui.input(label='LC area', value=0).style('width: 100px;')
                     self.deconv_lcms_area = ui.input(label='LCMS area', value=0).style('width: 100px;')
                     ui.button('add', on_click=self.on_culc_deconv_area)
+                    self.mz_wind_size = ui.input(label='Window size:', value=5).style('width: 150px; font-size: 16px')
 
 
     def init_plots(self):
@@ -609,19 +613,35 @@ class lcms_analyser(api_db_interface):
     def gen_mz_ledder(self, rect, seq):
         ledder = {}
         x_vals, y_vals = [], []
-        delta = rect['x1'] - rect['x0']
-        x0 = rect['x0'] + 0.2 * delta
-        x1 = rect['x1'] - 0.2 * delta
-        if seq != '':
-            oligo = mmo.oligoNASequence(seq)
-            mass = oligo.getMonoMass()
-            for z in range(1, 100):
-                for iso in range(1, 5):
-                    mz = (mass + iso - z) / z
-                    if (mz >= rect['y0']) and (mz <= rect['y1']):
-                        ledder[z] = mz
-                        x_vals.extend([x0, x1, None])
-                        y_vals.extend([mz, mz, None])
+        if self.oligo_smiles.value != '':
+            df = self.zip_lcms.filtrate_zip_by_rt_rect(rect, self.zip_data)
+
+            oligo = single_nucleic_acid_chain_assembler('ACGT',
+                                                    self.obj_modif_base.reaction_base,
+                                                    self.obj_modif_base.modification_base)
+            oligo.structure = self.oligo_smiles.value
+            mol = moleculeInfo(self.oligo_smiles.value)
+            props = mol.get_props()
+
+            delta = rect['x1'] - rect['x0']
+            x0 = rect['x0'] + 0.2 * delta
+            x1 = rect['x1'] - 0.2 * delta
+            if seq != '':
+                #oligo = mmo.oligoNASequence(seq)
+                #mass = oligo.getMonoMass()
+                mass = float(props['Mol weight, Da'])
+                for z in range(1, 100):
+                    for iso in range(1, 5):
+                        mz = (mass + iso - z) / z
+                        if (mz >= rect['y0']) and (mz <= rect['y1']):
+                            ledder[z] = mz
+                            x_vals.extend([x0, x1, None])
+                            y_vals.extend([mz, mz, None])
+            t_mass, e_mass, sum_i, sum_init, self.mz_charge_ledder_df = self.zip_lcms.get_spectra_mz_charge_deconv(
+                df,ledder, mass, wind_size=float(self.mz_wind_size.value))
+            self.exp_mass_input.value = str(round(e_mass, 2))
+            self.mz_charge_purity.value = str(round(sum_i*100/sum_init, 2))
+            #self.mz_charge_ledder_df.to_csv('ledder.csv', sep='\t')
         return ledder, x_vals, y_vals
 
 
@@ -635,7 +655,6 @@ class lcms_analyser(api_db_interface):
             else:
                 self.x_init_ledder, self.y_init_ledder = [], []
         self.draw_lcms_zip_data(self.zip_data)
-
 
 
 
