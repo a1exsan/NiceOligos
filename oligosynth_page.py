@@ -1436,6 +1436,8 @@ class oligosynth_panel_page_model(api_db_interface):
         seq_file = ''
         for row in self.oligomap_rowdata:
             if 'DMT on' in row:
+                if 'asm Sequence' not in row:
+                    ui.notify('ASM sequence is abcent')
                 if row['DMT on']:
                     seq_file += f"{row['Position']},{row['asm Sequence']},+\n"
                 else:
