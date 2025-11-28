@@ -412,7 +412,7 @@ class single_nucleic_acid_chain_assembler(single_nucleic_acid_chain):
             return len(matches)
 
     def do_auto_cycle_detrit(self, mod_data):
-        if 'DETRIT' in mod_data:
+        if 'DETRIT' in mod_data and mod_data['class'] == 'amidite':
             for id in mod_data['DETRIT']:
                 rnx_smarts = self.rnx_base[id].smarts
                 rxn = rdChemReactions.ReactionFromSmarts(rnx_smarts)
@@ -422,7 +422,7 @@ class single_nucleic_acid_chain_assembler(single_nucleic_acid_chain):
                     self.structure = Chem.MolToSmiles(products[0][0])
 
     def do_auto_cycle_couple(self, mod_data, adduct):
-        if 'COUPLE' in mod_data:
+        if 'COUPLE' in mod_data and mod_data['class'] == 'amidite':
             for id in mod_data['COUPLE']:
                 rnx_smarts = self.rnx_base[id].smarts
                 rxn = rdChemReactions.ReactionFromSmarts(rnx_smarts)
@@ -433,7 +433,7 @@ class single_nucleic_acid_chain_assembler(single_nucleic_acid_chain):
                     self.structure = Chem.MolToSmiles(products[0][0])
 
     def do_auto_cycle_oxid(self, mod_data):
-        if 'OXID' in mod_data:
+        if 'OXID' in mod_data and mod_data['class'] == 'amidite':
             for id in mod_data['OXID']:
                 rnx_smarts = self.rnx_base[id].smarts
                 rxn = rdChemReactions.ReactionFromSmarts(rnx_smarts)
@@ -444,7 +444,7 @@ class single_nucleic_acid_chain_assembler(single_nucleic_acid_chain):
                     self.structure = Chem.MolToSmiles(products[0][0])
 
     def do_auto_cycle_debl(self, mod_data):
-        if 'DEBL' in mod_data:
+        if 'DEBL' in mod_data and mod_data['class'] == 'amidite':
             for id in mod_data['DEBL']:
                 rnx_smarts = self.rnx_base[id].smarts
                 rxn = rdChemReactions.ReactionFromSmarts(rnx_smarts)
@@ -551,7 +551,6 @@ class single_nucleic_acid_chain_assembler(single_nucleic_acid_chain):
                 self.build_progress.value = round(i / len(reverse_chain), 2)
                 time.sleep(0.1)
             if token in self.mod_base:
-                #print(token, self.get_structure_class(self.mod_base[token].smiles))
                 self.do_auto_reactions(self.mod_base[token])
                 self.do_click_reaction_on_structure(self.mod_base[token])
             else:
