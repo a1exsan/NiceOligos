@@ -103,7 +103,6 @@ class write_off_click_dialog():
         self.rowdata = rowdata
         self.map = map_rowdata
         self.click_type = click_type
-
         self.obj_base = modification_base(IP, port)
         self.obj_base.pincode = app.storage.user.get('pincode')
         rnx_rowdata = self.obj_base.get_reaction_rowdata()
@@ -207,8 +206,7 @@ class write_off_click_dialog():
                                                             self.obj_base.modification_base)
                 oligo.check_chain()
                 if self.click_type in oligo.class_chain:
-
-                    if 'azide Dens, oe/ml' in row and 'azide Vol, ml' in row:
+                    if 'azide Dens, oe/ml' in row and 'azide Vol, ml' in row and row['azide Dens, oe/ml']!=0:
                         amount = float(row['azide Dens, oe/ml']) * float(row['azide Vol, ml'])
                     else:
                         amount = float(row['Dens, oe/ml']) * float(row['Vol, ml'])
