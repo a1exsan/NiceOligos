@@ -249,10 +249,16 @@ class single_nucleic_acid_chain():
                     result.extend(list(cleaned.upper()))
         return result
 
+    def chain_to_str(self):
+        join = ''.join(self.chain)
+        join = re.sub(r"\[\+([\w])\]", r"+\1", join)
+        join = re.sub(r"\[(r)([\w])\]", r"r\2", join)
+        return join
+
     def del_mod_from_chain(self, mod_symbol):
         if mod_symbol in self.chain:
             self.chain.remove(mod_symbol)
-        return ''.join(self.chain)
+        return self.chain_to_str()
 
 
 class single_nucleic_acid_chain_assembler(single_nucleic_acid_chain):
