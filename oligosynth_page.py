@@ -918,6 +918,9 @@ class oligosynth_panel_page_model(api_db_interface):
         self.oligomap_ag_grid.options['rowData'] = rowData
         self.oligomap_ag_grid.update()
         self.oligomap_rowdata = rowData
+        #df = pd.DataFrame(rowData)
+        #df = df.T
+        #df.to_csv('test_map.csv', sep='\t')
 
         self.accord_tab.options['rowData'] = accordData
         self.accordtab_rowdata = accordData

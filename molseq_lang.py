@@ -350,16 +350,19 @@ class single_nucleic_acid_chain_assembler(single_nucleic_acid_chain):
                 chain[0] = '[NH2_cpg500]'
                 chain.append(self.chain[-1])
                 self.chain = chain[::-1]
-                d['Chain'] = ''.join(self.chain)
+                #d['Chain'] = ''.join(self.chain)
+                d['Chain'] = self.chain_to_str()
             elif error['3end'] == 'azide':
                 chain = self.chain[::-1]
                 chain[0] = '[Alk_CPG1000]'
                 chain.append(self.chain[-1])
                 self.chain = chain[::-1]
-                d['Chain'] = ''.join(self.chain)
+                #d['Chain'] = ''.join(self.chain)
+                d['Chain'] = self.chain_to_str()
             elif error['3end'] == 'no CPG':
                 self.chain.append(self.get_cpg_mod())
-                d['Chain'] = ''.join(self.chain)
+                #d['Chain'] = ''.join(self.chain)
+                d['Chain'] = self.chain_to_str()
         if 'unknown_class' in error:
             s = str(error['unknown_class'])
             e_mod = s.replace('[', '')
@@ -384,7 +387,8 @@ class single_nucleic_acid_chain_assembler(single_nucleic_acid_chain):
                         self.chain[i] = '[azSIMA]'
                         self.chain.insert(i+1, '[Alk]')
                         break
-            d['Chain'] = ''.join(self.chain)
+            #d['Chain'] = ''.join(self.chain)
+            d['Chain'] = self.chain_to_str()
         err = self.check_chain()
         d['errors'] = err
         return d
