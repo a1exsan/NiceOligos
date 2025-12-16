@@ -112,6 +112,78 @@ class docx_passport():
         doc.render(context)
         doc.save(f"{self.path}/passport_doc.docx")
 
+
+class docx_lcms_report(docx_passport):
+    def __init__(self):
+        self.sample_name = ''
+        self.sample_properties = ''
+        self.sequence = ''
+        self.ledder_df = None
+        self.exp_mass = ''
+        self.theor_mass = ''
+        self.score = ''
+        self.n_1_purity = ''
+        self.lcms_purity = ''
+        self.headers = [
+            'Заряд',
+            'масса теор., Да',
+            'масса эксп., Да',
+            'масса/заряд, Да',
+            'Дельта, Да'
+        ]
+        self.path = 'templates'
+        self.column_widths_cm = [1.0, 1.6, 1.6, 1.6, 1.0]
+        self.text_result = 'соответствует'
+
+    def get_ledder_tab(self):
+        self.rowdata = self.ledder_df.to_dict('records')
+        document = Document()
+        table = document.add_table(rows=1, cols=len(self.headers))
+        for i in range(len(table.columns)):
+            table.columns[i].width = Inches(self.column_widths_cm[i])
+        hdr_cells = table.rows[0].cells
+        for cell, text in zip(hdr_cells, self.headers):
+            self.set_cell_text(cell, text, font_name='Times New Roman', font_size=Pt(12), bold=True)
+
+        for row in self.rowdata:
+            row_cells = table.add_row().cells
+            self.set_cell_text(row_cells[0], str(row['charge']), font_name='Calibri', font_size=Pt(8))
+            self.set_cell_text(row_cells[1], str(round(row['t_mass'], 2)), font_name='Calibri', font_size=Pt(8))
+            self.set_cell_text(row_cells[2], str(round(row['e_mass'], 2)), font_name='Calibri', font_size=Pt(8))
+            self.set_cell_text(row_cells[3], str(row['mz_max']), font_name='Calibri', font_size=Pt(8))
+            self.set_cell_text(row_cells[4], str(round(abs(row['t_mass'] - row['e_mass']), 2)), font_name='Calibri',
+                               font_size=Pt(8))
+        table.style = 'TableGrid'
+        document.save(f'{self.path}/lcms_report_tab.docx')
+
+    def get_text_result(self):
+        pass
+
+    def compose_report(self):
+        self.get_ledder_tab()
+        master = Document(f"{self.path}/lcms_report_tmpl_1.docx")
+        composer = Composer(master)
+        doc1 = Document(f"{self.path}/lcms_report_tab.docx")
+        doc2 = Document(f"{self.path}/lcms_report_tmpl_2.docx")
+        composer.append(doc1)
+        composer.append(doc2)
+        composer.save(f"{self.path}/combined_lcms_report.docx")
+        doc = DocxTemplate(f"{self.path}/combined_lcms_report.docx")
+        context = {
+            'sample_name': self.sample_name,
+            'sequence': self.sequence,
+            'sample_properties': self.sample_properties,
+            'text_result': self.text_result,
+            'exp_mass': self.exp_mass,
+            'theor_mass': self.theor_mass,
+            'score': self.score,
+            'n_1_purity': self.n_1_purity,
+            'lcms_purity': self.lcms_purity
+        }
+        doc.render(context)
+        doc.save(f"{self.path}/lcms_report_doc.docx")
+
+
 class stock_write_inoff(api_db_interface):
     def __init__(self, rowdata):
         IP = app.storage.general.get('db_IP')

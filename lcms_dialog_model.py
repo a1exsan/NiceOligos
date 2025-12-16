@@ -14,6 +14,7 @@ from molseq_lang import single_nucleic_acid_chain_assembler
 from molseq_lang import single_nucleic_acid_chain
 from molseq_lang import modification_base
 from chemicals_page import moleculeInfo
+from OligoMap_utils import docx_lcms_report
 
 
 class lcms_dialog():
@@ -94,6 +95,8 @@ class lcms_analyser(api_db_interface):
                       on_click=self.on_save_data)
             ui.button('load data', color='green',
                       on_click=self.on_load_data_from_base)
+            ui.button('Print report', color='orange',
+                      on_click=self.on_print_lcms_report)
 
         self.init_plots()
         with ui.row():
@@ -141,6 +144,7 @@ class lcms_analyser(api_db_interface):
                     self.polish_lcms_area = ui.input(label='LCMS area', value=0).style('width: 100px;')
                     ui.button('add', on_click=self.on_culc_polish_area)
                     self.mz_charge_purity = ui.input(label='Purity:').style('width: 250px; font-size: 16px')
+                    self.mz_charge_n_1_purity = ui.input(label='n-1 purity:').style('width: 250px; font-size: 16px')
                 with ui.row():
                     ui.label('Deconv area:').style('width: 100px; font-size: 18px;')
                     self.deconv_lc_area = ui.input(label='LC area', value=0).style('width: 100px;')
@@ -334,8 +338,8 @@ class lcms_analyser(api_db_interface):
                                                     self.obj_modif_base.modification_base)
         oligo.structure = data['structure']
         #oligo.draw_structure(self.react_context, self.react_width, self.react_height)
-        mol = moleculeInfo(data['structure'])
-        self.props_data.value = json.dumps(mol.get_props())
+        self.mol_properties = moleculeInfo(data['structure'])
+        self.props_data.value = json.dumps(self.mol_properties.get_props())
 
     def on_parse_chain(self):
         chain = self.chain.value
@@ -610,6 +614,21 @@ class lcms_analyser(api_db_interface):
                 else:
                     ui.notify('данных LCMS нет в базе')
 
+    def on_print_lcms_report(self):
+        if self.mz_fitting.value:
+            report = docx_lcms_report()
+            report.sample_name = self.seq_name.value
+            report.sequence = self.sequence.value
+            report.sample_properties = self.props_data.value
+            report.exp_mass = self.exp_mass_input.value
+            report.theor_mass = str(json.loads(self.props_data.value)['Mol weight, Da'])
+            report.ledder_df = self.mz_charge_ledder_df
+            report.score = f'{float(self.mz_charge_purity.value)*2}'
+            report.n_1_purity = f'{self.mz_charge_n_1_purity.value} %'
+            report.lcms_purity = f'{round(100 - float(self.mz_charge_n_1_purity.value), 0)}'
+            report.compose_report()
+            ui.download('templates/lcms_report_doc.docx', filename=f'lcms_report_{report.sample_name}.docx')
+
     def gen_mz_ledder(self, rect, seq):
         ledder = {}
         x_vals, y_vals = [], []
@@ -641,6 +660,14 @@ class lcms_analyser(api_db_interface):
                 df,ledder, mass, wind_size=float(self.mz_wind_size.value))
             self.exp_mass_input.value = str(round(e_mass, 2))
             self.mz_charge_purity.value = str(round(sum_i*100/sum_init, 2))
+
+            s_list = list(seq)
+            seq = ''.join(s_list[:-1])
+            oligo = mmo.oligoNASequence(seq)
+            mass = oligo.getAvgMass()
+            t_mass, e_mass, sum_i, sum_init, mz_charge_ledder_df = self.zip_lcms.get_spectra_mz_charge_deconv(
+                df, ledder, mass, wind_size=float(self.mz_wind_size.value))
+            self.mz_charge_n_1_purity.value = str(round(sum_i*100/sum_init, 2))
             #self.mz_charge_ledder_df.to_csv('ledder.csv', sep='\t')
         return ledder, x_vals, y_vals
 
