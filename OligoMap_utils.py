@@ -178,9 +178,20 @@ class docx_lcms_report(docx_passport):
             'theor_mass': self.theor_mass,
             'score': self.score,
             'n_1_purity': self.n_1_purity,
-            'lcms_purity': self.lcms_purity
+            'lcms_purity': self.lcms_purity,
         }
         doc.render(context)
+
+        par = doc.add_paragraph()
+        run = par.add_run()
+        run.add_picture(f"{self.path}/lcms_2D_plot.png", width=Inches(7))
+        run.add_text('Рисунок 1. Сравнение практического (синий) и теоретического (желтый) спектров. '
+                     'По оси Х время удержания на колонке RP-C18; по оси У отношение “зарядовое распределение m/z”')
+
+        run.add_picture(f"{self.path}/lcms_1D_plot.png", width=Inches(7))
+        run.add_text('Рисунок 2. Хроматограмма; по оси Х - время удержания на колонке RP-C18;  '
+                     'по оси У – полный ионный ток (TIC)')
+
         doc.save(f"{self.path}/lcms_report_doc.docx")
 
 

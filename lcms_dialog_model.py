@@ -616,6 +616,10 @@ class lcms_analyser(api_db_interface):
 
     def on_print_lcms_report(self):
         if self.mz_fitting.value:
+
+            self.fig.write_image( f"templates/lcms_2D_plot.png", width=1500, height=800, scale=1)
+            self.fig_chrom.write_image( f"templates/lcms_1D_plot.png", width=1500, height=400, scale=1)
+
             report = docx_lcms_report()
             report.sample_name = self.seq_name.value
             report.sequence = self.sequence.value

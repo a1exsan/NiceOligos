@@ -16,3 +16,4 @@ py3Dmol
 docxcompose
 python-docx
 docxtpl
+kaleido
