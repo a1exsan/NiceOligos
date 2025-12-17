@@ -143,7 +143,7 @@ class lcms_analyser(api_db_interface):
                     self.polish_lc_area = ui.input(label='LC area', value=0).style('width: 100px;')
                     self.polish_lcms_area = ui.input(label='LCMS area', value=0).style('width: 100px;')
                     ui.button('add', on_click=self.on_culc_polish_area)
-                    self.mz_charge_purity = ui.input(label='Purity:').style('width: 250px; font-size: 16px')
+                    self.mz_charge_purity = ui.input(label='Score:').style('width: 250px; font-size: 16px')
                     self.mz_charge_n_1_purity = ui.input(label='n-1 purity:').style('width: 250px; font-size: 16px')
                 with ui.row():
                     ui.label('Deconv area:').style('width: 100px; font-size: 18px;')
@@ -609,6 +609,12 @@ class lcms_analyser(api_db_interface):
                         self.props_data.value = self.total_data['oligo_mol_props']
                     if 'oligo_chain' in self.total_data:
                         self.chain.value = self.total_data['oligo_chain']
+                    if 'exp_mass' in self.total_data:
+                        self.exp_mass_input.value = self.total_data['exp_mass']
+                    if 'score' in self.total_data:
+                        self.mz_charge_purity.value = self.total_data['score']
+                    if 'n_1_purity' in self.total_data:
+                        self.mz_charge_n_1_purity.value = self.total_data['n_1_purity']
 
                     self.on_plot_init_data()
                 else:
@@ -629,9 +635,15 @@ class lcms_analyser(api_db_interface):
             report.ledder_df = self.mz_charge_ledder_df
             report.score = f'{float(self.mz_charge_purity.value)*2}'
             report.n_1_purity = f'{self.mz_charge_n_1_purity.value} %'
-            report.lcms_purity = f'{round(100 - float(self.mz_charge_n_1_purity.value), 0)}'
+            report.lcms_purity = f'{round(99 - float(self.mz_charge_n_1_purity.value), 0)}'
             report.compose_report()
             ui.download('templates/lcms_report_doc.docx', filename=f'lcms_report_{report.sample_name}.docx')
+
+            self.total_data['exp_mass'] = report.exp_mass
+            self.total_data['score'] = report.score
+            self.total_data['n_1_purity'] = report.n_1_purity
+            self.total_data['lcms_purity'] = report.lcms_purity
+            self.on_save_data()
 
     def gen_mz_ledder(self, rect, seq):
         ledder = {}

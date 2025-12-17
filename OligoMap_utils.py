@@ -134,6 +134,7 @@ class docx_lcms_report(docx_passport):
         self.path = 'templates'
         self.column_widths_cm = [1.0, 1.6, 1.6, 1.6, 1.0]
         self.text_result = 'соответствует'
+        self.delta_limit = 5
 
     def get_ledder_tab(self):
         self.rowdata = self.ledder_df.to_dict('records')
@@ -157,7 +158,11 @@ class docx_lcms_report(docx_passport):
         document.save(f'{self.path}/lcms_report_tab.docx')
 
     def get_text_result(self):
-        pass
+        delta = float(self.theor_mass) - float(self.exp_mass)
+        if abs(delta) <= self.delta_limit:
+            return 'соответствует'
+        else:
+            return 'не соответствует'
 
     def compose_report(self):
         self.get_ledder_tab()
@@ -173,7 +178,7 @@ class docx_lcms_report(docx_passport):
             'sample_name': self.sample_name,
             'sequence': self.sequence,
             'sample_properties': self.sample_properties,
-            'text_result': self.text_result,
+            'text_result': self.get_text_result(),
             'exp_mass': self.exp_mass,
             'theor_mass': self.theor_mass,
             'score': self.score,
