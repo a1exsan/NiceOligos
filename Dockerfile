@@ -65,6 +65,14 @@ ADD templates/passport_rowdata.docx ./templates
 ADD templates/autosampler_75ul_method1.pr2 ./templates
 ADD templates/autosampler_75ul_template.pr2 ./templates
 
+ADD templates/lcms_1D_plot.png ./templates
+ADD templates/lcms_2D_plot.png ./templates
+ADD templates/lcms_report_tmpl_1.docx ./templates
+ADD templates/lcms_report_tmpl_2.docx ./templates
+ADD templates/lcms_report_tab.docx ./templates
+ADD templates/combined_lcms_report.docx ./templates
+ADD templates/lcms_report_doc.docx ./templates
+
 # VOLUME "/app/data/temp"
 
 ENTRYPOINT ["python"]
