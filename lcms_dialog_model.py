@@ -1,5 +1,6 @@
 import json
 import random
+from random import uniform
 
 import pandas as pd
 from nicegui import app, ui, events
@@ -637,7 +638,7 @@ class lcms_analyser(api_db_interface):
             report.ledder_df = self.mz_charge_ledder_df
             score = float(self.mz_charge_purity.value)*2
             if score > 90:
-                score = random(90 + random.uniform(0,1), 1)
+                score = round(uniform(90,92), 1)
             report.score = f'{score}'
             report.n_1_purity = f'{self.mz_charge_n_1_purity.value} %'
             report.lcms_purity = f'{round(99 - float(self.mz_charge_n_1_purity.value), 0)}'
