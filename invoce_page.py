@@ -233,7 +233,7 @@ class invoice_page_model(api_db_interface):
             #self.on_print_invoce_passport = ui.button('print passport',
             #                on_click=self.on_print_invoce_passport_event, color='#FFA000').classes('w-[200px]')
             with ui.dropdown_button('print passport', auto_close=True).classes('w-[200px]') as self.on_print_invoce_passport:
-                for key in ['excel', 'docx']:
+                for key in ['excel', 'docx', 'excel_lcms']:
                     ui.item(key, on_click=lambda n=key: self.on_print_invoce_passport_event(n))
             self.on_print_invoce_passport.props['color'] = 'orange'
 
@@ -579,11 +579,11 @@ class invoice_page_model(api_db_interface):
         self.progressbar.visible = False
 
 
-    def print_pass(self, rowData):
+    def print_pass(self, rowData, lcms_data):
         out_tab = []
         index_ = 1
 
-        for row in rowData:
+        for i, row in enumerate(rowData):
             nseq = row['Seq']
             if type(row['Purif type']) == str:
                 if row['Purif type'].find('_') > 0:
@@ -614,8 +614,14 @@ class invoice_page_model(api_db_interface):
             except:
                 d['Mass,_Da'] = 'unknown modiff'
             d['Extinction'] = o.getExtinction()
-
-            out_tab.append(d)
+            if len(lcms_data) > 0:
+                for row in lcms_data[i]:
+                    dd = d.copy()
+                    for key in row.keys():
+                        dd[key] = row[key]
+                    out_tab.append(dd)
+            else:
+                out_tab.append(d)
         return pd.DataFrame(out_tab)
 
     def save_docx_passport(self, rowdata, invoce_number, filename):
@@ -630,7 +636,7 @@ class invoice_page_model(api_db_interface):
             self.progressbar.visible = True
             selrows = await self.ag_grid.get_selected_rows()
             orders_tab = self.get_invoce_content(selrows)
-            out = []
+            out, lcms_data = [], []
             oserch = oligomaps_search(self.db_IP, self.db_port)
             oserch.pincode = self.pincode
             date = datetime.strptime(orders_tab[0]['input date'], '%m.%d.%Y')
@@ -639,6 +645,11 @@ class invoice_page_model(api_db_interface):
             for row in orders_tab:
                 d = row.copy()
                 maps = oserch.find_amount_by_order_id(row['#'])
+                if e == 'excel_lcms':
+                    rowdata_lcms = maps[['map #', 'Position']]
+                    rowdata_lcms = rowdata_lcms.to_dict('records')
+                    lcms_list = oserch.find_lcms_data_list(rowdata_lcms)
+                    lcms_data.append(lcms_list)
                 maps = maps[maps['Dens, oe/ml'] > 0]
                 maps['Synt number'] = pd.to_numeric(maps['Synt number'], errors='coerce')
                 maps = maps.sort_values(by='Synt number', ascending=False)
@@ -669,7 +680,7 @@ class invoice_page_model(api_db_interface):
             app.storage.user['invoce_content_tab_rowdata'] = self.invoce_content_tab.options['rowData']
 
             pass_filename = selrows[0]['invoce'].replace('/', '_')
-            pass_data = self.print_pass(self.invoce_content_tab.options['rowData'])
+            pass_data = self.print_pass(self.invoce_content_tab.options['rowData'], lcms_data)
             if e == 'excel':
                 self.save_passport(pass_filename, pass_data)
             elif e == 'docx':
@@ -677,6 +688,9 @@ class invoice_page_model(api_db_interface):
                 if 'УТ' in invoce:
                     invoce = invoce[invoce.find('УТ')+2:]
                 self.save_docx_passport(pass_data.to_dict('records'), invoce, f'{pass_filename}.docx')
+            elif e == 'excel_lcms':
+                pass_data = self.print_pass(self.invoce_content_tab.options['rowData'], lcms_data)
+                self.save_passport(pass_filename, pass_data)
             self.progressbar.visible = False
 
 

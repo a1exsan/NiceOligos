@@ -454,7 +454,7 @@ class single_nucleic_acid_chain_assembler(single_nucleic_acid_chain):
                     self.structure = Chem.MolToSmiles(products[0][0])
 
     def do_auto_cycle_debl(self, mod_data):
-        if 'DEBL' in mod_data and mod_data['class'] == 'amidite':
+        if 'DEBL' in mod_data:# and mod_data['class'] == 'amidite':
             for id in mod_data['DEBL']:
                 rnx_smarts = self.rnx_base[id].smarts
                 rxn = rdChemReactions.ReactionFromSmarts(rnx_smarts)
@@ -496,6 +496,7 @@ class single_nucleic_acid_chain_assembler(single_nucleic_acid_chain):
                 products = rxn.RunReactants([react])
                 if products != ():
                     self.structure = Chem.MolToSmiles(products[0][0])
+
 
     def do_rna_deblock(self, rnx_list):
         if len(rnx_list) > 0:

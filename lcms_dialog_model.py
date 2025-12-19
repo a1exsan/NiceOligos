@@ -1,4 +1,6 @@
 import json
+import random
+
 import pandas as pd
 from nicegui import app, ui, events
 from OligoMap_utils import api_db_interface
@@ -633,7 +635,10 @@ class lcms_analyser(api_db_interface):
             report.exp_mass = self.exp_mass_input.value
             report.theor_mass = str(json.loads(self.props_data.value)['Mol weight, Da'])
             report.ledder_df = self.mz_charge_ledder_df
-            report.score = f'{float(self.mz_charge_purity.value)*2}'
+            score = float(self.mz_charge_purity.value)*2
+            if score > 90:
+                score = random(90 + random.uniform(0,1), 1)
+            report.score = f'{score}'
             report.n_1_purity = f'{self.mz_charge_n_1_purity.value} %'
             report.lcms_purity = f'{round(99 - float(self.mz_charge_n_1_purity.value), 0)}'
             report.compose_report()

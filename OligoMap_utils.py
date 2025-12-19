@@ -480,6 +480,46 @@ class oligomaps_search(api_db_interface):
         else:
             return {}
 
+    def find_lcms_data_list(self, params):
+        out = []
+        for row in params:
+            data = self.load_lcms_data_from_base(row['map #'], row['Position'])
+            if data != {}:
+                #print(row)
+                d = {}
+                if 'oligo_smiles' in data:
+                    d['oligo_smiles'] = data['oligo_smiles']
+                if 'oligo_mol_props' in data:
+                    d['oligo_mol_props'] = data['oligo_mol_props']
+                if 'oligo_chain' in data:
+                    d['oligo_chain'] = data['oligo_chain']
+                if 'exp_mass' in data:
+                    d['exp_mass'] = data['exp_mass']
+                if 'lcms_purity' in data:
+                    d['lcms_purity'] = data['lcms_purity']
+                if 'score' in data:
+                    d['score'] = data['score']
+                if 'n_1_purity' in data:
+                    d['n_1_purity'] = data['n_1_purity']
+                if 'deconv_lc_area' in data:
+                    d['deconv_lc_area'] = data['deconv_lc_area']
+                if 'deconv_lcms_area' in data:
+                    d['deconv_lcms_area'] = data['deconv_lcms_area']
+                out.append(d)
+            else:
+                d = {}
+                d['oligo_smiles'] = ''
+                d['oligo_mol_props'] = ''
+                d['oligo_chain'] = ''
+                d['exp_mass'] = ''
+                d['lcms_purity'] = ''
+                d['score'] = ''
+                d['n_1_purity'] = ''
+                d['deconv_lc_area'] = ''
+                d['deconv_lcms_area'] = ''
+                out.append(d)
+        return out
+
 
     def update_chrom_data_to_base(self, data):
         if data != {}:
