@@ -706,12 +706,14 @@ class oligomaps_search(api_db_interface):
 
     def find_amount_by_order_id(self, order_id):
         maps = pd.DataFrame()
-        for map, syn in zip(self.map_list['map data'], self.map_list['Synth number']):
-            map = pd.DataFrame(map)
-            map['Synt number'] = syn
-            maps = pd.concat([maps, map])
+        if 'map data' in self.map_list and 'Synth number' in self.map_list:
+            for map, syn in zip(self.map_list['map data'], self.map_list['Synth number']):
+                map = pd.DataFrame(map)
+                map['Synt number'] = syn
+                maps = pd.concat([maps, map])
         maps.reset_index(inplace=True)
-        maps = maps[(maps['Order id'] == int(order_id))&(maps['Wasted'] == False)]
+        if 'Order id' in maps:
+            maps = maps[(maps['Order id'] == int(order_id))&(maps['Wasted'] == False)]
         return maps
 
     def get_low_amount_limit(self, amount):

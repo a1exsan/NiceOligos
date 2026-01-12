@@ -47,8 +47,6 @@ class lcms_dialog():
 
             self.lcms.on_load_data_from_base()
 
-
-
 class lcms_analyser(api_db_interface):
     def __init__(self):
         self.mz_charge_ledder_df = None
@@ -63,13 +61,15 @@ class lcms_analyser(api_db_interface):
         self.draw_mode = 'init'
         self.plot_chrom = None
         self.plot_mz = None
-        self.zip_data = None
-        self.zip_lcms = None
+        self.zip_data = {}
+        self.zip_lcms = {}
+        self.zip_polish = {}
         self.fig = None
         self.plot = None
         self.file_input = None
         self.total_data = {}
         self.chrom_line_points = 160
+        self.deconv_chrom_line = None
 
         dbIP = app.storage.general.get('db_IP')
         port = app.storage.general.get('db_port')
@@ -299,7 +299,10 @@ class lcms_analyser(api_db_interface):
         self.progress.value = 0.77
         time.sleep(1)
 
-        self.zip_deconv = self.zip_lcms.compress_2(self.deconv_data[['rt', 'mass', 'intens']].values)
+        try:
+            self.zip_deconv = self.zip_lcms.compress_2(self.deconv_data[['rt', 'mass', 'intens']].values)
+        except:
+            self.zip_deconv = {}
         self.progress.value = 0.85
         time.sleep(1)
 

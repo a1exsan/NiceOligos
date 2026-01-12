@@ -8,6 +8,18 @@ WORKDIR /app
 
 RUN apt-get update && apt-get install -y libxrender1 libxext6 libsm6 libexpat1 && rm -rf /var/lib/apt/lists/*
 
+#RUN apt-get install -y --no-install-recommends ca-certificates curl gnupg2
+#RUN apt-get install -y libnss3 libxss1 libappindicator1 libatk-bridge2.0-0 libatk1.0-0 libgbm1
+#Google-Chrome setup
+RUN apt-get update && apt-get install -y wget ca-certificates curl gnupg
+RUN rm -f /etc/apt/sources.list.d/google-chrome.list  || true
+RUN mkdir -p /usr/share/keyrings
+RUN wget -q -O /usr/share/keyrings/google-linux-signing-keyring.pub https://dl.google.com/linux/linux_signing_key.pub
+RUN echo "deb [signed-by=/usr/share/keyrings/google-linux-signing-keyring.pub arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" > /etc/apt/sources.list.d/google-chrome.list
+RUN apt-get update && apt-get install -y google-chrome-stable
+RUN rm -rf /var/lib/apt/lists/*
+RUN google-chrome-stable --version
+
 ADD requirements.txt .
 
 RUN pip install --no-cache-dir -r requirements.txt
