@@ -54,12 +54,15 @@ class history_stat_data_sorter():
         elif self.sorting_mode.find('week') > -1:
             ff = 'W'
 
+        #print(ff)
+        #print(df)
         df_g = df.groupby(pd.Grouper(key='x_day', freq=ff)).max()
         df_g['y_max'] = df_g['y']
         df_min = df.groupby(pd.Grouper(key='x_day', freq=ff)).min()
         df_g['y_min'] = df_min['y']
         df_sum = df.groupby(pd.Grouper(key='x_day', freq=ff)).sum()
         df_g['y_sum'] = df_sum['y']
+        #print(df_g)
 
         df_g.reset_index(inplace=True)
         df_g['y_sub'] = df_g['y_max'] - df_g['y_min']
@@ -68,6 +71,7 @@ class history_stat_data_sorter():
             now_Y = datetime.now().strftime('%Y')
             df_g = df_g[df_g['x_day'].dt.strftime('%Y') == now_Y]
 
+        df_g = df_g.fillna(0)
         return df_g
 
 
@@ -122,6 +126,7 @@ class invoceChart():
         x_data = list(data['x'])
         y_data = list(data['y_sub'])
 
+        #print(y_data)
         self.draw_date_bar_chart(x_data, y_data)
 
     def get_date_text(self, date):

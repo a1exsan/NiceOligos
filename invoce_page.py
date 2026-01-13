@@ -331,8 +331,8 @@ class invoice_page_model(api_db_interface):
                 'rowData': invoce_content_df.to_dict('records'),
                 'rowSelection': 'multiple',
                 "pagination": True,
-                ':getRowStyle': '(params) => params.data.sufficiency < 0 ? { background: "red" } :'
-                                ' { background: "green" }',
+                ':getRowStyle': '(params) => params.data.sufficiency < 0 ? { background: "#404040" } :'
+                                ' { background: "#208020" }',
             }
         ,
         theme='alpine-dark').classes('h-[1200px]') # alpine  material  quartz  balham
