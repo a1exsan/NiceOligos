@@ -81,7 +81,7 @@ class navigation_menu(api_db_interface):
             if user_status in ['own', 'owner']:
                 ui.link('ASM2000 method', '/asm2000_method').style('font-size: 24px;')
 
-        ui.label(f'Пользователь: {app.storage.user.get("email")}')
+        ui.link(text=f'Пользователь: {app.storage.user.get("email")}', target='/user_profile').style('font-size: 24px;')
 
 
         #self.on_pincode_change = ui.input(label='pincode', placeholder='enter pincode',
