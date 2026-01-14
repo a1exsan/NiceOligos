@@ -15,6 +15,7 @@ from molseq_lang import modification_page_model
 from asm2000_method import asm2000_method_page_model
 from user_profile_admin import user_admin_profile
 from server import IP
+from server import DB_PORT
 
 import hashlib
 
@@ -23,7 +24,7 @@ IP_addr = IP
 
 
 app.storage.general['db_IP'] = IP_addr
-app.storage.general['db_port'] = '8012'
+app.storage.general['db_port'] = DB_PORT
 api_object = api_db_interface(app.storage.general.get('db_IP'), app.storage.general['db_port'])
 app.add_static_files('/img', 'static_images')
 
@@ -34,7 +35,7 @@ def main_page() -> Optional[RedirectResponse]:
         return RedirectResponse('/login')
 
     with ui.column():
-        navi_front = navigation_menu(IP_addr, '8012')
+        navi_front = navigation_menu(IP_addr, DB_PORT)
         ui.button('Выйти', on_click=logout, icon='logout').props('outline round')
     ui.image('images/background_1.jpeg').style('max-width: 100%; height: 1000px')
         #ui.label(f'Добро пожаловать, {app.storage.user["email"]}!').classes('text-2xl')
@@ -115,7 +116,7 @@ def login_page() -> Optional[RedirectResponse]:
 
 #@ui.page('/main')
 #def index():
-#    navi_front = navigation_menu(IP_addr, '8012')
+#    navi_front = navigation_menu(IP_addr, DB_PORT)
 #    ui.image('images/background_1.jpeg').style('max-width: 100%; height: auto;')
 
 @ui.page('/input_order_panel')
@@ -123,9 +124,9 @@ def input_order_panel() -> Optional[RedirectResponse]:
     if not app.storage.user.get('authenticated', False):
         return RedirectResponse('/login')
 
-    navi_front = navigation_menu(IP_addr, '8012')
+    navi_front = navigation_menu(IP_addr, DB_PORT)
     if app.storage.user.get('user_status') in ['own', 'owner', 'synth_master', 'product_manager']:
-        order_page = input_order_page_model(IP_addr, '8012')
+        order_page = input_order_page_model(IP_addr, DB_PORT)
 
 
 @ui.page('/invoce_panel')
@@ -133,9 +134,9 @@ def invoce_panel_page() -> Optional[RedirectResponse]:
     if not app.storage.user.get('authenticated', False):
         return RedirectResponse('/login')
 
-    navi_front = navigation_menu(IP_addr, '8012')
+    navi_front = navigation_menu(IP_addr, DB_PORT)
     if app.storage.user.get('user_status') in ['own', 'owner', 'lab_master', 'synth_master', 'product_manager']:
-        invoce_front = invoice_page_model(IP_addr, '8012')
+        invoce_front = invoice_page_model(IP_addr, DB_PORT)
 
 
 @ui.page('/oligosynth_panel')
@@ -143,9 +144,9 @@ def oligosynth_panel_page() -> Optional[RedirectResponse]:
     if not app.storage.user.get('authenticated', False):
         return RedirectResponse('/login')
 
-    navi_front = navigation_menu(IP_addr, '8012')
+    navi_front = navigation_menu(IP_addr, DB_PORT)
     if app.storage.user.get('user_status') in ['own', 'owner', 'lab_master', 'synth_master']:
-        oligosynt_front = oligosynth_panel_page_model(IP_addr, '8012')
+        oligosynt_front = oligosynth_panel_page_model(IP_addr, DB_PORT)
 
 
 @ui.page('/rawmaterials_panel')
@@ -153,9 +154,9 @@ def rawmaterials_panel_page() -> Optional[RedirectResponse]:
     if not app.storage.user.get('authenticated', False):
         return RedirectResponse('/login')
 
-    navi_front = navigation_menu(IP_addr, '8012')
+    navi_front = navigation_menu(IP_addr, DB_PORT)
     if app.storage.user.get('user_status') in ['own', 'owner', 'lab_master', 'synth_master']:
-        rawmat_panel = rawmaterial_panel_page_model(IP_addr, 8012)
+        rawmat_panel = rawmaterial_panel_page_model(IP_addr, DB_PORT)
 
 
 @ui.page('/chemicals_panel')
@@ -163,9 +164,9 @@ def chemicals_panel_page() -> Optional[RedirectResponse]:
     if not app.storage.user.get('authenticated', False):
         return RedirectResponse('/login')
 
-    navi_front = navigation_menu(IP_addr, '8012')
+    navi_front = navigation_menu(IP_addr, DB_PORT)
     if app.storage.user.get('user_status') in ['own', 'owner']:
-        chem_page = chemicals_page_model(IP_addr, 8012)
+        chem_page = chemicals_page_model(IP_addr, DB_PORT)
 
 
 @ui.page('/stock_data')
@@ -173,7 +174,7 @@ def stock_data_page() -> Optional[RedirectResponse]:
     if not app.storage.user.get('authenticated', False):
         return RedirectResponse('/login')
 
-    navi_front = navigation_menu(IP_addr, '8012')
+    navi_front = navigation_menu(IP_addr, DB_PORT)
     if app.storage.user.get('user_status') in ['own', 'owner', 'stock_viewer']:
         model = stock_data_page_model()
 
@@ -183,7 +184,7 @@ def modifications() -> Optional[RedirectResponse]:
     if not app.storage.user.get('authenticated', False):
         return RedirectResponse('/login')#
 
-    navi_front = navigation_menu(IP_addr, '8012')
+    navi_front = navigation_menu(IP_addr, DB_PORT)
     if app.storage.user.get('user_status') in ['own', 'owner', 'synth_master']:
        model = modification_page_model()
 
@@ -193,7 +194,7 @@ def asm2000_method() -> Optional[RedirectResponse]:
     if not app.storage.user.get('authenticated', False):
         return RedirectResponse('/login')#
 
-    navi_front = navigation_menu(IP_addr, '8012')
+    navi_front = navigation_menu(IP_addr, DB_PORT)
     if app.storage.user.get('user_status') in ['own', 'owner']:
         model = asm2000_method_page_model()
 
@@ -202,7 +203,7 @@ def user_profile() -> Optional[RedirectResponse]:
     if not app.storage.user.get('authenticated', False):
         return RedirectResponse('/login')#
 
-    navi_front = navigation_menu(IP_addr, '8012')
+    navi_front = navigation_menu(IP_addr, DB_PORT)
     if app.storage.user.get('user_status') in ['own', 'owner', 'lab_master', 'synth_master', 'product_manager',
                                                'stock_viewer']:
         model = user_admin_profile()

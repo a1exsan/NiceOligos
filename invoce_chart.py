@@ -120,7 +120,8 @@ class invoceChart():
         data = data_sorter.get_sorting_data(status='finished')
         x_data = list(data['x'])
         y_data = list(data['y_sub'])
-        self.draw_date_bar_chart(x_data, y_data)
+        if len(x_data) > 0 and len(y_data) > 0:
+            self.draw_date_bar_chart(x_data, y_data)
 
     def get_date_text(self, date):
         if self.sorting_mode.find('Y') > -1:
@@ -183,28 +184,29 @@ class invoceChart():
 
 
     def draw_bar_diagram(self, x_data, y_data):
-        y_top = y_data[len(y_data) - 1]
-        y_data = self.normalisation(y_data, self.height_shift, self.height - self.height_shift)
-        x_data = self.normalisation(x_data, 100, self.width - 100)
-        self.test_chart.content = ''
-        self.fin_oligos_chart.content = ''
-        points = []
-        for i in range(len(y_data)):
-            x, y = x_data[i], y_data[i]
-            y= self.height - y
+        if len(y_data) > 0 and len(x_data) > 0:
+            y_top = y_data[len(y_data) - 1]
+            y_data = self.normalisation(y_data, self.height_shift, self.height - self.height_shift)
+            x_data = self.normalisation(x_data, 100, self.width - 100)
+            self.test_chart.content = ''
+            self.fin_oligos_chart.content = ''
+            points = []
+            for i in range(len(y_data)):
+                x, y = x_data[i], y_data[i]
+                y= self.height - y
+                points.append((x, y))
+            x, y = x_data[len(y_data) - 1], 0
+            y = self.height - y - self.height_shift
             points.append((x, y))
-        x, y = x_data[len(y_data) - 1], 0
-        y = self.height - y - self.height_shift
-        points.append((x, y))
-        x, y = x_data[0], 0
-        y = self.height - y - self.height_shift
-        points.append((x, y))
-        x, y = x_data[0], y_data[0]
-        y = self.height - y - self.height_shift
-        points.append((x, y))
-        polyline = PolylineSVG(points)
-        self.fin_oligos_chart.content += polyline.svg_string()
-        self.draw_top_of_the_summit(x_data[len(y_data) - 1], y_data[len(y_data) - 1],
+            x, y = x_data[0], 0
+            y = self.height - y - self.height_shift
+            points.append((x, y))
+            x, y = x_data[0], y_data[0]
+            y = self.height - y - self.height_shift
+            points.append((x, y))
+            polyline = PolylineSVG(points)
+            self.fin_oligos_chart.content += polyline.svg_string()
+            self.draw_top_of_the_summit(x_data[len(y_data) - 1], y_data[len(y_data) - 1],
                                     text=str(y_top))
 
 
