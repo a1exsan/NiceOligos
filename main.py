@@ -9,7 +9,7 @@ from oligosynth_page import oligosynth_panel_page_model
 from raw_material_page import rawmaterial_panel_page_model
 from chemicals_page import chemicals_page_model
 from input_order_page import input_order_page_model
-from invoce_page import api_db_interface
+from OligoMap_utils import api_db_interface
 from stock_data_page import stock_data_page_model
 from molseq_lang import modification_page_model
 from asm2000_method import asm2000_method_page_model
@@ -38,6 +38,10 @@ def main_page() -> Optional[RedirectResponse]:
         ui.button('Выйти', on_click=logout, icon='logout').props('outline round')
     ui.image('images/background_1.jpeg').style('max-width: 100%; height: 1000px')
         #ui.label(f'Добро пожаловать, {app.storage.user["email"]}!').classes('text-2xl')
+
+#@ui.page('/logout')
+#def page_logout():
+#    logout()
 
 def logout():
     app.storage.user.clear()
@@ -104,6 +108,7 @@ def login_page() -> Optional[RedirectResponse]:
     with ui.row():
         email = ui.input('Email')
         password = ui.input('Пароль', password=True)
+        password.on('keydown.enter', login)
     ui.button('Войти', on_click=login)
     ui.image('images/background_1.jpeg').style('max-width: 100%; height: 1000px;')
 

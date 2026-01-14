@@ -744,8 +744,8 @@ class oligosynth_panel_page_model(api_db_interface):
                 # "enterNavigatesVertically": True,
                 # "enterNavigatesVerticallyAfterEdit": True,
                 # "singleClickEdit": True
-                ':getRowStyle': '(params) => params.data.sufficiency < 0 ? { background: "red" } :'
-                                ' { background: "green" }',
+                ':getRowStyle': '(params) => params.data.sufficiency < 0 ? { background: "#404040" } :'
+                                ' { background: "#208020" }',
             }
             ,
             theme='alpine-dark').classes('h-[800px]')  # alpine  material  quartz  balham

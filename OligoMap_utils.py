@@ -45,6 +45,13 @@ class api_db_interface():
         ret = requests.get(url, headers=self.headers())
         return ret
 
+    def change_pwd(self, login, pwd_old, pwd_new):
+        url = f'{self.api_db_url}/change_pwd'
+        ret = requests.post(url,
+                            json=json.dumps([login, pwd_old, pwd_new]),
+                            headers=self.headers())
+        return ret
+
 class docx_passport():
     def __init__(self, invoce_number, rowdata):
         self.invoce_number = invoce_number

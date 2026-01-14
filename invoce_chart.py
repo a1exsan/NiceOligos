@@ -104,10 +104,8 @@ class invoceChart():
 
     def draw_stat_data(self, history_stat_data):
         self.stat_data = history_stat_data
-
         y_data = [int(row['data']['finished']) for row in self.stat_data]
         x_data = [row['Date'] for row in self.stat_data]
-
         df = pd.DataFrame({
             'x': x_data,
             'y': y_data
@@ -116,17 +114,12 @@ class invoceChart():
         df = df.sort_values('x', ascending=True)
         df = df.groupby('x').agg('max')
         df.reset_index(inplace=True)
-
         self.draw_bar_diagram([i for i in range(df.shape[0])], list(df['y']))
-
         data_sorter = history_stat_data_sorter(self.stat_data)
         data_sorter.sorting_mode = self.get_mode_radio_btns()
         data = data_sorter.get_sorting_data(status='finished')
-
         x_data = list(data['x'])
         y_data = list(data['y_sub'])
-
-        #print(y_data)
         self.draw_date_bar_chart(x_data, y_data)
 
     def get_date_text(self, date):
@@ -190,36 +183,27 @@ class invoceChart():
 
 
     def draw_bar_diagram(self, x_data, y_data):
-
         y_top = y_data[len(y_data) - 1]
-
         y_data = self.normalisation(y_data, self.height_shift, self.height - self.height_shift)
         x_data = self.normalisation(x_data, 100, self.width - 100)
-
         self.test_chart.content = ''
         self.fin_oligos_chart.content = ''
-
         points = []
         for i in range(len(y_data)):
             x, y = x_data[i], y_data[i]
             y= self.height - y
             points.append((x, y))
-
         x, y = x_data[len(y_data) - 1], 0
         y = self.height - y - self.height_shift
         points.append((x, y))
-
         x, y = x_data[0], 0
         y = self.height - y - self.height_shift
         points.append((x, y))
-
         x, y = x_data[0], y_data[0]
         y = self.height - y - self.height_shift
         points.append((x, y))
-
         polyline = PolylineSVG(points)
         self.fin_oligos_chart.content += polyline.svg_string()
-
         self.draw_top_of_the_summit(x_data[len(y_data) - 1], y_data[len(y_data) - 1],
                                     text=str(y_top))
 
