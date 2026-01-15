@@ -80,6 +80,8 @@ class navigation_menu(api_db_interface):
                 ui.link('Stock data', '/stock_data').style('font-size: 24px;')
             if user_status in ['own', 'owner']:
                 ui.link('ASM2000 method', '/asm2000_method').style('font-size: 24px;')
+            if user_status in ['own', 'owner']:
+                ui.link('User administration', '/admin_users').style('font-size: 24px;')
 
         ui.link(text=f'Пользователь: {app.storage.user.get("email")}', target='/user_profile').style('font-size: 24px;')
 

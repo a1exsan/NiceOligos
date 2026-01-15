@@ -344,7 +344,9 @@ class delete_widget_dialog():
         for row in self.tab_rowdata:
             if not row['delete']:
                 edited.append([row['unicode'], row['name']])
-        self.data['wi_list'][self.data['group']] = edited
+        self.data['wi_list'][self.data['group']] = edited.copy()
+        #print(self.data['wi_list'][self.data['group']])
+        #print(self.data['group'])
         self.on_delete(self.data['wi_list'], self.data['meta'])
         self.dialog.close()
 
@@ -904,7 +906,7 @@ class descriptionPanel(raw_mat_base_widget):
 
         number = 12
 
-        max_y_list = max(self.y_remain[-number:])
+        max_y_list = max(self.y_remain[-number:], default=0)
         self.avп_cons = round(sum(self.y_remain[-number:]) / number, 2)
         self.summ_cons = round(sum(self.y_remain[-number:]), 2)
         max_y = 190
@@ -1131,11 +1133,12 @@ class infoPanel(api_db_interface):
 
 
     def on_delete_wi_in_stock_event(self, data, meta):
+        #print(data)
+        #print(meta)
         wi_list = {}
         for key in data.keys():
             if key != 'widgets':
                 wi_list[key] = data[key]
-        #print(meta)
         meta_list = [meta['#'], meta['object_id'], meta['date'], meta['date_format']]
         self.update_widgets([meta_list], wi_list)
         ui.run_javascript('location.reload();')

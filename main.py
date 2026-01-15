@@ -14,6 +14,7 @@ from stock_data_page import stock_data_page_model
 from molseq_lang import modification_page_model
 from asm2000_method import asm2000_method_page_model
 from user_profile_admin import user_admin_profile
+from user_administration import user_admin_model
 from server import IP
 from server import DB_PORT
 
@@ -207,6 +208,16 @@ def user_profile() -> Optional[RedirectResponse]:
     if app.storage.user.get('user_status') in ['own', 'owner', 'lab_master', 'synth_master', 'product_manager',
                                                'stock_viewer']:
         model = user_admin_profile()
+
+
+@ui.page('/admin_users')
+def admin_users() -> Optional[RedirectResponse]:
+    if not app.storage.user.get('authenticated', False):
+        return RedirectResponse('/login')#
+
+    navi_front = navigation_menu(IP_addr, DB_PORT)
+    if app.storage.user.get('user_status') in ['own', 'owner']:
+        model = user_admin_model()
 
 
 #if __name__ == '__main__':
