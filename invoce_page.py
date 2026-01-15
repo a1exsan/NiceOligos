@@ -65,18 +65,18 @@ class navigation_menu(api_db_interface):
         navigation = ui.row()
         with navigation:
             ui.link('Home', '/').style('font-size: 24px;')
-            if user_status in ['own', 'owner', 'synth_master', 'product_manager']:
+            if user_status in ['own', 'owner', 'synth_master', 'product_manager', 'synth_master_biosset']:
                 ui.link('Input order', '/input_order_panel').style('font-size: 24px;')
-            if user_status in ['own', 'lab_master', 'owner', 'synth_master', 'product_manager']:
+            if user_status in ['own', 'lab_master', 'owner', 'synth_master', 'product_manager', 'synth_master_biosset']:
                 ui.link('Invoces', '/invoce_panel').style('font-size: 24px;')
-            if user_status in ['own', 'lab_master', 'owner', 'synth_master']:
+            if user_status in ['own', 'lab_master', 'owner', 'synth_master', 'synth_master_biosset']:
                 ui.link('Oligo synthesis', '/oligosynth_panel').style('font-size: 24px;')
                 ui.link('Raw materials', '/rawmaterials_panel').style('font-size: 24px;')
             if user_status in ['own', 'owner']:
                 ui.link('Chemicals', '/chemicals_panel').style('font-size: 24px;')
-            if user_status in ['own', 'owner', 'synth_master']:
+            if user_status in ['own', 'owner', 'synth_master', 'synth_master_biosset']:
                 ui.link('Modifications', '/modifications').style('font-size: 24px;')
-            if user_status in ['own', 'owner', 'stock_viewer']:
+            if user_status in ['own', 'owner', 'stock_viewer', 'synth_master_biosset']:
                 ui.link('Stock data', '/stock_data').style('font-size: 24px;')
             if user_status in ['own', 'owner']:
                 ui.link('ASM2000 method', '/asm2000_method').style('font-size: 24px;')
@@ -365,12 +365,12 @@ class invoice_page_model(api_db_interface):
 
 
     def update_invoce_cell_data(self, e):
-        if app.storage.user.get('user_status') in ['own', 'owner', 'lab_master', 'synth_master']:
+        if app.storage.user.get('user_status') in ['own', 'owner', 'lab_master', 'synth_master', 'synth_master_biosset']:
             self.invoice_tab_rowdata[e.args["rowIndex"]] = e.args["data"]
             self.on_update_invoces_tab.run_method('click')
 
     def update_invoce_content_cell_data(self, e):
-        if app.storage.user.get('user_status') in ['own', 'owner', 'lab_master', 'synth_master']:
+        if app.storage.user.get('user_status') in ['own', 'owner', 'lab_master', 'synth_master', 'synth_master_biosset']:
             self.update_invoce_content_tab_in_base([e.args["data"]])
 
 
@@ -540,7 +540,7 @@ class invoice_page_model(api_db_interface):
 
 
     def on_update_invoces_tab_event(self):
-        if app.storage.user.get('user_status') in ['own', 'owner', 'lab_master', 'synth_master']:
+        if app.storage.user.get('user_status') in ['own', 'owner', 'lab_master', 'synth_master', 'synth_master_biosset']:
             self.pincode = app.storage.user.get('pincode')
             self.update_send_invoce_data(self.invoice_tab_rowdata)
             df = pd.DataFrame(self.invoice_tab_rowdata)
@@ -636,7 +636,7 @@ class invoice_page_model(api_db_interface):
 
 
     async def on_print_invoce_passport_event(self, e):
-        if app.storage.user.get('user_status') in ['own', 'owner', 'lab_master', 'synth_master']:
+        if app.storage.user.get('user_status') in ['own', 'owner', 'lab_master', 'synth_master', 'synth_master_biosset']:
             self.pincode = app.storage.user.get('pincode')
             self.progressbar.visible = True
             selrows = await self.ag_grid.get_selected_rows()
@@ -700,7 +700,7 @@ class invoice_page_model(api_db_interface):
 
 
     async def on_show_oligos_synt_button_event(self):
-        if app.storage.user.get('user_status') in ['own', 'owner', 'lab_master', 'synth_master']:
+        if app.storage.user.get('user_status') in ['own', 'owner', 'lab_master', 'synth_master', 'synth_master_biosset']:
             self.pincode = app.storage.user.get('pincode')
             selrows = await self.invoce_content_tab.get_selected_rows()
             sel_orders = list(pd.DataFrame(selrows)['#'])
@@ -731,7 +731,7 @@ class invoice_page_model(api_db_interface):
 
 
     async def on_send_oligos_button_event(self):
-        if app.storage.user.get('user_status') in ['own', 'owner', 'lab_master', 'synth_master']:
+        if app.storage.user.get('user_status') in ['own', 'owner', 'lab_master', 'synth_master', 'synth_master_biosset']:
             self.pincode = app.storage.user.get('pincode')
             selrows = await self.invoce_content_tab.get_selected_rows()
 
@@ -775,7 +775,7 @@ class invoice_page_model(api_db_interface):
 
 
     def on_show_by_status_event(self, param):
-        if app.storage.user.get('user_status') in ['own', 'owner', 'lab_master', 'synth_master']:
+        if app.storage.user.get('user_status') in ['own', 'owner', 'lab_master', 'synth_master', 'synth_master_biosset']:
             self.pincode = app.storage.user.get('pincode')
             out = self.get_orders_by_status(param.value)
             self.invoce_content_tab.options['rowData'] = out
@@ -785,7 +785,7 @@ class invoice_page_model(api_db_interface):
 
 
     def on_print_orders_date_range_event(self):
-        if app.storage.user.get('user_status') in ['own', 'owner', 'lab_master', 'synth_master']:
+        if app.storage.user.get('user_status') in ['own', 'owner', 'lab_master', 'synth_master', 'synth_master_biosset']:
             self.pincode = app.storage.user.get('pincode')
             start_date = datetime.strptime(self.start_date.value, "%Y-%m-%d")
             end_date = datetime.strptime(self.end_date.value, "%Y-%m-%d")
@@ -800,7 +800,7 @@ class invoice_page_model(api_db_interface):
             app.storage.user['invoce_content_tab_rowdata'] = self.invoce_content_tab.options['rowData']
 
     async def on_change_status_event(self):
-        if app.storage.user.get('user_status') in ['own', 'owner', 'lab_master', 'synth_master']:
+        if app.storage.user.get('user_status') in ['own', 'owner', 'lab_master', 'synth_master', 'synth_master_biosset']:
             selrows = await self.invoce_content_tab.get_selected_rows()
             status_dialog = change_status_dialog(self.db_IP, self.db_port, self.pincode, selrows)
             status_dialog.dialog.open()
@@ -831,7 +831,7 @@ class invoice_page_model(api_db_interface):
 
 
     def on_update_content_tab_event(self):
-        if app.storage.user.get('user_status') in ['own', 'owner', 'lab_master', 'synth_master']:
+        if app.storage.user.get('user_status') in ['own', 'owner', 'lab_master', 'synth_master', 'synth_master_biosset']:
             self.on_show_invoces_content.run_method('click')
 
 

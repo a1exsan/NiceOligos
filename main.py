@@ -126,7 +126,7 @@ def input_order_panel() -> Optional[RedirectResponse]:
         return RedirectResponse('/login')
 
     navi_front = navigation_menu(IP_addr, DB_PORT)
-    if app.storage.user.get('user_status') in ['own', 'owner', 'synth_master', 'product_manager']:
+    if app.storage.user.get('user_status') in ['own', 'owner', 'synth_master', 'product_manager', 'synth_master_biosset']:
         order_page = input_order_page_model(IP_addr, DB_PORT)
 
 
@@ -136,7 +136,7 @@ def invoce_panel_page() -> Optional[RedirectResponse]:
         return RedirectResponse('/login')
 
     navi_front = navigation_menu(IP_addr, DB_PORT)
-    if app.storage.user.get('user_status') in ['own', 'owner', 'lab_master', 'synth_master', 'product_manager']:
+    if app.storage.user.get('user_status') in ['own', 'owner', 'lab_master', 'synth_master', 'product_manager', 'synth_master_biosset']:
         invoce_front = invoice_page_model(IP_addr, DB_PORT)
 
 
@@ -146,7 +146,7 @@ def oligosynth_panel_page() -> Optional[RedirectResponse]:
         return RedirectResponse('/login')
 
     navi_front = navigation_menu(IP_addr, DB_PORT)
-    if app.storage.user.get('user_status') in ['own', 'owner', 'lab_master', 'synth_master']:
+    if app.storage.user.get('user_status') in ['own', 'owner', 'lab_master', 'synth_master', 'synth_master_biosset']:
         oligosynt_front = oligosynth_panel_page_model(IP_addr, DB_PORT)
 
 
@@ -156,7 +156,7 @@ def rawmaterials_panel_page() -> Optional[RedirectResponse]:
         return RedirectResponse('/login')
 
     navi_front = navigation_menu(IP_addr, DB_PORT)
-    if app.storage.user.get('user_status') in ['own', 'owner', 'lab_master', 'synth_master']:
+    if app.storage.user.get('user_status') in ['own', 'owner', 'lab_master', 'synth_master', 'synth_master_biosset']:
         rawmat_panel = rawmaterial_panel_page_model(IP_addr, DB_PORT)
 
 
@@ -176,7 +176,7 @@ def stock_data_page() -> Optional[RedirectResponse]:
         return RedirectResponse('/login')
 
     navi_front = navigation_menu(IP_addr, DB_PORT)
-    if app.storage.user.get('user_status') in ['own', 'owner', 'stock_viewer']:
+    if app.storage.user.get('user_status') in ['own', 'owner', 'stock_viewer', 'synth_master_biosset']:
         model = stock_data_page_model()
 
 
@@ -186,7 +186,7 @@ def modifications() -> Optional[RedirectResponse]:
         return RedirectResponse('/login')#
 
     navi_front = navigation_menu(IP_addr, DB_PORT)
-    if app.storage.user.get('user_status') in ['own', 'owner', 'synth_master']:
+    if app.storage.user.get('user_status') in ['own', 'owner', 'synth_master', 'synth_master_biosset']:
        model = modification_page_model()
 
 
@@ -206,7 +206,7 @@ def user_profile() -> Optional[RedirectResponse]:
 
     navi_front = navigation_menu(IP_addr, DB_PORT)
     if app.storage.user.get('user_status') in ['own', 'owner', 'lab_master', 'synth_master', 'product_manager',
-                                               'stock_viewer']:
+                                               'stock_viewer', 'synth_master_biosset']:
         model = user_admin_profile()
 
 

@@ -153,11 +153,10 @@ class user_admin_model(api_db_interface):
         self.pass_dialog.dialog.open()
 
     async def delete_user(self):
-        if app.storage.user.get('user_status') in ['own', 'owner', 'synth_master']:
-            selrows = await self.users_tab.get_selected_rows()
-            if len(selrows) > 0:
-                self.sel_user_id = selrows[0]['id']
-                self.confirm_dialog.dialog.open()
+        selrows = await self.users_tab.get_selected_rows()
+        if len(selrows) > 0:
+            self.sel_user_id = selrows[0]['id']
+            self.confirm_dialog.dialog.open()
 
     def delete_user_row(self):
         if self.sel_user_id is not None:
