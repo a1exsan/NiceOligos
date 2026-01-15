@@ -47,6 +47,8 @@ ADD synthesis_method.py .
 ADD asm2000_method.py .
 ADD asm_templates.py .
 ADD mol3D.py .
+ADD user_profile_admin.py .
+ADD user_administration.py .
 
 RUN mkdir -p /app/static_images
 RUN mkdir -p /app/images

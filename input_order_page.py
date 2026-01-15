@@ -254,7 +254,7 @@ class price_dialog():
 
 
     def on_save_data(self):
-        if app.storage.user.get('user_status') in ['own', 'owner']:
+        if app.storage.user.get('user_status') in ['own', 'owner', 'synth_master_biosset']:
             for scale in self.scale_list:
                 price_dict, type_dict = {}, {}
                 self.grid.options['rowData'] = self.rowdata
@@ -745,7 +745,7 @@ class input_order_page_model(api_db_interface):
 
 
     def on_add_to_base(self):
-        if app.storage.user.get('user_status') in ['own', 'owner', 'synth_master']:
+        if app.storage.user.get('user_status') in ['own', 'owner', 'synth_master', 'synth_master_biosset']:
             invoce = self.invoce.value
             client = self.client.value
             data = self.input_tab.options['rowData']

@@ -363,7 +363,6 @@ class invoice_page_model(api_db_interface):
         buffer.seek(0)
         ui.download(buffer.read(), filename=f'{filename}.xlsx')
 
-
     def update_invoce_cell_data(self, e):
         if app.storage.user.get('user_status') in ['own', 'owner', 'lab_master', 'synth_master', 'synth_master_biosset']:
             self.invoice_tab_rowdata[e.args["rowIndex"]] = e.args["data"]
