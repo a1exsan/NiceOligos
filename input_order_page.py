@@ -1,5 +1,5 @@
 import pandas as pd
-from nicegui import ui, app, events
+from nicegui import ui, app, events, run
 from datetime import datetime
 from OligoMap_utils import api_db_interface
 import json
@@ -107,8 +107,8 @@ class price_db_manager(api_db_interface):
         return r.json()[0][1]
 
 class oligo_price_calculator():
-    def __init__(self):
-        self.price_base = price_db_manager()
+    def __init__(self, price_base):
+        self.price_base = price_base
         self.end5_list, self.end3_list, self.pt_list, self.scale_list = self.price_base.get_all_types_groups()
         self.error = {'unknown mod': '', 'unknown scale': '', 'unknown purif': '', '5end err': '', '3end err': ''}
         self.price = 0
@@ -120,9 +120,31 @@ class oligo_price_calculator():
         else:
             return False
 
-    def check_modification(self, mod_list, scale, purif):
+    def get_price_lenght_coeff(self, lenght, price_data, type_data):
+        df = pd.DataFrame({
+            'type': type_data,
+            'name': price_data
+        })
+        df.reset_index(inplace=True)
+        df = df[df['type'] == 'lenght']
+        len_dict = {}
+        for value in df['index']:
+            key = int(value[value.find('_') + 1:])
+            len_dict[key] = value
+        cf = 1
+        len_list = list(len_dict.keys())
+        len_list.sort()
+        for l in len_list:
+            if lenght <= l:
+                cf = price_data[len_dict[l]]
+                break
+        return cf
+
+
+    def check_modification(self, mod_list, scale, purif, lenght=50):
         price_data, type_data = self.price_base.get_price_data(scale)
         count = Counter(mod_list)
+        #print(mod_list)
         sum_price = 0.
         for mod in count.keys():
             err_ctrl = True
@@ -130,7 +152,8 @@ class oligo_price_calculator():
                 mod = ''
             if mod in price_data.keys():
                 err_ctrl = False
-                sum_price += price_data[mod] * count[mod]
+                cf = self.get_price_lenght_coeff(lenght, price_data, type_data)
+                sum_price += price_data[mod] * count[mod] * cf
             if err_ctrl and mod != 'none':
                 self.error['unknown mod'] = mod
         err_ctrl = True
@@ -147,6 +170,7 @@ class oligo_price_calculator():
 
     def check_oligo_params(self, row_dict):
         oligo = single_nucleic_acid_chain(row_dict['Sequence'])
+        lenght = len(row_dict['Sequence'])
         mod_5end = row_dict["5'-end"]
         mod_3end = row_dict["3'-end"]
 
@@ -160,7 +184,7 @@ class oligo_price_calculator():
         if self.check_scale(scale):
             mod_list = oligo.chain
             mod_list.extend([mod_5end, mod_3end])
-            self.price = self.check_modification(mod_list, scale, purif)
+            self.price = self.check_modification(mod_list, scale, purif, lenght)
         else:
             self.error['unknown scale'] = scale
 
@@ -265,7 +289,7 @@ class price_dialog():
                 self.price_base.insert_price_data(scale, price_dict, type_dict)
             self.dialog.close()
         else:
-            ui.notify('Недостаточно прав')
+            ui.notify('Нет доступа')
 
     def update_grid_cell_data(self, e):
         self.rowdata[e.args["rowIndex"]] = e.args["data"]
@@ -405,6 +429,7 @@ class input_order_page_model(api_db_interface):
                 "5'-end": [],
                 'Sequence': [],
                 "3'-end": [],
+                "lenght": [],
                 'Amount_OE': [],
                 'Purification': [],
             }
@@ -416,6 +441,7 @@ class input_order_page_model(api_db_interface):
             {"field": "5'-end", "headerName": '5-end', 'editable': True},
             {"field": 'Sequence', "headerName": 'Sequence', 'editable': True},
             {"field": "3'-end", "headerName": '3-end', 'editable': True},
+            {"field": "lenght", "headerName": 'lenght', 'editable': False},
             {"field": 'Amount_OE', "headerName": 'Amount', 'editable': True},
             {"field": 'Purification', "headerName": 'Purif type', 'editable': True},
             {"field": 'Price', "headerName": 'Price', 'editable': True},
@@ -500,6 +526,7 @@ class input_order_page_model(api_db_interface):
             out_df['Sequence'] = df[2]
             out_df['Sequence'] = out_df['Sequence'].str.replace(' ', '')
             out_df["3'-end"] = df[3]
+            out_df["lenght"] = [str(len(seq)) for seq in out_df['Sequence']]
             out_df['Amount_OE'] = df[4]
             out_df['Purification'] = df[5]
             out_df['#'] = [i + 1 for i in range(df.shape[0])]
@@ -555,6 +582,7 @@ class input_order_page_model(api_db_interface):
                 "5'-end":'',
                 'Sequence':'',
                 "3'-end":'',
+                "lenght":'',
                 'Amount_OE':'',
                 'Purification':'',
              }
@@ -590,6 +618,7 @@ class input_order_page_model(api_db_interface):
                     "5'-end": '',
                     'Sequence': '',
                     "3'-end": '',
+                    'lenght': '',
                     'Amount_OE': '',
                     'Purification': 'Итого:',
                     'Price': str(df['Price'].sum()),
@@ -622,6 +651,7 @@ class input_order_page_model(api_db_interface):
                         insert_row[cname[str(i)]] = col
                     if 'Sequence' in insert_row:
                         insert_row['Sequence'] = insert_row['Sequence'].replace(' ', '')
+                        insert_row['lenght'] = str(len(insert_row['Sequence']))
                 rowdata.append(insert_row)
             df = pd.DataFrame(rowdata)
             df.dropna(inplace=True)
@@ -649,8 +679,6 @@ class input_order_page_model(api_db_interface):
             self.pincode = app.storage.user.get('pincode')
         else:
             self.pincode = ''
-
-
 
     def process_data(self):
         self.total_price = 0
@@ -704,21 +732,18 @@ class input_order_page_model(api_db_interface):
 
 
     def get_price(self):
-        self.progress_value_object['value'] = 0.64
-        time.sleep(0.1)
+        self.progress_value_object['value'] = 0.
         rowdata = []
         max_i = len(self.input_tab.options['rowData'])
         for i, row in enumerate(self.input_tab.options['rowData']):
-            #self.progress.value = i / max_i
-            #self.progress.update()
-            self.progress_value_object['value'] = 0.99
-            time.sleep(0.1)
-            oligo = oligo_price_calculator()
-            try:
-                oligo.check_oligo_params(row)
-            except Exception as e:
-                ui.notify(e)
-
+            self.progress.value = i / max_i
+            self.progress.update()
+            self.progress_value_object['value'] = round(i / max_i, 3)
+            oligo = oligo_price_calculator(self.price_base)
+            #try:
+            oligo.check_oligo_params(row)
+            #except Exception as e:
+            #    ui.notify(e)
             d = row.copy()
             d['Price'] = oligo.price
             out_err = {}
@@ -727,17 +752,21 @@ class input_order_page_model(api_db_interface):
                     out_err[key] = oligo.error[key]
             d['Error'] = str(out_err)
             rowdata.append(d)
+            self.input_tab.options['rowData'][len(rowdata)-1]['Price'] = oligo.price
+            self.input_tab.options['rowData'][len(rowdata)-1]['Error'] = str(out_err)
+            self.input_tab.update()
         self.rowdata = rowdata
-        #self.progress.value = 1
-        #self.progress.update()
         self.progress_value_object['value'] = 1.
-        time.sleep(0.1)
 
-    def culc_modif_count(self):
+
+    async def culc_modif_count(self):
         self.progress_value_object['value'] = 0.
-        background_thread = threading.Thread(target=self.get_price())
-        background_thread.daemon = True
-        background_thread.start()
+        #background_thread = threading.Thread(target=self.get_price())
+        #background_thread.daemon = True
+        #background_thread.start()
+
+        #self.get_price()
+        await run.io_bound(self.get_price)
         df = pd.DataFrame(self.rowdata)
         self.culc_price.value = df['Price'].sum()
         self.input_tab.options['rowData'] = self.rowdata
