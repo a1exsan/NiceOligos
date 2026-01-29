@@ -510,9 +510,12 @@ class oligosynth_panel_page_model(api_db_interface):
                                                              on_click=self.on_edit_synth_button_event,
                                                              ).classes('w-[200px]')
 
-                self.on_generate_oligomap_button = ui.button("Generate map",
-                                                             on_click=self.on_generate_oligomap_button_event,
-                                                             color="#00a100").classes('w-[200px]')
+                #self.on_generate_oligomap_button = ui.button("Generate map",
+                #                                             on_click=self.on_generate_oligomap_button_event,
+                #                                             color="#00a100").classes('w-[200px]')
+                with ui.dropdown_button('map operation', color="#00a100", auto_close=True
+                                        ).style('width: 200px') as self.on_sel_done_btn:
+                    ui.item('Sort by CPG pore size', on_click=self.on_sort_by_cpg_pore_size)
                 with ui.dropdown_button('Set done operation', auto_close=True).classes('w-[200px]') as self.on_sel_done_btn:
                     for key in ['synth', 'cart', 'hplc', 'sed', 'paag', 'click', 'subl', 'Wasted', 'LCMS']:
                         ui.item(key, on_click=lambda n=key: self.on_sel_done_btn_event(n))
@@ -1487,4 +1490,7 @@ class oligosynth_panel_page_model(api_db_interface):
         if 'oligos_list_synth' in list(app.storage.user.keys()):
             self.oligos_stack_tab.options['rowData'] = app.storage.user.get('oligos_list_synth')
             self.oligos_stack_tab.update()
+
+    def on_sort_by_cpg_pore_size(self):
+        pass
 
