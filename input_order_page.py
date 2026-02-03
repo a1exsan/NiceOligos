@@ -220,6 +220,7 @@ class price_dialog():
                     #self.scale_selected = ui.select(options=self.scale_list, with_input=True, on_change=self.on_change_scale,
                     #                                value='1-3').classes('w-[200px]')
                     ui.button('Add modification', on_click=self.on_add_modification)
+                    ui.button('export excel', color='orange', on_click=self.on_export_to_excel)
                 rowdata = []
                 if self.price_data == {}:
                     self.scale_param.value = self.scale
@@ -301,6 +302,13 @@ class price_dialog():
         self.rowdata.append(d)
         self.grid.options['rowData'] = self.rowdata
         self.grid.update()
+
+    def on_export_to_excel(self):
+        data = pd.DataFrame(self.grid.options['rowData'])
+        buffer = BytesIO()
+        data.to_excel(buffer, index=False)
+        buffer.seek(0)
+        ui.download(buffer.read(), filename='price_table.xlsx')
 
     def on_change_scale(self, scale):
         self.price_data, self.type_data = self.price_base.get_price_data(scale.value)
