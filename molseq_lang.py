@@ -378,6 +378,13 @@ class single_nucleic_acid_chain_assembler(single_nucleic_acid_chain):
                                 self.chain.insert(i + 1, '[Alk]')
                                 ctrl=True
                                 break
+                    if jd['class'] == 'NHS':
+                        for i, c in enumerate(self.chain):
+                            if e_mod in c or e_mod.upper() in c:
+                                self.chain[i] = symb
+                                self.chain.insert(i + 1, '[NH2_C6]')
+                                ctrl=True
+                                break
                 if ctrl:
                     break
 
