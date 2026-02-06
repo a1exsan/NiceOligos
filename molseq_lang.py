@@ -539,6 +539,14 @@ class single_nucleic_acid_chain_assembler(single_nucleic_acid_chain):
                 if not repeats_ctrl:
                     repeats = 1
                 for i in range(repeats):
+                    for id in mod_data['DETRIT']:
+                        rnx_smarts = self.rnx_base[id].smarts
+                        rxn = rdChemReactions.ReactionFromSmarts(rnx_smarts)
+                        react = Chem.MolFromSmiles(self.structure)
+                        products = rxn.RunReactants([react])
+                        if products != ():
+                            self.structure = Chem.MolToSmiles(products[0][0])
+                for i in range(repeats):
                     for id in mod_data['click']:
                         rnx_smarts = self.rnx_base[id].smarts
                         rxn = rdChemReactions.ReactionFromSmarts(rnx_smarts)
