@@ -7,9 +7,11 @@ from pubchempy import get_compounds, Compound, get_substances, get_properties, g
 from datetime import datetime
 
 from rdkit import Chem
+from rdkit.Chem import AllChem
 from rdkit.Chem import Draw
 from rdkit.Chem import Descriptors, rdMolDescriptors
 from rdkit.Chem.Draw import rdMolDraw2D
+from rdkit.Geometry import Point2D
 import io
 import base64
 from pprint import pformat
@@ -70,6 +72,27 @@ class moleculeInfo():
         drawer.DrawMolecule(self.mol)
         drawer.FinishDrawing()
         return drawer.GetDrawingText()
+
+    def draw_svg_data(self, width=600, height=400):
+        drawer = rdMolDraw2D.MolDraw2DSVG(width, height)
+        rdMolDraw2D.SetDarkMode(drawer)
+        # opts = drawer.drawOptions()
+        drawer.DrawMolecule(self.mol)
+
+        coords = []
+        if self.mol.GetNumConformers() == 0:
+            AllChem.Compute2DCoords(self.mol)
+        conf = self.mol.GetConformer()
+        for atom in self.mol.GetAtoms():
+            idx = atom.GetIdx()
+            raw_pos = conf.GetAtomPosition(idx)
+            pt = Point2D(raw_pos.x, raw_pos.y)
+            screen_pos = drawer.GetDrawCoords(pt)
+            coords.append((screen_pos.x, screen_pos.y))
+            #print(idx, atom.GetSymbol(), pt.x, pt.y, (screen_pos.x, screen_pos.y))
+
+        drawer.FinishDrawing()
+        return drawer.GetDrawingText(), coords
 
 
     def get_props(self):

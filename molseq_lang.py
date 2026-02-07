@@ -410,6 +410,7 @@ class single_nucleic_acid_chain_assembler(single_nucleic_acid_chain):
         svg = mol.draw_svg(width-20, height-20)
         context.content += f'<g transform="translate(10, 10)">{svg}</g>'
 
+
     def get_branch_count(self, structure):
         molecule = Chem.MolFromSmiles(structure)
         substructure = Chem.MolFromSmiles('C1C=C(C(O)(C2C=CC=CC=2)C2C=CC=CC=2)C=CC=1')
