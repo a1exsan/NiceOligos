@@ -76,7 +76,6 @@ class moleculeInfo():
     def draw_svg_data(self, width=600, height=400):
         drawer = rdMolDraw2D.MolDraw2DSVG(width, height)
         rdMolDraw2D.SetDarkMode(drawer)
-        # opts = drawer.drawOptions()
         drawer.DrawMolecule(self.mol)
 
         coords = []
@@ -86,6 +85,7 @@ class moleculeInfo():
         for atom in self.mol.GetAtoms():
             idx = atom.GetIdx()
             raw_pos = conf.GetAtomPosition(idx)
+            #conf.SetAtomPosition()
             pt = Point2D(raw_pos.x, raw_pos.y)
             screen_pos = drawer.GetDrawCoords(pt)
             coords.append((screen_pos.x, screen_pos.y))

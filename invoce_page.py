@@ -218,6 +218,7 @@ class invoice_page_model(api_db_interface):
             'finished',
             'in progress',
             'wasted in progress',
+            'wasted in finished',
             'not compleated in finished',
         ]
 
@@ -754,6 +755,9 @@ class invoice_page_model(api_db_interface):
         out = []
         if status == 'in progress':
             out = get_in_progress(find_list = ['synthesis', 'purification', 'formulation'])
+        if status == 'wasted in finished':
+            out = get_in_progress(find_list = ['wasted in finished'])
+            #print(pd.DataFrame(out))
         elif status == 'total data':
             out = get_in_progress(find_list = ['in queue', 'synthesis', 'purification', 'formulation', 'finished'])
         elif status == 'wasted in progress':

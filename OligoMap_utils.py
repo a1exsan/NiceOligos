@@ -777,15 +777,21 @@ class oligomaps_search(api_db_interface):
             if not flag_list[i]:
                 if i < 3:
                     status = 'synthesis'
+                    break
                 elif i > 2 and i < 6:
                     status = 'purification'
+                    break
                 elif i == 7:
                     status = 'formulation'
-                return status
+                    break
             else:
                 if i == 7:
                     status = 'finished'
-                    return status
+                    break
+        if status == 'finished' and row['Wasted']:
+            status = f'wasted in finished'
+        elif status != 'finished' and row['Wasted']:
+            status = f'wasted in progress'
         return status
 
 
