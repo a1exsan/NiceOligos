@@ -778,7 +778,7 @@ class oligomaps_search(api_db_interface):
                 if i < 3:
                     status = 'synthesis'
                     break
-                elif i > 2 and i < 6:
+                elif i > 2 and i < 7:
                     status = 'purification'
                     break
                 elif i == 7:

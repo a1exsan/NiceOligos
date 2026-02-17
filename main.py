@@ -222,7 +222,7 @@ def admin_users() -> Optional[RedirectResponse]:
 
 #if __name__ == '__main__':
 ui.run(
-        storage_secret='lfjvnieurvqneorivnq/lke',
+        storage_secret='lfjvnieurvqneorivnq/lkerr',
         title='NiceOligo',
         favicon="static_images/favicon.ico",
         port=8080
