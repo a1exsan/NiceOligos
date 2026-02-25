@@ -761,15 +761,16 @@ class invoice_page_model(api_db_interface):
         elif status == 'total data':
             out = get_in_progress(find_list = ['in queue', 'synthesis', 'purification', 'formulation', 'finished'])
         elif status == 'wasted in progress':
-            ret = get_in_progress(find_list = ['synthesis', 'purification', 'formulation'])
-            omaps = oligomaps_search(self.db_IP, self.db_port)
-            omaps.pincode = self.pincode
-            orders = omaps.get_wasted_in_progress()
-            df = pd.DataFrame(ret)
-            for order in orders:
-                l = df[df['#'] == order['Order id']].to_dict('records')
-                if len(l) > 0:
-                    out.append(l[0])
+            out = get_in_progress(find_list=['wasted in progress'])
+            #ret = get_in_progress(find_list = ['synthesis', 'purification', 'formulation'])
+            #omaps = oligomaps_search(self.db_IP, self.db_port)
+            #omaps.pincode = self.pincode
+            #orders = omaps.get_wasted_in_progress()
+            #df = pd.DataFrame(ret)
+            #for order in orders:
+            #    l = df[df['#'] == order['Order id']].to_dict('records')
+            #    if len(l) > 0:
+            #        out.append(l[0])
         else:
             url = f'{self.api_db_url}/get_orders_by_status/{self.db_name}/{status}'
             ret = requests.get(url, headers=self.headers())

@@ -38,7 +38,7 @@ def main_page() -> Optional[RedirectResponse]:
     with ui.column():
         navi_front = navigation_menu(IP_addr, DB_PORT)
         ui.button('Выйти', on_click=logout, icon='logout').props('outline round')
-    ui.image('images/background_1.jpeg').style('max-width: 100%; height: 1000px')
+    ui.image(f'images/background_1.jpeg').style('max-width: 100%; height: 1000px')
         #ui.label(f'Добро пожаловать, {app.storage.user["email"]}!').classes('text-2xl')
 
 #@ui.page('/logout')
@@ -222,8 +222,8 @@ def admin_users() -> Optional[RedirectResponse]:
 
 #if __name__ == '__main__':
 ui.run(
-        storage_secret='lfjvnieurvqneorivnq/lkerr',
-        title='NiceOligo',
+        storage_secret='lfjvnienewtextvnq/lkerr',
+        title='NiceOligos',
         favicon="static_images/favicon.ico",
-        port=8080
+        port=8088
     )
